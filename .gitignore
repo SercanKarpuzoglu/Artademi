@@ -1,0 +1,60 @@
+# ============================================================
+# Artademi — Spring Boot + React (Vite) + React Native (Expo)
+# ============================================================
+
+# ---------- Sırlar / ortam (ASLA commit etme) ----------
+.env
+.env.*
+!.env.example
+**/application-local.yml
+**/application-local.yaml
+**/application-secret.yml
+**/application-secret.yaml
+*.pem
+*.key
+
+# ---------- Claude Code: kişisel ayar dışlanır, skill/agent kalır ----------
+.claude/settings.local.json
+.claude/**/*.local.*
+
+# ---------- Günlük çalışma kağıdı ----------
+job.md
+
+# ---------- Java / Maven (backend) ----------
+target/
+*.class
+*.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+*.log
+hs_err_pid*
+
+# (Gradle kullanırsan)
+.gradle/
+build/
+
+# ---------- Node / React (web) ----------
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+coverage/
+
+# ---------- Expo / React Native (mobile) ----------
+.expo/
+.expo-shared/
+web-build/
+*.orig.*
+android/
+ios/
+
+# ---------- IDE / Editör ----------
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# ---------- İşletim sistemi ----------
+.DS_Store
+Thumbs.db

@@ -1,5 +1,7 @@
 package com.artademi.common.tenant;
 
+import java.util.UUID;
+
 /**
  * Istek basina aktif tenant kimligini tutan baglam (ThreadLocal).
  *
@@ -8,20 +10,20 @@ package com.artademi.common.tenant;
  * {@code tenant_id} claim'iyle degisecek — bu sinif degismeden kalir.
  *
  * <p>{@link #get()} henuz set edilmemisse {@code null} dondurebilir (or. /api/ping,
- * /actuator veya header'siz istekler).
+ * /actuator veya header'siz/gecersiz istekler).
  */
 public final class TenantContext {
 
-    private static final ThreadLocal<Long> CURRENT = new ThreadLocal<>();
+    private static final ThreadLocal<UUID> CURRENT = new ThreadLocal<>();
 
     private TenantContext() {
     }
 
-    public static void set(Long tenantId) {
+    public static void set(UUID tenantId) {
         CURRENT.set(tenantId);
     }
 
-    public static Long get() {
+    public static UUID get() {
         return CURRENT.get();
     }
 

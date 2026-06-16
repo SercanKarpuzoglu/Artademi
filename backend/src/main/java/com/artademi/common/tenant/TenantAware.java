@@ -3,6 +3,7 @@ package com.artademi.common.tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
+import java.util.UUID;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
@@ -28,18 +29,18 @@ import org.hibernate.annotations.ParamDef;
 @FilterDef(
         name = "tenantFilter",
         autoEnabled = true,
-        parameters = @ParamDef(name = "tenantId", type = Long.class, resolver = TenantIdResolver.class))
+        parameters = @ParamDef(name = "tenantId", type = UUID.class, resolver = TenantIdResolver.class))
 @Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
 public abstract class TenantAware {
 
     @Column(name = "tenant_id", nullable = false, updatable = false)
-    private Long tenantId;
+    private UUID tenantId;
 
-    public Long getTenantId() {
+    public UUID getTenantId() {
         return tenantId;
     }
 
-    public void setTenantId(Long tenantId) {
+    public void setTenantId(UUID tenantId) {
         this.tenantId = tenantId;
     }
 

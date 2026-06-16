@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.UUID;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -33,9 +34,10 @@ public class TenantFilter extends OncePerRequestFilter {
             String raw = request.getHeader(TENANT_HEADER);
             if (raw != null && !raw.isBlank()) {
                 try {
-                    TenantContext.set(Long.valueOf(raw.trim()));
-                } catch (NumberFormatException ignored) {
-                    // Gecersiz header degeri -> tenant set edilmez (sorgular kisitlanmaz).
+                    TenantContext.set(UUID.fromString(raw.trim()));
+                } catch (IllegalArgumentException ignored) {
+                    // Gecersiz/parse edilemeyen UUID -> tenant set edilmez (context bos kalir;
+                    // interceptor 400 TENANT_REQUIRED ile reddeder). 500 firlatilmaz.
                 }
             }
             filterChain.doFilter(request, response);

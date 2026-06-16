@@ -1,0 +1,53 @@
+# Artademi — yerel geliştirme altyapısı (PostgreSQL + Keycloak)
+# Sırlar infra/.env'den gelir; bu dosyada sabit parola YOKTUR.
+# Kullanım: infra/ içinde  ->  docker compose up -d
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: artademi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: artademi
+      # init script'in ek "keycloak" DB'sini açabilmesi için kullanılır
+      KEYCLOAK_DB_NAME: keycloak
+    ports:
+      - "5432:5432"
+    volumes:
+      - artademi-postgres-data:/var/lib/postgresql/data
+      # *.sh / *.sql dosyaları yalnızca ilk başlatmada (boş volume) çalışır
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d artademi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: artademi-keycloak
+    restart: unless-stopped
+    command: ["start-dev"]
+    environment:
+      # Yönetici (bootstrap) kullanıcısı — Keycloak 26 değişken adları
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Veritabanı: yukarıdaki postgres'teki "keycloak" DB'si
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Yerel geliştirme: HTTP yeterli
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  artademi-postgres-data:

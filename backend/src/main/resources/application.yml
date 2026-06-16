@@ -1,0 +1,36 @@
+server:
+  # Port da env'den okunur; varsayilan 8081 (Keycloak 8080'de kalsin).
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: artademi-backend
+
+  datasource:
+    # Baglanti bilgileri ortam degiskeninden gelir. Parola icin VARSAYILAN YOK.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/artademi}
+    username: ${SPRING_DATASOURCE_USERNAME:artademi}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    hibernate:
+      # Semayi Flyway yonetir; Hibernate yalnizca dogrular.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+
+# Actuator: yalnizca health endpoint acik.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      access: read-only

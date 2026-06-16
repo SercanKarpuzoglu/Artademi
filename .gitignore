@@ -6,6 +6,7 @@
 .env
 .env.*
 !.env.example
+backend/.env
 **/application-local.yml
 **/application-local.yaml
 **/application-secret.yml

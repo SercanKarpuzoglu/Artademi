@@ -14,7 +14,9 @@ services:
       # init script'in ek "keycloak" DB'sini açabilmesi için kullanılır
       KEYCLOAK_DB_NAME: keycloak
     ports:
-      - "5432:5432"
+      # Dışarı (host) 5433 -> container içi 5432. Homebrew PostgreSQL 5432'de
+      # çalıştığı için çakışmayı önlemek üzere host portu 5433'e taşındı.
+      - "5433:5432"
     volumes:
       - artademi-postgres-data:/var/lib/postgresql/data
       # *.sh / *.sql dosyaları yalnızca ilk başlatmada (boş volume) çalışır

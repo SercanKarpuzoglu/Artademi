@@ -30,7 +30,7 @@ geçene kadar bekler.
 | Servis     | Adres                     | Giriş                                            |
 |------------|---------------------------|--------------------------------------------------|
 | Keycloak   | http://localhost:8080     | `.env` içindeki `KEYCLOAK_ADMIN` / `..._PASSWORD` |
-| PostgreSQL | `localhost:5432`          | `.env` içindeki `POSTGRES_USER` / `..._PASSWORD`  |
+| PostgreSQL | `localhost:5433`          | `.env` içindeki `POSTGRES_USER` / `..._PASSWORD`  |
 
 PostgreSQL veritabanları: `artademi` (uygulama), `keycloak` (Keycloak).
 

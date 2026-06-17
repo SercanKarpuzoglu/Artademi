@@ -1,8 +1,8 @@
 import { api } from './client';
-import type { ApiResponse, StudentResponse } from './types';
+import type { ApiResponse, StudentResponse, StudentStatus } from './types';
 
 export interface GetStudentsParams {
-  status?: string;
+  status?: StudentStatus;
   q?: string;
   page?: number;
   size?: number;

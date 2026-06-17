@@ -19,9 +19,15 @@ export async function getStudents(
   return res.data;
 }
 
-/** Tek ogrenci (duzenleme formu icin). */
+/** Tek ogrenci (detay/duzenleme icin). */
 export async function getStudent(id: number): Promise<StudentResponse> {
   const res = await api.get<ApiResponse<StudentResponse>>(`/api/students/${id}`);
+  return res.data.data;
+}
+
+/** Kardesler: ayni veli TC'sine bagli diger ogrenciler (backend tenant kapsaminda doner). */
+export async function getSiblings(id: number): Promise<StudentResponse[]> {
+  const res = await api.get<ApiResponse<StudentResponse[]>>(`/api/students/${id}/siblings`);
   return res.data.data;
 }
 

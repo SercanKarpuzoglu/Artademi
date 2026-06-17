@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { StudentStatus } from '../../api/types';
 import StatusBadge from '../../components/StatusBadge';
+import { formatDate } from '../../lib/format';
 import { keycloak } from '../../lib/keycloak';
 import { useDebounce } from '../../lib/useDebounce';
 import { useStudents } from './useStudents';
@@ -16,12 +17,6 @@ const STATUS_TABS: { label: string; value: StudentStatus | undefined }[] = [
   { label: 'Pasif', value: 'PASIF' },
   { label: 'Dondurulmuş', value: 'DONDURULMUS' },
 ];
-
-/** ISO tarih (YYYY-MM-DD) -> TR (gg.aa.yyyy). */
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  return y && m && d ? `${d}.${m}.${y}` : iso;
-}
 
 export default function StudentListPage() {
   const [q, setQ] = useState('');
@@ -135,7 +130,11 @@ export default function StudentListPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {students.map((s) => (
-                    <tr key={s.id} className="cursor-default hover:bg-gray-50">
+                    <tr
+                      key={s.id}
+                      onClick={() => navigate(`/students/${s.id}`)}
+                      className="cursor-pointer hover:bg-gray-50"
+                    >
                       <td className="px-4 py-2 text-gray-800">
                         {s.ad} {s.soyad}
                       </td>
@@ -147,6 +146,7 @@ export default function StudentListPage() {
                       <td className="px-4 py-2 text-right">
                         <Link
                           to={`/students/${s.id}/edit`}
+                          onClick={(e) => e.stopPropagation()}
                           className="text-indigo-600 hover:text-indigo-800 hover:underline"
                         >
                           Düzenle

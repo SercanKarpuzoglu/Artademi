@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createStudent, getStudent, updateStudent } from '../../api/students';
+import { createStudent, getSiblings, getStudent, updateStudent } from '../../api/students';
 import type { StudentInput } from '../../api/types';
 
-/** Tek ogrenci sorgusu (duzenleme formunu doldurmak icin). */
+/** Tek ogrenci sorgusu (detay ekrani / duzenleme formu). */
 export function useStudent(id: number | undefined) {
   return useQuery({
     queryKey: ['student', id],
     queryFn: () => getStudent(id as number),
+    enabled: id !== undefined,
+  });
+}
+
+/** Kardesler sorgusu. ['student', id, 'siblings'] -> ilgili kayit guncellenince tazelenir. */
+export function useSiblings(id: number | undefined) {
+  return useQuery({
+    queryKey: ['student', id, 'siblings'],
+    queryFn: () => getSiblings(id as number),
     enabled: id !== undefined,
   });
 }

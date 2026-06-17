@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { StudentStatus } from '../../api/types';
 import StatusBadge from '../../components/StatusBadge';
@@ -27,6 +28,7 @@ export default function StudentListPage() {
   const [status, setStatus] = useState<StudentStatus | undefined>(undefined);
   const [page, setPage] = useState(0);
   const debouncedQ = useDebounce(q, 300);
+  const navigate = useNavigate();
 
   // Arama/filtre degisince ilk sayfaya don.
   useEffect(() => {
@@ -81,9 +83,8 @@ export default function StudentListPage() {
           />
           <button
             type="button"
-            disabled
-            title="Form sonraki adımda gelecek"
-            className="cursor-not-allowed rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white opacity-50"
+            onClick={() => navigate('/students/new')}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             Yeni Öğrenci
           </button>
@@ -129,6 +130,7 @@ export default function StudentListPage() {
                     <th className="px-4 py-2 font-medium">TC</th>
                     <th className="px-4 py-2 font-medium">Doğum Tarihi</th>
                     <th className="px-4 py-2 font-medium">Statü</th>
+                    <th className="px-4 py-2 font-medium sr-only">İşlem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -141,6 +143,14 @@ export default function StudentListPage() {
                       <td className="px-4 py-2 text-gray-600">{formatDate(s.dogumTarihi)}</td>
                       <td className="px-4 py-2">
                         <StatusBadge status={s.status} />
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <Link
+                          to={`/students/${s.id}/edit`}
+                          className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                        >
+                          Düzenle
+                        </Link>
                       </td>
                     </tr>
                   ))}

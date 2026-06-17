@@ -7,23 +7,28 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.UUID;
 import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Component;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Tenant kaynagini okuyan TEK yer. Su an gecici olarak {@code X-Tenant-Id}
- * header'indan okur ve {@link TenantContext}'e koyar; istek bitince temizler.
+ * Tenant kaynagini okuyan TEK yer. Kimligi dogrulanmis JWT'deki {@code tenant_id}
+ * claim'ini okuyup {@link TenantContext}'e koyar; istek bitince temizler.
  *
- * <p>2b-3'te bu sinifin govdesi JWT'deki {@code tenant_id} claim'ini okuyacak
- * sekilde degisecek; gerisi (TenantContext, TenantAware, aktivator) aynen kalir.
+ * <p>Guvenlik zincirinde {@code BearerTokenAuthenticationFilter}'dan SONRA calisir
+ * (bkz. SecurityConfig), boylece authentication hazirdir ve claim okunabilir.
  *
- * <p>{@code /api/ping} ve {@code /actuator/**} tenant gerektirmez; header'i
- * olmayan istekler icin de tenant set edilmez (henuz auth yok).
+ * <p><b>Fail-closed:</b> token yoksa / {@code tenant_id} claim'i yoksa / UUID parse
+ * edilemezse tenant set EDILMEZ. Context bos kalir; {@link RequireTenantInterceptor}
+ * is ucunu 400 TENANT_REQUIRED ile reddeder ve {@link TenantIdResolver} -1 ile bos
+ * sonuc dondurur. Bu durumda hata firlatilmaz, sadece set edilmez.
+ *
+ * <p>{@code /api/ping} ve {@code /actuator/**} tenant gerektirmez.
  */
-@Component
 public class TenantFilter extends OncePerRequestFilter {
 
-    static final String TENANT_HEADER = "X-Tenant-Id";
+    static final String TENANT_CLAIM = "tenant_id";
 
     @Override
     protected void doFilterInternal(
@@ -31,19 +36,27 @@ public class TenantFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
-            String raw = request.getHeader(TENANT_HEADER);
-            if (raw != null && !raw.isBlank()) {
-                try {
-                    TenantContext.set(UUID.fromString(raw.trim()));
-                } catch (IllegalArgumentException ignored) {
-                    // Gecersiz/parse edilemeyen UUID -> tenant set edilmez (context bos kalir;
-                    // interceptor 400 TENANT_REQUIRED ile reddeder). 500 firlatilmaz.
-                }
-            }
+            resolveTenantFromJwt();
             filterChain.doFilter(request, response);
         } finally {
             // Thread havuzda yeniden kullanilacagi icin baglam her zaman temizlenir.
             TenantContext.clear();
+        }
+    }
+
+    private void resolveTenantFromJwt() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
+            return;
+        }
+        String raw = jwtAuth.getToken().getClaimAsString(TENANT_CLAIM);
+        if (raw == null || raw.isBlank()) {
+            return;
+        }
+        try {
+            TenantContext.set(UUID.fromString(raw.trim()));
+        } catch (IllegalArgumentException ignored) {
+            // Gecersiz/parse edilemeyen UUID -> tenant set edilmez (fail-closed).
         }
     }
 

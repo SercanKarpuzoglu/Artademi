@@ -6,6 +6,13 @@ spring:
   application:
     name: artademi-backend
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Keycloak realm issuer'i; jwk-set-uri bu issuer'dan otomatik kesfedilir.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/Artademi}
+
   datasource:
     # Baglanti bilgileri ortam degiskeninden gelir. Parola icin VARSAYILAN YOK.
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/artademi}

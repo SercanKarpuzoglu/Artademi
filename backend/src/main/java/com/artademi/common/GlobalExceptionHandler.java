@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,6 +37,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.fail(new ApiError("CONFLICT", ex.getMessage())));
+    }
+
+    /**
+     * 403 — rol/yetki reddi. Spring Security 6.3'te method-security (@PreAuthorize)
+     * reddi {@link AuthorizationDeniedException} (AccessDeniedException alt sinifi)
+     * firlatir; genel Exception handler'ina dusup 500 olmamali.
+     */
+    @ExceptionHandler({AuthorizationDeniedException.class, AccessDeniedException.class})
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.fail(new ApiError("FORBIDDEN", "Bu işlem için yetkiniz yok")));
     }
 
     /** 400 — tenant gerektiren is ucuna tenant baglami olmadan erisim; sorgu calismaz. */

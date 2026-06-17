@@ -22,10 +22,19 @@ Bu uygulama birden çok sanat okuluna (tenant) tek kurulumda hizmet veren bir Sa
 - Yazma (insert) sırasında `tenant_id`, `TenantContext`'ten otomatik set edilir; geliştirici elle yazmaz, yazsa bile bağlamdaki değerle doğrulanır.
 - Sonuç: bir repository metodu `tenant_id` koşulunu yazmayı "unutsa" bile veri sızmaz, çünkü filtre global olarak aktiftir.
 
+## PK find tenant sızıntısı (ZORUNLU)
+Hibernate `@Filter`, `repository.findById(id)` / `EntityManager.find()` gibi PK-find çağrılarına UYGULANMAZ — yalnızca sorgulara (JPQL/Criteria) uygulanır. Bu nedenle `findById`, başka tenant'ın kaydını id ile döndürebilir = tenant sızıntısı.
+
+KURAL: Tenant-aware (`TenantAware` türevi) hiçbir entity için `repository.findById` KULLANILMAZ. Bunun yerine tenant filtresine tabi bir sorgu kullan:
+- JPQL: `@Query("select s from Student s where s.id = :id")` gibi bir `findScopedById`, VEYA
+- Criteria/Specification ile id eşitliği.
+
+Tekil getirme (get/update/changeStatus/detay) ve ilişki çekme dahil HER yerde bu geçerlidir. Bulunamazsa `NotFoundException` (404). Bu, izolasyonun "unutulamaz" olması için zorunludur ve demo modülünde fark edilmemişti (orada yalnızca `findAll` vardı, o da sorgu olduğu için filtreleniyordu).
+
 ## Demir kurallar
 1. `tenant_id` istemciden gelmez; sadece JWT claim'inden. Controller hiçbir zaman tenant'ı parametre olarak kabul etmez.
 2. Hiçbir iş sorgusu tenant filtresi olmadan çalışmaz. Toplu/raporlama sorguları dahil.
-3. Bir kayda erişen her işlem (oku/güncelle/sil) önce kaydın `tenant_id`'sinin `TenantContext` ile eşleştiğini garanti eder.
+3. Bir kayda erişen her işlem (oku/güncelle/sil) önce kaydın `tenant_id`'sinin `TenantContext` ile eşleştiğini garanti eder. **`findById`/`find()` KULLANMA** — PK-find filtreye tabi değildir (bkz. "PK find tenant sızıntısı").
 4. Platform düzeyi işlemler (tenant açma, abonelik) yalnızca `SUPER_ADMIN` içindir ve tenant filtresinden muaftır — bunlar ayrı, açıkça işaretli servislerde yaşar.
 5. Test: her özellik için "A tenant'ının verisi B tenant'ı olarak istek atınca görünmüyor" testi yazılır (bkz. `testing-standards`).
 

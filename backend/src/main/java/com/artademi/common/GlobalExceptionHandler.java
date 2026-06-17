@@ -3,6 +3,7 @@ package com.artademi.common;
 import com.artademi.common.exception.ConflictException;
 import com.artademi.common.exception.NotFoundException;
 import com.artademi.common.exception.TenantRequiredException;
+import com.artademi.common.exception.ValidationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -55,6 +56,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleTenantRequired(TenantRequiredException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail(new ApiError("TENANT_REQUIRED", ex.getMessage())));
+    }
+
+    /** 400 — servis katmani is kurali dogrulama hatasi (Bean Validation disi). */
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessValidation(ValidationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail(new ApiError("VALIDATION_ERROR", ex.getMessage())));
     }
 
     /** 400 — Bean Validation hatalari; alan bazli mesajlar error.fields'a doldurulur. */

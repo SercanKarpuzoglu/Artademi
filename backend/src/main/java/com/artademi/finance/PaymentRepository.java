@@ -1,6 +1,7 @@
 package com.artademi.finance;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,4 +42,15 @@ public interface PaymentRepository
      */
     @Query("SELECT p FROM Payment p WHERE p.ogrenci.id = :ogrenciId ORDER BY p.id DESC")
     List<Payment> findByOgrenci(@Param("ogrenciId") Long ogrenciId);
+
+    /**
+     * Bir ogretmenin gruplarina ait [from,to] araligindaki tahsilatlarin TOPLAMI. COALESCE ile bos
+     * sonuc 0 doner. JPQL oldugu icin tenant filtresine tabidir (yalnizca aktif tenant). CIRO_ORANI
+     * hakediş hesabinda kullanilir. {@code p.grup.ogretmen.id} yolu grup non-null gerektirir, yani
+     * grubu olmayan (grup_id NULL) tahsilatlar bu toplama OTOMATIK dahil edilmez.
+     */
+    @Query("SELECT COALESCE(SUM(p.tutar), 0) FROM Payment p "
+            + "WHERE p.grup.ogretmen.id = :ogretmenId AND p.odemeTarihi BETWEEN :from AND :to")
+    BigDecimal sumTutarByOgretmenAndTarihAraligi(@Param("ogretmenId") Long ogretmenId,
+            @Param("from") LocalDate from, @Param("to") LocalDate to);
 }

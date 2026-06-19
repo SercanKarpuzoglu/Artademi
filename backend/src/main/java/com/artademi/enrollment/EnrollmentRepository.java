@@ -49,4 +49,17 @@ public interface EnrollmentRepository
     @Query("SELECT e FROM Enrollment e WHERE e.grup.id = :grupId "
             + "AND e.durum = com.artademi.enrollment.EnrollmentDurumu.AKTIF")
     List<Enrollment> findAktifByGrup(@Param("grupId") Long grupId);
+
+    /**
+     * Otomatik aylik tahakkuk uretimine UYGUN kayitlar: AKTIF kayit + AKTIF ogrenci + GRUP tipi grup +
+     * aylikAidat dolu. JPQL oldugu icin global tenant filtresine tabidir (yalnizca aktif tenant).
+     *
+     * <p>Not: {@code e.grup.aylikAidat IS NOT NULL} bir KOLON null kontroludur (yasakli
+     * {@code :param IS NULL OR} parametre anti-pattern'i DEGILDIR).
+     */
+    @Query("SELECT e FROM Enrollment e WHERE e.durum = com.artademi.enrollment.EnrollmentDurumu.AKTIF "
+            + "AND e.ogrenci.status = com.artademi.student.StudentStatus.AKTIF "
+            + "AND e.grup.tip = com.artademi.group.GrupTipi.GRUP "
+            + "AND e.grup.aylikAidat IS NOT NULL")
+    List<Enrollment> findAktifAidatliKayitlar();
 }

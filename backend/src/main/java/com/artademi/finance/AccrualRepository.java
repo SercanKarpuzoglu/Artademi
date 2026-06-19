@@ -41,4 +41,14 @@ public interface AccrualRepository
      */
     @Query("SELECT a FROM Accrual a WHERE a.ogrenci.id = :ogrenciId ORDER BY a.id DESC")
     List<Accrual> findByOgrenci(@Param("ogrenciId") Long ogrenciId);
+
+    /**
+     * Verilen ogrenci+grup+donem icin tahakkuk var mi? Otomatik uretimin IDEMPOTENT olmasi icin
+     * (ayni donem tekrar calistirilinca mukerrer tahakkuk olusmamasi) kullanilir. JPQL oldugu icin
+     * tenant filtresine tabidir (yalnizca aktif tenant kapsaminda kontrol).
+     */
+    @Query("SELECT (COUNT(a) > 0) FROM Accrual a WHERE a.ogrenci.id = :ogrenciId "
+            + "AND a.grup.id = :grupId AND a.donem = :donem")
+    boolean existsByOgrenciAndGrupAndDonem(@Param("ogrenciId") Long ogrenciId,
+            @Param("grupId") Long grupId, @Param("donem") String donem);
 }

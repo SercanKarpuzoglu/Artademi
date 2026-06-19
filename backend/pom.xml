@@ -45,6 +45,15 @@
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
 
+        <!-- Yerel gelistirme: classpath degisince otomatik restart.
+             Uretim paketinde Spring tarafindan otomatik devre disi kalir. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Veritabani + sema yonetimi -->
         <dependency>
             <groupId>org.postgresql</groupId>

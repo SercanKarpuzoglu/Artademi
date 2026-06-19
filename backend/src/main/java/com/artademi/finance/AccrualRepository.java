@@ -51,4 +51,11 @@ public interface AccrualRepository
             + "AND a.grup.id = :grupId AND a.donem = :donem")
     boolean existsByOgrenciAndGrupAndDonem(@Param("ogrenciId") Long ogrenciId,
             @Param("grupId") Long grupId, @Param("donem") String donem);
+
+    /**
+     * Ogrenci bazinda toplam tahakkuk (RAPOR — ogrenci bakiyeleri). [ogrenciId, SUM] satirlari doner;
+     * N+1 yerine tek sorgu. JPQL oldugu icin tenant filtresine tabidir. Salt okunur.
+     */
+    @Query("SELECT a.ogrenci.id, COALESCE(SUM(a.tutar), 0) FROM Accrual a GROUP BY a.ogrenci.id")
+    List<Object[]> sumTutarGroupByOgrenci();
 }

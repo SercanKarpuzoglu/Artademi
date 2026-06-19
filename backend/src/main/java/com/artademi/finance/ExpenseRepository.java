@@ -1,5 +1,7 @@
 package com.artademi.finance;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -25,4 +27,11 @@ public interface ExpenseRepository
      */
     @Query("SELECT e FROM Expense e WHERE e.id = :id")
     Optional<Expense> findScopedById(@Param("id") Long id);
+
+    /**
+     * Verilen [from,to] araligindaki TUM giderlerin toplami (RAPOR). COALESCE ile bos sonuc 0. JPQL
+     * oldugu icin global tenant filtresine tabidir (yalnizca aktif tenant). Salt okunur.
+     */
+    @Query("SELECT COALESCE(SUM(e.tutar), 0) FROM Expense e WHERE e.giderTarihi BETWEEN :from AND :to")
+    BigDecimal sumTutarByTarihAraligi(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

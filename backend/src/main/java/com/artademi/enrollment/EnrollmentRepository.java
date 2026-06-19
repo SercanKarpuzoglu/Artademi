@@ -62,4 +62,12 @@ public interface EnrollmentRepository
             + "AND e.grup.tip = com.artademi.group.GrupTipi.GRUP "
             + "AND e.grup.aylikAidat IS NOT NULL")
     List<Enrollment> findAktifAidatliKayitlar();
+
+    /**
+     * Grup bazinda AKTIF kayit sayisi (RAPOR — grup doluluk). [grupId, COUNT] satirlari doner; N+1
+     * yerine tek sorgu. JPQL oldugu icin global tenant filtresine tabidir. Salt okunur.
+     */
+    @Query("SELECT e.grup.id, COUNT(e) FROM Enrollment e "
+            + "WHERE e.durum = com.artademi.enrollment.EnrollmentDurumu.AKTIF GROUP BY e.grup.id")
+    List<Object[]> countAktifGroupByGrup();
 }

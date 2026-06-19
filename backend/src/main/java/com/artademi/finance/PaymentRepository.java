@@ -53,4 +53,18 @@ public interface PaymentRepository
             + "WHERE p.grup.ogretmen.id = :ogretmenId AND p.odemeTarihi BETWEEN :from AND :to")
     BigDecimal sumTutarByOgretmenAndTarihAraligi(@Param("ogretmenId") Long ogretmenId,
             @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /**
+     * Verilen [from,to] araligindaki TUM tahsilatlarin toplami (RAPOR). COALESCE ile bos sonuc 0.
+     * JPQL oldugu icin global tenant filtresine tabidir (yalnizca aktif tenant). Salt okunur.
+     */
+    @Query("SELECT COALESCE(SUM(p.tutar), 0) FROM Payment p WHERE p.odemeTarihi BETWEEN :from AND :to")
+    BigDecimal sumTutarByTarihAraligi(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /**
+     * Ogrenci bazinda toplam tahsilat (RAPOR — ogrenci bakiyeleri). [ogrenciId, SUM] satirlari doner;
+     * N+1 yerine tek sorgu. JPQL oldugu icin tenant filtresine tabidir. Salt okunur.
+     */
+    @Query("SELECT p.ogrenci.id, COALESCE(SUM(p.tutar), 0) FROM Payment p GROUP BY p.ogrenci.id")
+    List<Object[]> sumTutarGroupByOgrenci();
 }

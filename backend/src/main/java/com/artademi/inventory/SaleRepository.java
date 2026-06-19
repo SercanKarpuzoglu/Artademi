@@ -1,5 +1,7 @@
 package com.artademi.inventory;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -25,4 +27,11 @@ public interface SaleRepository
      */
     @Query("SELECT s FROM Sale s WHERE s.id = :id")
     Optional<Sale> findScopedById(@Param("id") Long id);
+
+    /**
+     * Verilen [from,to] araligindaki TUM satislarin toplam tutari (RAPOR). COALESCE ile bos sonuc 0.
+     * JPQL oldugu icin global tenant filtresine tabidir (yalnizca aktif tenant). Salt okunur.
+     */
+    @Query("SELECT COALESCE(SUM(s.toplamTutar), 0) FROM Sale s WHERE s.satisTarihi BETWEEN :from AND :to")
+    BigDecimal sumToplamTutarByTarihAraligi(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

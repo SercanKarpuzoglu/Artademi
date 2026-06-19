@@ -1,5 +1,6 @@
 package com.artademi.enrollment;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -40,4 +41,12 @@ public interface EnrollmentRepository
     boolean existsAktifByOgrenciAndGrup(
             @Param("ogrenciId") Long ogrenciId,
             @Param("grupId") Long grupId);
+
+    /**
+     * Bir grubun AKTIF kayitli ogrencileri (kayit listesi). JPQL sorgusu oldugu icin tenant filtresine
+     * tabidir (yalnizca aktif tenant). Yoklama oturumu olusturulurken giris uretmek icin kullanilir.
+     */
+    @Query("SELECT e FROM Enrollment e WHERE e.grup.id = :grupId "
+            + "AND e.durum = com.artademi.enrollment.EnrollmentDurumu.AKTIF")
+    List<Enrollment> findAktifByGrup(@Param("grupId") Long grupId);
 }

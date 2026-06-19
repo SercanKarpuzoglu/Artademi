@@ -1,5 +1,7 @@
-package com.artademi.teacher;
+package com.artademi.attendance;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -16,21 +18,25 @@ import org.springframework.data.repository.query.Param;
  * {@link #findScopedById} JPQL sorgusu uzerinden yapilir; boylece tenant izolasyonu korunur.
  * Filtreli/dinamik liste icin {@link JpaSpecificationExecutor} kullanilir.
  */
-public interface TeacherRepository
-        extends JpaRepository<Teacher, Long>, JpaSpecificationExecutor<Teacher> {
+public interface AttendanceSessionRepository
+        extends JpaRepository<AttendanceSession, Long>, JpaSpecificationExecutor<AttendanceSession> {
 
     /**
      * id ile tenant-guvenli erisim. JPQL sorgusu oldugu icin global tenant filtresi
      * uygulanir: baska tenant'in kaydi bu cagriyla BULUNAMAZ (-> 404).
      */
-    @Query("SELECT t FROM Teacher t WHERE t.id = :id")
-    Optional<Teacher> findScopedById(@Param("id") Long id);
+    @Query("SELECT s FROM AttendanceSession s WHERE s.id = :id")
+    Optional<AttendanceSession> findScopedById(@Param("id") Long id);
 
     /**
-     * Keycloak kullanici id'si ({@code sub}) ile ogretmeni bulur. JPQL sorgusu oldugu icin global
-     * tenant filtresi uygulanir: yalnizca aktif tenant'in ogretmeni eslesebilir (TEACHER erisim
-     * koprusu icin; baska tenant'in ogretmeni cozulmez).
+     * Verilen grup+tarih icin oturum var mi? JPQL oldugu icin tenant filtresine tabidir (yalnizca
+     * aktif tenant kapsaminda). Mukerrer oturum engellemesi icin (DB unique kisit ile de zorlanir).
      */
-    @Query("SELECT t FROM Teacher t WHERE t.keycloakUserId = :sub")
-    Optional<Teacher> findByKeycloakUserId(@Param("sub") String sub);
+    @Query("SELECT (COUNT(s) > 0) FROM AttendanceSession s "
+            + "WHERE s.grup.id = :grupId AND s.tarih = :tarih")
+    boolean existsByGrupAndTarih(@Param("grupId") Long grupId, @Param("tarih") LocalDate tarih);
+
+    // NOT: grup + [from,to] tarih araligi sorgusu, opsiyonel sinirlarda Postgres untyped-null
+    // hatasini onlemek icin Specification ile yapilir (bkz. AttendanceSessionSpecifications +
+    // AttendanceService.listByGroup), JPQL "IS NULL OR" anti-pattern'i ile DEGIL.
 }

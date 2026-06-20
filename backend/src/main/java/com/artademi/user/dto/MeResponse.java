@@ -1,0 +1,18 @@
+package com.artademi.user.dto;
+
+import java.util.List;
+
+/**
+ * Oturum sahibinin kendi profili (/api/me GET). {@code mustChangePassword} ilk-parola akisi
+ * icindir; frontend bu bayrak true iken kullaniciyi parola degistirmeye yonlendirir.
+ */
+public record MeResponse(
+        String sub,
+        String kullaniciAdi,
+        String ad,
+        String soyad,
+        String email,
+        String telefon,
+        List<String> roller,
+        boolean mustChangePassword) {
+}

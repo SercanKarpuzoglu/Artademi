@@ -13,6 +13,17 @@ spring:
           # Keycloak realm issuer'i; jwk-set-uri bu issuer'dan otomatik kesfedilir.
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/Artademi}
 
+# Keycloak Admin REST API (service account) — kullanici yonetimi modulu (com.artademi.user).
+# Sir KODA GOMULMEZ; admin-client-secret yalnizca ortam degiskeninden gelir (varsayilan YOK).
+artademi:
+  keycloak:
+    base-url: ${KEYCLOAK_BASE_URL:http://localhost:8080}
+    realm: ${KEYCLOAK_REALM:Artademi}
+    admin-client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:artademi-backend}
+    admin-client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+    # Kullanici parolasini dogrulamak icin kullanilan public client (Direct Access Grants).
+    app-client-id: ${KEYCLOAK_APP_CLIENT_ID:artademi-app}
+
   datasource:
     # Baglanti bilgileri ortam degiskeninden gelir. Parola icin VARSAYILAN YOK.
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/artademi}

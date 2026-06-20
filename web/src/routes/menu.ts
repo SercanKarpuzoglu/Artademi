@@ -51,6 +51,7 @@ export const MENU: readonly MenuItem[] = [
     icon: ClipboardCheck,
     section: 'Eğitim',
     roles: [Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING, Role.TEACHER],
+    hazir: true,
   },
   { label: 'Branşlar', path: '/branslar', icon: Tags, section: 'Tanımlar', roles: OFIS, hazir: true },
   { label: 'Salonlar', path: '/salonlar', icon: DoorOpen, section: 'Tanımlar', roles: OFIS, hazir: true },

@@ -4,6 +4,7 @@ import { Role } from './auth/roles';
 import AppShell from './components/AppShell';
 import BranchForm from './features/branch/BranchForm';
 import BranchListPage from './features/branch/BranchListPage';
+import AttendancePage from './features/attendance/AttendancePage';
 import ComingSoonPage from './features/common/ComingSoonPage';
 import ForbiddenPage from './features/common/ForbiddenPage';
 import DashboardPage from './features/dashboard/DashboardPage';
@@ -197,7 +198,7 @@ export default function App() {
             <RoleRoute
               requiredRoles={[Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING, Role.TEACHER]}
             >
-              <ComingSoonPage title="Yoklama" />
+              <AttendancePage />
             </RoleRoute>
           }
         />

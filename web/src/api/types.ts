@@ -228,3 +228,90 @@ export interface EnrollmentInput {
   grupId: number;
   kayitTarihi?: string;
 }
+
+// --- Program (Schedule) modülü — backend DTO'lari ile birebir aynalanir ---
+
+/** Haftanin gunu (backend enum ordinal sirasi — siralama/etiket icin bu sira korunur). */
+export type HaftaGunu =
+  | 'PAZARTESI'
+  | 'SALI'
+  | 'CARSAMBA'
+  | 'PERSEMBE'
+  | 'CUMA'
+  | 'CUMARTESI'
+  | 'PAZAR';
+
+/** Program yanitindaki grup referansi (özet). */
+export interface ScheduleGroupRef {
+  id: number;
+  ad: string;
+  tip: GrupTipi;
+}
+
+/** Program yaniti — backend ScheduleResponse. Saatler "HH:mm:ss" (LocalTime) string. */
+export interface ScheduleResponse {
+  id: number;
+  gun: HaftaGunu;
+  baslangicSaati: string; // "HH:mm:ss"
+  bitisSaati: string; // "HH:mm:ss"
+  aktif: boolean;
+  grup: ScheduleGroupRef | null;
+  olusturulmaTarihi?: string;
+  guncellenmeTarihi?: string;
+}
+
+/** Program olusturma/guncelleme govdesi. Saatler "HH:mm". */
+export interface ScheduleInput {
+  grupId: number;
+  gun: HaftaGunu;
+  baslangicSaati: string; // "HH:mm"
+  bitisSaati: string; // "HH:mm"
+}
+
+// --- Yoklama (Attendance) modülü — backend DTO'lari ile birebir aynalanir ---
+
+/** Yoklama durumu. */
+export type YoklamaDurumu = 'GELDI' | 'GELMEDI' | 'IZINLI';
+
+/** Yoklama kaydindaki öğrenci referansi (özet). */
+export interface AttendanceStudentRef {
+  id: number;
+  ad: string;
+  soyad: string;
+}
+
+/** Yoklama oturumundaki tekil giris (öğrenci + durum). */
+export interface AttendanceEntryView {
+  ogrenci: AttendanceStudentRef;
+  durum: YoklamaDurumu;
+}
+
+/** Yoklama oturumundaki grup referansi (özet). */
+export interface AttendanceGroupRef {
+  id: number;
+  ad: string;
+  tip: GrupTipi;
+}
+
+/** Yoklama oturumu yaniti — backend SessionResponse. */
+export interface SessionResponse {
+  id: number;
+  tarih: string; // YYYY-MM-DD
+  notu: string | null;
+  grup: AttendanceGroupRef | null;
+  entries: AttendanceEntryView[];
+}
+
+/** Yoklama oturumu olusturma govdesi. Backend aktif kayitlar icin GELMEDI girisleri uretir. */
+export interface CreateSessionInput {
+  grupId: number;
+  tarih: string; // YYYY-MM-DD
+  programId?: number;
+  notu?: string;
+}
+
+/** Yoklama giris guncelleme ogesi (PUT govdesi cipni eleman). */
+export interface UpdateEntryItem {
+  ogrenciId: number;
+  durum: YoklamaDurumu;
+}

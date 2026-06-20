@@ -7,6 +7,7 @@ import { Role } from '../../auth/roles';
 import { formatDate, formatMoney } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
 import { useStudents } from '../student/useStudents';
+import GroupSchedulePanel from './GroupSchedulePanel';
 import { DURUM_BADGE, DURUM_LABEL, TIP_BADGE, TIP_LABEL } from './groupDisplay';
 import { useCreateEnrollment, useEnrollments, useLeaveEnrollment } from './useEnrollments';
 import { useGroup } from './useGroups';
@@ -88,6 +89,10 @@ export default function GroupDetailPage() {
 
         {id !== undefined && (
           <EnrollmentSection groupId={id} canManage={canManageEnrollment} />
+        )}
+
+        {id !== undefined && (
+          <GroupSchedulePanel groupId={id} tip={g.tip} isAdmin={isAdmin} />
         )}
       </div>
     </div>

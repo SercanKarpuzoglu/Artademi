@@ -2,12 +2,18 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { Role } from './auth/roles';
 import AppShell from './components/AppShell';
+import BranchForm from './features/branch/BranchForm';
+import BranchListPage from './features/branch/BranchListPage';
 import ComingSoonPage from './features/common/ComingSoonPage';
 import ForbiddenPage from './features/common/ForbiddenPage';
 import DashboardPage from './features/dashboard/DashboardPage';
+import RoomForm from './features/room/RoomForm';
+import RoomListPage from './features/room/RoomListPage';
 import StudentDetailPage from './features/student/StudentDetailPage';
 import StudentForm from './features/student/StudentForm';
 import StudentListPage from './features/student/StudentListPage';
+import TeacherForm from './features/teacher/TeacherForm';
+import TeacherListPage from './features/teacher/TeacherListPage';
 import ProtectedRoute from './routes/ProtectedRoute';
 import RoleRoute from './routes/RoleRoute';
 
@@ -84,14 +90,80 @@ export default function App() {
             </RoleRoute>
           }
         />
+        {/* Tanımlar — Branş / Salon / Öğretmen CRUD */}
         <Route
-          path="tanimlar"
+          path="branslar"
           element={
             <RoleRoute requiredRoles={OFIS}>
-              <ComingSoonPage title="Tanımlar" />
+              <BranchListPage />
             </RoleRoute>
           }
         />
+        <Route
+          path="branslar/yeni"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <BranchForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="branslar/:id/duzenle"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <BranchForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="salonlar"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <RoomListPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="salonlar/yeni"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <RoomForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="salonlar/:id/duzenle"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <RoomForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="ogretmenler"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <TeacherListPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="ogretmenler/yeni"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <TeacherForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="ogretmenler/:id/duzenle"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <TeacherForm />
+            </RoleRoute>
+          }
+        />
+
         <Route
           path="yoklama"
           element={

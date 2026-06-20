@@ -64,7 +64,7 @@ export const MENU: readonly MenuItem[] = [
     roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING],
     hazir: true,
   },
-  { label: 'Hakediş', path: '/hakedis', icon: Coins, section: 'İşletme', roles: [Role.ADMIN] },
+  { label: 'Hakediş', path: '/hakedis', icon: Coins, section: 'İşletme', roles: [Role.ADMIN], hazir: true },
   {
     label: 'Stok / Satış',
     path: '/stok',

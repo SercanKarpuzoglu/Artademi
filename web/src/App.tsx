@@ -12,6 +12,7 @@ import FinancePage from './features/finance/FinancePage';
 import GroupDetailPage from './features/group/GroupDetailPage';
 import GroupForm from './features/group/GroupForm';
 import GroupListPage from './features/group/GroupListPage';
+import PayoutPage from './features/payout/PayoutPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
 import StudentDetailPage from './features/student/StudentDetailPage';
@@ -215,7 +216,7 @@ export default function App() {
           path="hakedis"
           element={
             <RoleRoute requiredRoles={[Role.ADMIN]}>
-              <ComingSoonPage title="Hakediş" />
+              <PayoutPage />
             </RoleRoute>
           }
         />

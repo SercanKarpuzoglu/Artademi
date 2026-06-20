@@ -433,3 +433,51 @@ export interface AccrualGenerationResult {
   toplamTutar: string | number;
   ozet: { ogrenciId: number; grupId: number; tutar: string | number }[];
 }
+
+// --- Hakediş (Payout) modülü — backend DTO'lari ile birebir aynalanir. YALNIZCA ADMIN. ---
+
+/** Hakediş durumu: hesaplandi ya da odendi. */
+export type PayoutDurumu = 'HESAPLANDI' | 'ODENDI';
+
+/** Hakediş yanitindaki öğretmen referansi (özet). */
+export interface PayoutOgretmenRef {
+  id: number;
+  ad: string;
+  soyad: string;
+}
+
+/**
+ * Hakediş hesaplama dökümü — backend PayoutDokum. Tipe gore alanlar dolar:
+ * SAATLIK → dersSayisi/birimUcret; CIRO_ORANI → toplamTahsilat/kdvOrani/netCiro/oran.
+ * Para alanlari number VEYA string gelebilir.
+ */
+export interface PayoutDokum {
+  dersSayisi: number | null;
+  birimUcret: string | number | null;
+  toplamTahsilat: string | number | null;
+  kdvOrani: string | number | null;
+  netCiro: string | number | null;
+  oran: string | number | null;
+}
+
+/** Hakediş yaniti — backend PayoutResponse. Para alanlari number VEYA string gelebilir. */
+export interface PayoutResponse {
+  id: number;
+  ogretmen: PayoutOgretmenRef;
+  donem: string;
+  hakedisTipi: HakedisTipi;
+  hesaplananTutar: string | number;
+  durum: PayoutDurumu;
+  odemeTarihi: string | null;
+  dokum: PayoutDokum;
+}
+
+/**
+ * Hakediş hesaplama govdesi. kdvOrani BigDecimal hassasiyetini korumak icin STRING
+ * gonderilir; bos ise gonderilmez (yalnizca CIRO_ORANI öğretmenlerde anlamli).
+ */
+export interface CalculatePayoutInput {
+  ogretmenId: number;
+  donem: string;
+  kdvOrani?: string;
+}

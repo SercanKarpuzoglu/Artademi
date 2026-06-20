@@ -481,3 +481,83 @@ export interface CalculatePayoutInput {
   donem: string;
   kdvOrani?: string;
 }
+
+// --- Stok / Ürün Satışı (Inventory) modülü — backend DTO'lari ile birebir aynalanir ---
+
+/** Ürün yaniti — backend ProductResponse. Para alani number VEYA string gelebilir. */
+export interface ProductResponse {
+  id: number;
+  ad: string;
+  satisFiyati: string | number;
+  stokAdedi: number;
+  aciklama: string | null;
+  aktif: boolean;
+  olusturulmaTarihi?: string;
+  guncellenmeTarihi?: string;
+}
+
+/**
+ * Ürün olusturma govdesi — backend CreateProductRequest. satisFiyati BigDecimal hassasiyeti
+ * icin STRING gonderilir; stokAdedi opsiyonel (null -> 0). aktif GONDERILMEZ (yeni kayit aktif).
+ */
+export interface ProductInput {
+  ad: string;
+  satisFiyati: string;
+  stokAdedi?: number;
+  aciklama?: string;
+}
+
+/**
+ * Ürün guncelleme govdesi — backend UpdateProductRequest. Stok ve aktiflik BURADA degismez
+ * (kendi PATCH uclari var). satisFiyati STRING gonderilir.
+ */
+export interface UpdateProductInput {
+  ad: string;
+  satisFiyati: string;
+  aciklama?: string;
+}
+
+/** Stok guncelleme govdesi — backend UpdateStockRequest. MUTLAK ATAMA (yeni stok degeri). */
+export interface StockInput {
+  stokAdedi: number;
+}
+
+/** Satis yanitindaki ürün referansi (özet). */
+export interface SaleUrunRef {
+  id: number;
+  ad: string;
+}
+
+/** Satis yanitindaki öğrenci referansi (özet). */
+export interface SaleOgrenciRef {
+  id: number;
+  ad: string;
+  soyad: string;
+}
+
+/** Satis yaniti — backend SaleResponse. Para alanlari number VEYA string gelebilir. */
+export interface SaleResponse {
+  id: number;
+  urun: SaleUrunRef;
+  ogrenci: SaleOgrenciRef | null;
+  adet: number;
+  birimFiyat: string | number;
+  toplamTutar: string | number;
+  satisTarihi: string;
+  aciklama: string | null;
+  olusturulmaTarihi?: string;
+  guncellenmeTarihi?: string;
+}
+
+/**
+ * Satis olusturma govdesi — backend CreateSaleRequest. urunId zorunlu; ogrenciId opsiyonel.
+ * birimFiyat/toplamTutar GONDERILMEZ: backend satis aninda urunun fiyatindan kopyalar.
+ * satisTarihi verilmezse backend bugunu kullanir.
+ */
+export interface SaleInput {
+  urunId: number;
+  ogrenciId?: number;
+  adet: number;
+  satisTarihi?: string;
+  aciklama?: string;
+}

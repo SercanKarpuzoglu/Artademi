@@ -71,6 +71,7 @@ export const MENU: readonly MenuItem[] = [
     icon: Package,
     section: 'İşletme',
     roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING],
+    hazir: true,
   },
   {
     label: 'Raporlar',

@@ -12,6 +12,7 @@ import FinancePage from './features/finance/FinancePage';
 import GroupDetailPage from './features/group/GroupDetailPage';
 import GroupForm from './features/group/GroupForm';
 import GroupListPage from './features/group/GroupListPage';
+import InventoryPage from './features/inventory/InventoryPage';
 import PayoutPage from './features/payout/PayoutPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
@@ -224,7 +225,7 @@ export default function App() {
           path="stok"
           element={
             <RoleRoute requiredRoles={[Role.ADMIN, Role.FRONTDESK_ACCOUNTING]}>
-              <ComingSoonPage title="Stok / Satış" />
+              <InventoryPage />
             </RoleRoute>
           }
         />

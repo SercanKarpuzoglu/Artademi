@@ -30,34 +30,25 @@ export default function StudentDetailPage() {
   const s = studentQuery.data as StudentResponse;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-gray-800">
-              {s.ad} {s.soyad}
-            </h1>
-            <StatusBadge status={s.status} />
-          </div>
-          <div className="flex gap-2 text-sm">
-            <Link
-              to={`/students/${s.id}/edit`}
-              className="rounded-lg bg-indigo-600 px-3 py-1 font-medium text-white hover:bg-indigo-700"
-            >
-              Düzenle
-            </Link>
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="rounded-lg border border-gray-300 px-3 py-1 text-gray-700 hover:bg-gray-50"
-            >
-              Listeye dön
-            </button>
-          </div>
+    <div className="mx-auto max-w-3xl">
+      <div className="topbar">
+        <div className="flex items-center gap-3">
+          <h1>
+            {s.ad} {s.soyad}
+          </h1>
+          <StatusBadge status={s.status} />
         </div>
-      </header>
+        <div className="top-actions">
+          <Link to={`/ogrenciler/${s.id}/duzenle`} className="btn btn-primary">
+            Düzenle
+          </Link>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/ogrenciler')}>
+            Listeye dön
+          </button>
+        </div>
+      </div>
 
-      <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
+      <div className="space-y-4">
         {/* Kunye */}
         <Section title="Künye">
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
@@ -103,7 +94,7 @@ export default function StudentDetailPage() {
               {siblingsQuery.data!.map((k) => (
                 <li key={k.id}>
                   <Link
-                    to={`/students/${k.id}`}
+                    to={`/ogrenciler/${k.id}`}
                     className="flex items-center justify-between py-2 hover:bg-gray-50"
                   >
                     <span className="text-sm text-gray-800">
@@ -116,15 +107,15 @@ export default function StudentDetailPage() {
             </ul>
           )}
         </Section>
-      </main>
+      </div>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-3 rounded-lg border bg-white p-4">
-      <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
+    <section className="card space-y-3">
+      <h3>{title}</h3>
       {children}
     </section>
   );
@@ -142,8 +133,8 @@ function Info({ label, value, mono }: { label: string; value?: string | null; mo
 
 function CenteredMessage({ children, tone }: { children: ReactNode; tone?: 'error' }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <p className={tone === 'error' ? 'text-red-700' : 'text-gray-500'}>{children}</p>
+    <div className="card text-center">
+      <p className={tone === 'error' ? 'text-red' : 'text-ink-soft'}>{children}</p>
     </div>
   );
 }

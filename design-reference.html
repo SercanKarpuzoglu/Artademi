@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lina Sanat Merkezi — Yönetim Paneli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#2a2230;          /* koyu erik */
+  --ink-soft:#5d5366;
+  --paper:#f5f4f7;        /* açık leylak-gri zemin */
+  --card:#ffffff;
+  --line:#e7e3ec;
+  --rasp:#b43a5e;         /* sahne perdesi ahududu */
+  --rasp-soft:#f7e6ec;
+  --plum:#4a3b5c;
+  --green:#2f7d5b; --green-soft:#e3f1ea;
+  --red:#b23a3a;   --red-soft:#f7e6e6;
+  --amber:#b9791e; --amber-soft:#f8eedb;
+  --blue:#3a5e9c;  --blue-soft:#e5ecf7;
+  --r:14px;
+  --shadow:0 1px 2px rgba(42,34,48,.05),0 6px 18px rgba(42,34,48,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Manrope',sans-serif;background:var(--paper);color:var(--ink);font-size:14.5px;line-height:1.5}
+h1,h2,h3,.display{font-family:'Fraunces',serif;font-weight:600;letter-spacing:.1px}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+
+/* ---------- yerleşim ---------- */
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+.sidebar{background:var(--ink);color:#cfc7d6;padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 20px}
+.brand .mark{width:34px;height:34px;border-radius:50% 50% 50% 6px;background:linear-gradient(135deg,var(--rasp),#7c2e47);display:grid;place-items:center;color:#fff;font-family:'Fraunces',serif;font-size:17px}
+.brand b{color:#fff;font-family:'Fraunces',serif;font-weight:600;font-size:16px;display:block;line-height:1.1}
+.brand small{font-size:11px;color:#9a8fa6}
+.nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#857a92;padding:14px 12px 6px}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;border-radius:10px;color:#cfc7d6;font-weight:600;font-size:13.5px;transition:.15s}
+.nav-btn:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-btn.active{background:var(--rasp);color:#fff}
+.nav-btn .ico{width:18px;text-align:center;opacity:.85}
+.sidebar .foot{margin-top:auto;padding:12px;font-size:11.5px;color:#857a92;border-top:1px solid rgba(255,255,255,.08)}
+
+.main{padding:26px 30px 60px;max-width:1180px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+.topbar h1{font-size:25px}
+.topbar .sub{color:var(--ink-soft);font-size:13px;margin-top:2px}
+.top-actions{display:flex;gap:10px;align-items:center}
+.btn{padding:9px 16px;border-radius:10px;font-weight:700;font-size:13px;transition:.15s}
+.btn-primary{background:var(--rasp);color:#fff}
+.btn-primary:hover{background:#9c3050}
+.btn-ghost{background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--rasp);color:var(--rasp)}
+
+/* ---------- ekranlar ---------- */
+.screen{display:none}
+.screen.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.screen.active{animation:none}}
+
+/* ---------- kartlar ---------- */
+.grid{display:grid;gap:16px}
+.stats{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+.stat .label{font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em}
+.stat .value{font-family:'Fraunces',serif;font-size:30px;font-weight:600;margin:6px 0 2px}
+.stat .delta{font-size:12px;font-weight:700}
+.up{color:var(--green)} .down{color:var(--red)} .flat{color:var(--ink-soft)}
+.card h3{font-size:16.5px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.card h3 a{font-family:'Manrope';font-size:12px;color:var(--rasp);text-decoration:none;font-weight:700}
+
+/* ---------- rozetler ---------- */
+.badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700}
+.b-green{background:var(--green-soft);color:var(--green)}
+.b-red{background:var(--red-soft);color:var(--red)}
+.b-amber{background:var(--amber-soft);color:var(--amber)}
+.b-rasp{background:var(--rasp-soft);color:var(--rasp)}
+.b-blue{background:var(--blue-soft);color:var(--blue)}
+.b-gray{background:#eeebf2;color:var(--ink-soft)}
+
+/* ---------- tablolar ---------- */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:800;padding:8px 10px;border-bottom:2px solid var(--line)}
+td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#faf8fb}
+.amount{font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
+.t-right{text-align:right}
+
+/* ---------- sekmeler ---------- */
+.tabs{display:flex;gap:6px;background:#edeaf1;border-radius:11px;padding:4px;width:max-content;margin-bottom:18px}
+.tab{padding:8px 16px;border-radius:8px;font-weight:700;font-size:13px;color:var(--ink-soft)}
+.tab.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.tabpane{display:none}.tabpane.active{display:block}
+
+/* ---------- ders programı / yoklama ---------- */
+.schedule{display:flex;flex-direction:column;gap:10px}
+.lesson{display:grid;grid-template-columns:74px 1fr auto;gap:14px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.lesson .time{font-family:'Fraunces',serif;font-size:16px;font-weight:600}
+.lesson .room{font-size:11.5px;color:var(--ink-soft)}
+.lesson .name{font-weight:800}
+.lesson .meta{font-size:12.5px;color:var(--ink-soft)}
+.lesson.private{border-left:4px solid var(--amber)}
+.lesson.group{border-left:4px solid var(--rasp)}
+
+.roll{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:8px;padding:7px 12px;border:1.5px solid var(--line);border-radius:99px;font-weight:700;font-size:13px;background:#fff;transition:.12s}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:#cfc7d6}
+.chip.in{border-color:var(--green);background:var(--green-soft)} .chip.in .dot{background:var(--green)}
+.chip.out{border-color:var(--red);background:var(--red-soft)} .chip.out .dot{background:var(--red)}
+.chip.exc{border-color:var(--amber);background:var(--amber-soft)} .chip.exc .dot{background:var(--amber)}
+.roll-legend{display:flex;gap:16px;font-size:12px;color:var(--ink-soft);margin:10px 0 14px}
+.roll-legend span{display:flex;align-items:center;gap:6px}
+.roll-legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+/* ---------- kayıt hattı ---------- */
+.pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stage{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+.stage h4{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-soft);display:flex;justify-content:space-between;margin-bottom:10px}
+.stage .pcard{background:var(--paper);border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:700;margin-bottom:8px}
+.stage .pcard small{display:block;font-weight:600;color:var(--ink-soft)}
+
+/* ---------- grafik ---------- */
+.bars{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;align-items:end;height:170px;padding-top:8px}
+.bargroup{display:flex;gap:5px;align-items:end;height:100%;position:relative}
+.bar{flex:1;border-radius:6px 6px 2px 2px;min-height:6px}
+.bar.inc{background:var(--rasp)} .bar.exp{background:#d9cfe2}
+.bar-label{position:absolute;bottom:-22px;left:0;right:0;text-align:center;font-size:11.5px;font-weight:700;color:var(--ink-soft)}
+.chart-legend{display:flex;gap:18px;font-size:12px;color:var(--ink-soft);margin-top:34px}
+.chart-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
+
+/* ---------- ürünler ---------- */
+.products{grid-template-columns:repeat(4,1fr)}
+.product .emo{font-size:30px}
+.product h4{font-family:'Fraunces',serif;font-size:17px;font-weight:600;margin:8px 0 2px}
+.product .price{font-weight:800;font-size:15px}
+.product .stockbar{height:6px;border-radius:99px;background:#eeebf2;margin:10px 0 6px;overflow:hidden}
+.product .stockbar i{display:block;height:100%;border-radius:99px}
+.product small{color:var(--ink-soft);font-weight:600}
+
+/* ---------- raporlar ---------- */
+.reports{grid-template-columns:repeat(2,1fr)}
+.report{display:flex;gap:14px;align-items:flex-start}
+.report .ric{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:20px;flex-shrink:0}
+.report p{font-size:12.5px;color:var(--ink-soft);margin:3px 0 10px}
+
+/* ---------- mobil taslak ---------- */
+.phones{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;align-items:start}
+.phone{background:var(--ink);border-radius:34px;padding:10px;box-shadow:0 18px 40px rgba(42,34,48,.22);max-width:300px;margin:0 auto}
+.phone .notch{width:90px;height:5px;background:#4a4054;border-radius:99px;margin:4px auto 8px}
+.phone .scr{background:var(--paper);border-radius:26px;overflow:hidden;font-size:12px}
+.phead{background:var(--ink);color:#fff;padding:16px 16px 14px}
+.phead .hi{font-size:11px;color:#b2a7bf}
+.phead .nm{font-family:'Fraunces',serif;font-size:17px}
+.pbody{padding:12px}
+.pcard2{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px;margin-bottom:9px}
+.pcard2 b{font-size:12.5px}
+.pcard2 small{color:var(--ink-soft);display:block;margin-top:1px}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ptabs{display:flex;justify-content:space-around;background:#fff;border-top:1px solid var(--line);padding:9px 4px 11px;font-size:10px;font-weight:700;color:var(--ink-soft);text-align:center}
+.ptabs span{display:flex;flex-direction:column;gap:2px;align-items:center}
+.ptabs .on{color:var(--rasp)}
+.ptabs i{font-style:normal;font-size:15px}
+.pstat{display:flex;gap:8px;margin-bottom:9px}
+.pstat .ps{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px;text-align:center}
+.pstat .ps b{font-family:'Fraunces',serif;font-size:16px;display:block}
+.pstat .ps small{font-size:9.5px;color:var(--ink-soft);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.phone-cap{text-align:center;margin-top:12px;font-weight:700;font-size:13px}
+.phone-cap small{display:block;font-weight:600;color:var(--ink-soft)}
+
+.note{background:var(--rasp-soft);border:1px solid #ecc9d6;border-radius:12px;padding:12px 16px;font-size:13px;color:#7c2e47;margin-bottom:18px;font-weight:600}
+.two-col{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}
+.mt{margin-top:16px}
+
+@media (max-width:980px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .nav-label{display:none}
+  .sidebar .foot{display:none}
+  .main{padding:18px}
+  .stats,.products,.pipeline,.reports,.phones{grid-template-columns:1fr 1fr}
+  .two-col{grid-template-columns:1fr}
+}
+@media (max-width:620px){
+  .stats,.products,.pipeline,.reports,.phones{grid-template-columns:1fr}
+  .lesson{grid-template-columns:60px 1fr}
+}
+.nav-btn:focus-visible,.btn:focus-visible,.tab:focus-visible,.chip:focus-visible{outline:2px solid var(--rasp);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- ============ SIDEBAR ============ -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="mark">L</div>
+    <div><b>Lina Sanat</b><small>Yönetim Paneli</small></div>
+  </div>
+  <div class="nav-label">Genel</div>
+  <button class="nav-btn active" data-screen="dash"><span class="ico">◈</span>Genel Bakış</button>
+  <div class="nav-label">Eğitim</div>
+  <button class="nav-btn" data-screen="students"><span class="ico">❖</span>Öğrenciler</button>
+  <button class="nav-btn" data-screen="teachers"><span class="ico">✦</span>Öğretmenler</button>
+  <button class="nav-btn" data-screen="lessons"><span class="ico">▦</span>Dersler &amp; Yoklama</button>
+  <div class="nav-label">İşletme</div>
+  <button class="nav-btn" data-screen="shop"><span class="ico">◧</span>Ürün Satışları</button>
+  <button class="nav-btn" data-screen="finance"><span class="ico">◫</span>Muhasebe</button>
+  <button class="nav-btn" data-screen="reports"><span class="ico">≣</span>Raporlar</button>
+  <div class="nav-label">Tasarım</div>
+  <button class="nav-btn" data-screen="mobile"><span class="ico">▯</span>Mobil Uygulama</button>
+  <div class="foot">Lina Sanat Merkezi · v0.1 prototip<br>12 Haziran 2026</div>
+</aside>
+
+<main class="main">
+
+<!-- ============ GENEL BAKIŞ ============ -->
+<section class="screen active" id="dash">
+  <div class="topbar">
+    <div><h1>Günaydın, Sercan</h1><div class="sub">Cuma, 12 Haziran 2026 · Bugün 12 ders, 3 özel ders var</div></div>
+    <div class="top-actions">
+      <button class="btn btn-ghost">+ Yeni Kayıt</button>
+      <button class="btn btn-primary">Yoklama Al</button>
+    </div>
+  </div>
+
+  <div class="grid stats">
+    <div class="card stat"><div class="label">Aktif Öğrenci</div><div class="value">184</div><div class="delta up">▲ 6 bu ay</div></div>
+    <div class="card stat"><div class="label">Pasif Öğrenci</div><div class="value">37</div><div class="delta flat">— dondurulmuş dahil</div></div>
+    <div class="card stat"><div class="label">Haziran Geliri</div><div class="value">₺412.350</div><div class="delta up">▲ %9 geçen aya göre</div></div>
+    <div class="card stat"><div class="label">Bekleyen Ödeme</div><div class="value">₺38.200</div><div class="delta down">▼ 14 öğrenci</div></div>
+  </div>
+
+  <div class="two-col mt">
+    <div class="card">
+      <h3>Bugünün Programı <a href="#" onclick="go('lessons');return false">Tümünü gör →</a></h3>
+      <div class="schedule">
+        <div class="lesson group"><div><div class="time">16:00</div><div class="room">Stüdyo A</div></div><div><div class="name">Bale — Minikler Grubu</div><div class="meta">Elif Hoca · 14 öğrenci · 50 dk</div></div><span class="badge b-green">Yoklama alındı</span></div>
+        <div class="lesson group"><div><div class="time">17:00</div><div class="room">Stüdyo A</div></div><div><div class="name">Bale — Hazırlık 2</div><div class="meta">Elif Hoca · 12 öğrenci · 50 dk</div></div><span class="badge b-amber">Sırada</span></div>
+        <div class="lesson private"><div><div class="time">17:30</div><div class="room">Stüdyo B</div></div><div><div class="name">Özel Ders — Piyano</div><div class="meta">Kerem Hoca · Zeynep A. · 40 dk</div></div><span class="badge b-amber">Sırada</span></div>
+        <div class="lesson group"><div><div class="time">18:00</div><div class="room">Stüdyo C</div></div><div><div class="name">Modern Dans — Gençler</div><div class="meta">Deniz Hoca · 16 öğrenci · 60 dk</div></div><span class="badge b-gray">Planlandı</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Son Ödemeler <a href="#" onclick="go('finance');return false">Muhasebe →</a></h3>
+        <table>
+          <tr><td><b>Ada Yılmaz</b><br><small style="color:var(--ink-soft)">Bale aidatı · Haziran</small></td><td class="amount">₺2.400</td></tr>
+          <tr><td><b>Mert Kaya</b><br><small style="color:var(--ink-soft)">Özel ders paketi (4)</small></td><td class="amount">₺3.600</td></tr>
+          <tr><td><b>Lara Demir</b><br><small style="color:var(--ink-soft)">Mayo + patik satışı</small></td><td class="amount">₺1.150</td></tr>
+        </table>
+      </div>
+      <div class="card mt">
+        <h3>Stok Uyarısı <a href="#" onclick="go('shop');return false">Mağaza →</a></h3>
+        <table>
+          <tr><td>Bale pati̇ği (32 no)</td><td class="t-right"><span class="badge b-red">3 adet</span></td></tr>
+          <tr><td>Saç bandı — siyah</td><td class="t-right"><span class="badge b-amber">8 adet</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ÖĞRENCİLER ============ -->
+<section class="screen" id="students">
+  <div class="topbar">
+    <div><h1>Öğrenciler</h1><div class="sub">184 aktif · 37 pasif · 9 kayıt sürecinde</div></div>
+    <div class="top-actions"><button class="btn btn-ghost">Dışa Aktar</button><button class="btn btn-primary">+ Yeni Öğrenci</button></div>
+  </div>
+
+  <div class="tabs" data-tabgroup="stu">
+    <button class="tab active" data-pane="stu-active">Aktif Liste</button>
+    <button class="tab" data-pane="stu-passive">Pasif Liste</button>
+    <button class="tab" data-pane="stu-pipeline">Kayıt Takip</button>
+  </div>
+
+  <div class="tabpane active" id="stu-active">
+    <div class="card">
+      <table>
+        <thead><tr><th>Öğrenci</th><th>Branş / Grup</th><th>Ödeme</th><th>Yoklama</th><th>Veli İletişim</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><b>Ada Yılmaz</b><br><small style="color:var(--ink-soft)">8 yaş · #1042</small></td><td>Bale · Minikler</td><td><span class="badge b-green">Ödendi</span></td><td>%96</td><td>0532 ··· 41 18</td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+          <tr><td><b>Mert Kaya</b><br><small style="color:var(--ink-soft)">12 yaş · #1043</small></td><td>Piyano · Özel ders</td><td><span class="badge b-green">Ödendi</span></td><td>%100</td><td>0533 ··· 22 90</td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+          <tr><td><b>Lara Demir</b><br><small style="color:var(--ink-soft)">9 yaş · #1044</small></td><td>Bale · Hazırlık 2</td><td><span class="badge b-amber">Son gün 15 Haz</span></td><td>%88</td><td>0542 ··· 76 03</td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+          <tr><td><b>Emir Şahin</b><br><small style="color:var(--ink-soft)">14 yaş · #1045</small></td><td>Modern Dans · Gençler</td><td><span class="badge b-red">Gecikmiş ₺2.400</span></td><td>%74</td><td>0536 ··· 15 47</td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+          <tr><td><b>Zeynep Arslan</b><br><small style="color:var(--ink-soft)">11 yaş · #1046</small></td><td>Jimnastik · Orta Grup</td><td><span class="badge b-green">Ödendi</span></td><td>%92</td><td>0531 ··· 88 12</td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tabpane" id="stu-passive">
+    <div class="note">Pasif öğrenciler: kaydı dondurulan, sezonu tamamlayan veya 60+ gündür derse gelmeyen öğrenciler. Tek tıkla yeniden aktifleştirilebilir.</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Öğrenci</th><th>Son Branş</th><th>Pasif Nedeni</th><th>Pasif Tarihi</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><b>Selin Koç</b></td><td>Bale · Hazırlık 1</td><td><span class="badge b-blue">Kayıt dondurma</span></td><td>02.05.2026</td><td class="t-right"><button class="btn btn-ghost">Aktifleştir</button></td></tr>
+          <tr><td><b>Can Öztürk</b></td><td>Resim · Atölye</td><td><span class="badge b-gray">Sezon bitti</span></td><td>28.04.2026</td><td class="t-right"><button class="btn btn-ghost">Aktifleştir</button></td></tr>
+          <tr><td><b>Naz Aydın</b></td><td>Jimnastik · Minikler</td><td><span class="badge b-amber">Devamsızlık</span></td><td>11.04.2026</td><td class="t-right"><button class="btn btn-ghost">Aktifleştir</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tabpane" id="stu-pipeline">
+    <div class="note">Kayıt takip hattı: ön kayıttan aktif öğrenciliğe kadar her aday tek ekranda izlenir.</div>
+    <div class="pipeline">
+      <div class="stage"><h4>Ön Kayıt <span>4</span></h4>
+        <div class="pcard">Duru Çelik<small>Bale · 7 yaş · arandı</small></div>
+        <div class="pcard">Ege Yıldız<small>Piyano · 10 yaş</small></div>
+        <div class="pcard">Mina Kurt<small>Jimnastik · 6 yaş</small></div>
+        <div class="pcard">Aras Polat<small>Modern dans · 13 yaş</small></div>
+      </div>
+      <div class="stage"><h4>Deneme Dersi <span>3</span></h4>
+        <div class="pcard">Defne Acar<small>14 Haz · 16:00 · Stüdyo A</small></div>
+        <div class="pcard">Kuzey Tan<small>15 Haz · 17:00 · Stüdyo C</small></div>
+        <div class="pcard">İpek Soylu<small>16 Haz · 18:00 · Stüdyo B</small></div>
+      </div>
+      <div class="stage"><h4>Sözleşme / Ödeme <span>2</span></h4>
+        <div class="pcard">Bora Güneş<small>Aylık plan · evrak bekleniyor</small></div>
+        <div class="pcard">Elif Sarı<small>Peşin · dekont bekleniyor</small></div>
+      </div>
+      <div class="stage"><h4>Aktif ✓ <span>Bu ay 6</span></h4>
+        <div class="pcard">Ada Yılmaz<small>Bale · Minikler</small></div>
+        <div class="pcard">Zeynep Arslan<small>Jimnastik · Orta</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ============ ÖĞRETMENLER ============ -->
+<section class="screen" id="teachers">
+  <div class="topbar">
+    <div><h1>Öğretmenler</h1><div class="sub">5 öğretmen · 2 aylık anlaşmalı · 3 saatlik</div></div>
+    <div class="top-actions"><button class="btn btn-primary">+ Öğretmen Ekle</button></div>
+  </div>
+  <div class="note">Saatlik öğretmenlerin hakedişi yoklamadan otomatik hesaplanır; ders kapatıldığında saat sayacına işlenir. Aylık anlaşmalılarda sabit ücret + özel ders primi izlenir.</div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Öğretmen</th><th>Branş</th><th>Anlaşma</th><th>Bu Ay Ders</th><th>Hakediş (Haziran)</th><th>Ödeme</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><b>Elif Yurt</b></td><td>Bale</td><td><span class="badge b-rasp">Aylık anlaşmalı</span></td><td>42 saat</td><td class="amount">₺48.000</td><td><span class="badge b-amber">Ay sonu</span></td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+        <tr><td><b>Deniz Aksoy</b></td><td>Modern Dans</td><td><span class="badge b-blue">Saatlik · ₺700/sa</span></td><td>26 saat</td><td class="amount">₺18.200</td><td><span class="badge b-amber">Ay sonu</span></td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+        <tr><td><b>Kerem Ulu</b></td><td>Piyano</td><td><span class="badge b-blue">Saatlik · ₺800/sa</span></td><td>18 saat (12 özel)</td><td class="amount">₺14.400</td><td><span class="badge b-green">Ödendi</span></td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+        <tr><td><b>Sıla Erden</b></td><td>Jimnastik</td><td><span class="badge b-rasp">Aylık anlaşmalı</span></td><td>38 saat</td><td class="amount">₺42.000</td><td><span class="badge b-amber">Ay sonu</span></td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+        <tr><td><b>Umut Kara</b></td><td>Resim</td><td><span class="badge b-blue">Saatlik · ₺600/sa</span></td><td>14 saat</td><td class="amount">₺8.400</td><td><span class="badge b-green">Ödendi</span></td><td class="t-right"><button class="btn btn-ghost">Detay</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ DERSLER & YOKLAMA ============ -->
+<section class="screen" id="lessons">
+  <div class="topbar">
+    <div><h1>Dersler &amp; Yoklama</h1><div class="sub">Grup dersleri, özel dersler ve yoklama tek ekranda</div></div>
+    <div class="top-actions"><button class="btn btn-ghost">+ Özel Ders Planla</button><button class="btn btn-primary">+ Grup Dersi</button></div>
+  </div>
+
+  <div class="tabs" data-tabgroup="les">
+    <button class="tab active" data-pane="les-roll">Yoklama Al</button>
+    <button class="tab" data-pane="les-week">Haftalık Program</button>
+    <button class="tab" data-pane="les-private">Özel Dersler</button>
+  </div>
+
+  <div class="tabpane active" id="les-roll">
+    <div class="card">
+      <h3>Bale — Minikler Grubu · 16:00 · Stüdyo A <span class="badge b-rasp">Elif Hoca</span></h3>
+      <div class="roll-legend">
+        <span><i style="background:var(--green)"></i> Geldi</span>
+        <span><i style="background:var(--red)"></i> Gelmedi</span>
+        <span><i style="background:var(--amber)"></i> İzinli</span>
+        <span style="margin-left:auto">İsme tıklayarak durum değiştirin</span>
+      </div>
+      <div class="roll" id="rollcall"></div>
+      <div class="mt" style="display:flex;justify-content:space-between;align-items:center">
+        <div id="rollsum" style="font-weight:700;color:var(--ink-soft);font-size:13px"></div>
+        <button class="btn btn-primary" onclick="alert('Yoklama kaydedildi · saatlik öğretmen hakedişine 1 ders işlendi (prototip)')">Yoklamayı Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabpane" id="les-week">
+    <div class="card">
+      <table>
+        <thead><tr><th>Saat</th><th>Pazartesi</th><th>Çarşamba</th><th>Cuma</th><th>Cumartesi</th></tr></thead>
+        <tbody>
+          <tr><td><b>10:00</b></td><td>—</td><td>—</td><td>—</td><td>Bale Minikler<br><small style="color:var(--ink-soft)">Stüdyo A · Elif H.</small></td></tr>
+          <tr><td><b>16:00</b></td><td>Bale Minikler<br><small style="color:var(--ink-soft)">Stüdyo A · Elif H.</small></td><td>Jimnastik Orta<br><small style="color:var(--ink-soft)">Stüdyo C · Sıla H.</small></td><td>Bale Minikler<br><small style="color:var(--ink-soft)">Stüdyo A · Elif H.</small></td><td>Resim Atölye<br><small style="color:var(--ink-soft)">Atölye · Umut H.</small></td></tr>
+          <tr><td><b>17:00</b></td><td>Bale Hazırlık 2<br><small style="color:var(--ink-soft)">Stüdyo A · Elif H.</small></td><td>Modern Dans<br><small style="color:var(--ink-soft)">Stüdyo C · Deniz H.</small></td><td>Bale Hazırlık 2<br><small style="color:var(--ink-soft)">Stüdyo A · Elif H.</small></td><td>Jimnastik Minik<br><small style="color:var(--ink-soft)">Stüdyo C · Sıla H.</small></td></tr>
+          <tr><td><b>18:00</b></td><td><span class="badge b-amber">Özel ders blokları</span></td><td>Modern Dans Gençler<br><small style="color:var(--ink-soft)">Stüdyo C · Deniz H.</small></td><td>Modern Dans Gençler<br><small style="color:var(--ink-soft)">Stüdyo C · Deniz H.</small></td><td><span class="badge b-amber">Özel ders blokları</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tabpane" id="les-private">
+    <div class="note">Özel dersler paket bazlı satılır (ör. 4 / 8 ders). Her tamamlanan ders pakette düşer, öğretmenin saat sayacına eklenir.</div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Öğrenci</th><th>Branş · Öğretmen</th><th>Paket</th><th>Sonraki Ders</th><th>Durum</th></tr></thead>
+        <tbody>
+          <tr><td><b>Zeynep Arslan</b></td><td>Piyano · Kerem Hoca</td><td>3 / 8 kullanıldı</td><td>Bugün 17:30</td><td><span class="badge b-green">Aktif</span></td></tr>
+          <tr><td><b>Mert Kaya</b></td><td>Piyano · Kerem Hoca</td><td>4 / 4 kullanıldı</td><td>—</td><td><span class="badge b-amber">Yenileme bekliyor</span></td></tr>
+          <tr><td><b>Duru Çelik</b></td><td>Bale · Elif Hoca</td><td>1 / 4 kullanıldı</td><td>14 Haz 18:00</td><td><span class="badge b-green">Aktif</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ÜRÜN SATIŞLARI ============ -->
+<section class="screen" id="shop">
+  <div class="topbar">
+    <div><h1>Ürün Satışları</h1><div class="sub">Mağaza stoku ve satış kayıtları — satışlar muhasebeye otomatik işlenir</div></div>
+    <div class="top-actions"><button class="btn btn-ghost">Stok Girişi</button><button class="btn btn-primary">+ Satış Yap</button></div>
+  </div>
+
+  <div class="grid products">
+    <div class="card product"><div class="emo">🩱</div><h4>Mayo (Bale)</h4><div class="price">₺850</div><div class="stockbar"><i style="width:72%;background:var(--green)"></i></div><small>Stok: 36 adet · 5 beden</small></div>
+    <div class="card product"><div class="emo">🩰</div><h4>Bale Patiği</h4><div class="price">₺450</div><div class="stockbar"><i style="width:14%;background:var(--red)"></i></div><small>Stok: 7 adet · 32 no kritik</small></div>
+    <div class="card product"><div class="emo">🎀</div><h4>Saç Bandı</h4><div class="price">₺120</div><div class="stockbar"><i style="width:32%;background:var(--amber)"></i></div><small>Stok: 16 adet</small></div>
+    <div class="card product"><div class="emo">🧦</div><h4>Tayt / Çorap</h4><div class="price">₺280</div><div class="stockbar"><i style="width:81%;background:var(--green)"></i></div><small>Stok: 44 adet</small></div>
+  </div>
+
+  <div class="card mt">
+    <h3>Son Satışlar</h3>
+    <table>
+      <thead><tr><th>Tarih</th><th>Öğrenci</th><th>Ürünler</th><th>Ödeme</th><th class="t-right">Tutar</th></tr></thead>
+      <tbody>
+        <tr><td>12.06</td><td>Lara Demir</td><td>Mayo (M) + Patik (33)</td><td><span class="badge b-blue">Kart</span></td><td class="amount">₺1.300</td></tr>
+        <tr><td>11.06</td><td>Ada Yılmaz</td><td>Saç bandı ×2</td><td><span class="badge b-gray">Nakit</span></td><td class="amount">₺240</td></tr>
+        <tr><td>10.06</td><td>Naz Aydın</td><td>Tayt (S)</td><td><span class="badge b-blue">Kart</span></td><td class="amount">₺280</td></tr>
+        <tr><td>09.06</td><td>Duru Çelik</td><td>Mayo (S) + Saç bandı</td><td><span class="badge b-green">Havale</span></td><td class="amount">₺970</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ MUHASEBE ============ -->
+<section class="screen" id="finance">
+  <div class="topbar">
+    <div><h1>Muhasebe</h1><div class="sub">Gelir-gider, banka hareketleri ve aylık kapanış</div></div>
+    <div class="top-actions"><button class="btn btn-ghost">+ Gider Ekle</button><button class="btn btn-primary">+ Tahsilat</button></div>
+  </div>
+
+  <div class="grid stats">
+    <div class="card stat"><div class="label">Haziran Gelir</div><div class="value">₺412.350</div><div class="delta up">Aidat + özel ders + mağaza</div></div>
+    <div class="card stat"><div class="label">Haziran Gider</div><div class="value">₺236.900</div><div class="delta flat">Maaş, kira, hakediş</div></div>
+    <div class="card stat"><div class="label">Net</div><div class="value" style="color:var(--green)">₺175.450</div><div class="delta up">▲ %12</div></div>
+    <div class="card stat"><div class="label">Banka Bakiyesi</div><div class="value">₺891.040</div><div class="delta flat">2 hesap toplamı</div></div>
+  </div>
+
+  <div class="two-col mt">
+    <div class="card">
+      <h3>Gelir / Gider — Son 6 Ay <a href="#" onclick="go('reports');return false">Rapor al →</a></h3>
+      <div class="bars">
+        <div class="bargroup"><div class="bar inc" style="height:62%"></div><div class="bar exp" style="height:44%"></div><div class="bar-label">Oca</div></div>
+        <div class="bargroup"><div class="bar inc" style="height:68%"></div><div class="bar exp" style="height:47%"></div><div class="bar-label">Şub</div></div>
+        <div class="bargroup"><div class="bar inc" style="height:74%"></div><div class="bar exp" style="height:51%"></div><div class="bar-label">Mar</div></div>
+        <div class="bargroup"><div class="bar inc" style="height:71%"></div><div class="bar exp" style="height:49%"></div><div class="bar-label">Nis</div></div>
+        <div class="bargroup"><div class="bar inc" style="height:83%"></div><div class="bar exp" style="height:55%"></div><div class="bar-label">May</div></div>
+        <div class="bargroup"><div class="bar inc" style="height:92%"></div><div class="bar exp" style="height:53%"></div><div class="bar-label">Haz</div></div>
+      </div>
+      <div class="chart-legend"><span><i style="background:var(--rasp)"></i>Gelir</span><span><i style="background:#d9cfe2"></i>Gider</span></div>
+    </div>
+    <div class="card">
+      <h3>Banka Hareketleri (Haziran)</h3>
+      <table>
+        <tr><td>12.06 · POS tahsilat</td><td class="amount" style="color:var(--green)">+₺14.250</td></tr>
+        <tr><td>11.06 · Havale — aidat ×6</td><td class="amount" style="color:var(--green)">+₺13.700</td></tr>
+        <tr><td>10.06 · Kira ödemesi</td><td class="amount" style="color:var(--red)">−₺55.000</td></tr>
+        <tr><td>08.06 · Hakediş — K. Ulu</td><td class="amount" style="color:var(--red)">−₺14.400</td></tr>
+        <tr><td>05.06 · Mağaza tedarik</td><td class="amount" style="color:var(--red)">−₺18.300</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <h3>Gelir Kalemleri (Haziran)</h3>
+    <table>
+      <thead><tr><th>Kalem</th><th>Adet</th><th class="t-right">Tutar</th><th class="t-right">Pay</th></tr></thead>
+      <tbody>
+        <tr><td>Grup dersi aidatları</td><td>168 öğrenci</td><td class="amount">₺318.400</td><td class="t-right">%77</td></tr>
+        <tr><td>Özel ders paketleri</td><td>21 paket</td><td class="amount">₺67.200</td><td class="t-right">%16</td></tr>
+        <tr><td>Mağaza satışları</td><td>54 satış</td><td class="amount">₺22.150</td><td class="t-right">%5</td></tr>
+        <tr><td>Kayıt ücretleri</td><td>6 yeni kayıt</td><td class="amount">₺4.600</td><td class="t-right">%2</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ RAPORLAR ============ -->
+<section class="screen" id="reports">
+  <div class="topbar">
+    <div><h1>Raporlar</h1><div class="sub">Aylık kapanış ve yönetim raporları — PDF / Excel çıktısı</div></div>
+  </div>
+  <div class="grid reports">
+    <div class="card report"><div class="ric" style="background:var(--blue-soft)">🏦</div><div><h3>Aylık Banka Raporu</h3><p>Tüm banka hesaplarının giriş-çıkışları, POS tahsilatları ve mutabakat özeti. Her ayın 1'inde otomatik oluşur.</p><button class="btn btn-ghost">Haziran 2026 · İndir</button></div></div>
+    <div class="card report"><div class="ric" style="background:var(--rasp-soft)">📈</div><div><h3>Gelir-Gider Raporu</h3><p>Kalem bazında gelir ve gider dökümü, önceki ay ve geçen yıl karşılaştırması.</p><button class="btn btn-ghost">Haziran 2026 · İndir</button></div></div>
+    <div class="card report"><div class="ric" style="background:var(--green-soft)">✓</div><div><h3>Yoklama / Devamsızlık</h3><p>Grup ve öğrenci bazında katılım oranları, devamsızlık nedeniyle pasife düşme adayları.</p><button class="btn btn-ghost">Haziran 2026 · İndir</button></div></div>
+    <div class="card report"><div class="ric" style="background:var(--amber-soft)">✦</div><div><h3>Öğretmen Hakediş</h3><p>Saatlik öğretmenler için yoklamadan hesaplanan saat ve tutarlar; aylık anlaşmalılar için sabit + prim.</p><button class="btn btn-ghost">Haziran 2026 · İndir</button></div></div>
+  </div>
+</section>
+<!-- ============ MOBİL UYGULAMA TASLAĞI ============ -->
+<section class="screen" id="mobile">
+  <div class="topbar">
+    <div><h1>Mobil Uygulama Taslağı</h1><div class="sub">Aynı sistemin sahada (öğretmen / yönetici) kullanılacak mobil yüzü — 3 ana ekran</div></div>
+  </div>
+  <div class="note">Mobil tarafın odağı saha işleri: hızlı yoklama, ödeme durumu görme ve günün programı. Raporlama ve toplu işlemler web panelinde kalır.</div>
+  <div class="phones">
+
+    <div>
+      <div class="phone"><div class="notch"></div><div class="scr">
+        <div class="phead"><div class="hi">Cuma, 12 Haziran</div><div class="nm">Merhaba, Elif Hoca</div></div>
+        <div class="pbody">
+          <div class="pstat">
+            <div class="ps"><b>4</b><small>Bugün ders</small></div>
+            <div class="ps"><b>52</b><small>Öğrenci</small></div>
+            <div class="ps"><b>%93</b><small>Katılım</small></div>
+          </div>
+          <div class="pcard2 prow"><div><b>16:00 · Bale Minikler</b><small>Stüdyo A · 14 öğrenci</small></div><span class="badge b-green">✓</span></div>
+          <div class="pcard2 prow"><div><b>17:00 · Bale Hazırlık 2</b><small>Stüdyo A · 12 öğrenci</small></div><span class="badge b-amber">Sırada</span></div>
+          <div class="pcard2 prow"><div><b>18:00 · Özel Ders — Duru</b><small>Stüdyo B · 40 dk</small></div><span class="badge b-gray">Plan</span></div>
+        </div>
+        <div class="ptabs"><span class="on"><i>◈</i>Bugün</span><span><i>▦</i>Yoklama</span><span><i>❖</i>Öğrenciler</span><span><i>◫</i>Ödemeler</span></div>
+      </div></div>
+      <div class="phone-cap">Ana Ekran<small>Günün programı ve hızlı özet</small></div>
+    </div>
+
+    <div>
+      <div class="phone"><div class="notch"></div><div class="scr">
+        <div class="phead"><div class="hi">Yoklama · 16:00</div><div class="nm">Bale — Minikler</div></div>
+        <div class="pbody">
+          <div class="pcard2 prow"><b>Ada Yılmaz</b><span class="badge b-green">Geldi</span></div>
+          <div class="pcard2 prow"><b>Lara Demir</b><span class="badge b-green">Geldi</span></div>
+          <div class="pcard2 prow"><b>Mina Kurt</b><span class="badge b-red">Gelmedi</span></div>
+          <div class="pcard2 prow"><b>Duru Çelik</b><span class="badge b-amber">İzinli</span></div>
+          <div class="pcard2 prow"><b>İpek Soylu</b><span class="badge b-green">Geldi</span></div>
+          <div style="background:var(--rasp);color:#fff;text-align:center;border-radius:11px;padding:11px;font-weight:800;margin-top:4px">Yoklamayı Kaydet (11/14)</div>
+        </div>
+        <div class="ptabs"><span><i>◈</i>Bugün</span><span class="on"><i>▦</i>Yoklama</span><span><i>❖</i>Öğrenciler</span><span><i>◫</i>Ödemeler</span></div>
+      </div></div>
+      <div class="phone-cap">Yoklama Ekranı<small>Dokunarak Geldi / Gelmedi / İzinli</small></div>
+    </div>
+
+    <div>
+      <div class="phone"><div class="notch"></div><div class="scr">
+        <div class="phead"><div class="hi">Haziran 2026</div><div class="nm">Ödemeler</div></div>
+        <div class="pbody">
+          <div class="pstat">
+            <div class="ps"><b>₺412b</b><small>Tahsil</small></div>
+            <div class="ps"><b>₺38b</b><small>Bekleyen</small></div>
+            <div class="ps"><b>14</b><small>Geciken</small></div>
+          </div>
+          <div class="pcard2 prow"><div><b>Emir Şahin</b><small>₺2.400 · 12 gün gecikti</small></div><span class="badge b-red">Hatırlat</span></div>
+          <div class="pcard2 prow"><div><b>Lara Demir</b><small>₺2.400 · son gün 15 Haz</small></div><span class="badge b-amber">Yaklaşan</span></div>
+          <div class="pcard2 prow"><div><b>Mert Kaya</b><small>Özel ders paketi bitti</small></div><span class="badge b-blue">Yenile</span></div>
+        </div>
+        <div class="ptabs"><span><i>◈</i>Bugün</span><span><i>▦</i>Yoklama</span><span><i>❖</i>Öğrenciler</span><span class="on"><i>◫</i>Ödemeler</span></div>
+      </div></div>
+      <div class="phone-cap">Ödeme Takibi<small>Geciken ve yaklaşan aidatlar</small></div>
+    </div>
+
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ---- ekran geçişi ---- */
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.screen===id));
+  window.scrollTo({top:0});
+}
+document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>go(b.dataset.screen)));
+
+/* ---- sekmeler ---- */
+document.querySelectorAll('.tabs').forEach(group=>{
+  group.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+    group.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const sec=group.closest('.screen');
+    sec.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('active'));
+    sec.querySelector('#'+t.dataset.pane).classList.add('active');
+  }));
+});
+
+/* ---- interaktif yoklama ---- */
+const students=['Ada Yılmaz','Lara Demir','Mina Kurt','Duru Çelik','İpek Soylu','Defne Acar','Naz Aydın','Selin Koç','Ege Yıldız','Elif Sarı','Bora Güneş','Kuzey Tan','Aras Polat','Zeynep Arslan'];
+const states=['', 'in','out','exc'];
+const labels={'':'—','in':'Geldi','out':'Gelmedi','exc':'İzinli'};
+const roll=document.getElementById('rollcall');
+students.forEach(n=>{
+  const c=document.createElement('button');
+  c.className='chip'; c.dataset.state=0;
+  c.innerHTML='<span class="dot"></span>'+n;
+  c.addEventListener('click',()=>{
+    c.dataset.state=(+c.dataset.state+1)%4;
+    c.classList.remove('in','out','exc');
+    if(states[c.dataset.state]) c.classList.add(states[c.dataset.state]);
+    sum();
+  });
+  roll.appendChild(c);
+});
+function sum(){
+  const all=[...roll.children];
+  const g=all.filter(c=>c.classList.contains('in')).length;
+  const k=all.filter(c=>c.classList.contains('out')).length;
+  const i=all.filter(c=>c.classList.contains('exc')).length;
+  document.getElementById('rollsum').textContent=`${g} geldi · ${k} gelmedi · ${i} izinli · ${all.length-g-k-i} işaretlenmedi`;
+}
+sum();
+</script>
+</body>
+</html>

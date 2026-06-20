@@ -48,7 +48,7 @@ function toFormValues(s: StudentResponse): StudentFormValues {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500';
+  'w-full rounded-[10px] border border-line bg-card px-3 py-2 text-[13.5px] focus:border-rasp focus:outline-none focus:ring-1 focus:ring-rasp';
 
 export default function StudentForm() {
   const params = useParams<{ id?: string }>();
@@ -94,7 +94,7 @@ export default function StudentForm() {
       } else {
         await createMut.mutateAsync(payload);
       }
-      navigate('/');
+      navigate('/ogrenciler');
     } catch (e) {
       if (e instanceof ApiException) {
         if (e.code === 'VALIDATION_ERROR' && e.fields) {
@@ -124,25 +124,23 @@ export default function StudentForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-3xl px-4 py-3">
-          <h1 className="text-lg font-semibold text-gray-800">
-            {isEdit ? 'Öğrenci Düzenle' : 'Yeni Öğrenci'}
-          </h1>
+    <div className="mx-auto max-w-3xl">
+      <div className="topbar">
+        <div>
+          <h1>{isEdit ? 'Öğrenci Düzenle' : 'Yeni Öğrenci'}</h1>
+          <div className="sub">Öğrenci ve veli bilgileri</div>
         </div>
-      </header>
+      </div>
 
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           {formError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+            <div className="rounded-[12px] border border-red/30 bg-red-soft px-4 py-2.5 text-[13px] font-semibold text-red">
               {formError}
             </div>
           )}
 
           {/* Temel bilgiler */}
-          <section className="space-y-4 rounded-lg border bg-white p-4">
+          <section className="card space-y-4">
             <h2 className="text-sm font-semibold text-gray-700">Öğrenci Bilgileri</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Ad" required error={errors.ad?.message}>
@@ -168,7 +166,7 @@ export default function StudentForm() {
           </section>
 
           {/* Veli bilgileri */}
-          <section className="space-y-4 rounded-lg border bg-white p-4">
+          <section className="card space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-700">Veli Bilgileri</h2>
               {!yetiskin && <span className="text-xs text-gray-500">En az bir veli (ad + TC) zorunlu</span>}
@@ -210,23 +208,14 @@ export default function StudentForm() {
           </section>
 
           <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
+            <button type="button" className="btn btn-ghost" onClick={() => navigate('/ogrenciler')}>
               İptal
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-            >
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
               {isSubmitting ? 'Kaydediliyor…' : 'Kaydet'}
             </button>
           </div>
-        </form>
-      </main>
+      </form>
     </div>
   );
 }

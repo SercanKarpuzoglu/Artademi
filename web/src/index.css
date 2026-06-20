@@ -1,3 +1,362 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Artademi tasarım sistemi — design-reference.html'den BİREBİR taşındı (Sercan onaylı).
+ * Renk/font/ölçü UYDURULMAZ. Değişkenler tek kaynak; bileşenler var() ile bunları kullanır.
+ * (Tailwind token karşılıkları tailwind.config.js'te; layout/spacing için utility, bileşen
+ *  kalıpları için aşağıdaki sınıflar kullanılır.)
+ */
+@layer base {
+  :root {
+    --ink: #2a2230; /* koyu erik */
+    --ink-soft: #5d5366;
+    --paper: #f5f4f7; /* açık leylak-gri zemin */
+    --card: #ffffff;
+    --line: #e7e3ec;
+    --rasp: #b43a5e; /* sahne perdesi ahududu */
+    --rasp-soft: #f7e6ec;
+    --plum: #4a3b5c;
+    --green: #2f7d5b;
+    --green-soft: #e3f1ea;
+    --red: #b23a3a;
+    --red-soft: #f7e6e6;
+    --amber: #b9791e;
+    --amber-soft: #f8eedb;
+    --blue: #3a5e9c;
+    --blue-soft: #e5ecf7;
+    --gray-soft: #eeebf2;
+    --r: 14px;
+    --shadow: 0 1px 2px rgba(42, 34, 48, 0.05), 0 6px 18px rgba(42, 34, 48, 0.06);
+  }
+
+  body {
+    font-family: 'Manrope', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3,
+  .display {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+  }
+}
+
+@layer components {
+  /* ---------- yerleşim ---------- */
+  .app {
+    display: grid;
+    grid-template-columns: 236px 1fr;
+    min-height: 100vh;
+  }
+  .main {
+    padding: 26px 30px 60px;
+    max-width: 1180px;
+  }
+
+  /* ---------- sidebar ---------- */
+  .sidebar {
+    background: var(--ink);
+    color: #cfc7d6;
+    padding: 22px 14px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px 20px;
+  }
+  .brand .mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 50% 50% 50% 6px;
+    background: linear-gradient(135deg, var(--rasp), #7c2e47);
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+  }
+  .brand b {
+    color: #fff;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 16px;
+    display: block;
+    line-height: 1.1;
+  }
+  .brand small {
+    font-size: 11px;
+    color: #9a8fa6;
+  }
+  .nav-label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #857a92;
+    padding: 14px 12px 6px;
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 9px 12px;
+    border-radius: 10px;
+    color: #cfc7d6;
+    font-weight: 600;
+    font-size: 13.5px;
+    transition: 0.15s;
+  }
+  .nav-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+  }
+  .nav-btn.active {
+    background: var(--rasp);
+    color: #fff;
+  }
+  .nav-btn .ico {
+    width: 18px;
+    display: grid;
+    place-items: center;
+    opacity: 0.85;
+  }
+  .sidebar .foot {
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 11.5px;
+    color: #857a92;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* ---------- topbar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .topbar h1 {
+    font-size: 25px;
+  }
+  .topbar .sub {
+    color: var(--ink-soft);
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  .top-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* ---------- butonlar ---------- */
+  .btn {
+    padding: 9px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    transition: 0.15s;
+  }
+  .btn-primary {
+    background: var(--rasp);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: #9c3050;
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .btn-ghost {
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+  .btn-ghost:hover {
+    border-color: var(--rasp);
+    color: var(--rasp);
+  }
+
+  /* ---------- kartlar ---------- */
+  .grid {
+    display: grid;
+    gap: 16px;
+  }
+  .stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+  .stat .label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .stat .value {
+    font-family: 'Fraunces', serif;
+    font-size: 30px;
+    font-weight: 600;
+    margin: 6px 0 2px;
+  }
+  .stat .delta {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .up {
+    color: var(--green);
+  }
+  .down {
+    color: var(--red);
+  }
+  .flat {
+    color: var(--ink-soft);
+  }
+  .card h3 {
+    font-size: 16.5px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card h3 a {
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+    color: var(--rasp);
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  /* ---------- rozetler ---------- */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .b-green {
+    background: var(--green-soft);
+    color: var(--green);
+  }
+  .b-red {
+    background: var(--red-soft);
+    color: var(--red);
+  }
+  .b-amber {
+    background: var(--amber-soft);
+    color: var(--amber);
+  }
+  .b-rasp {
+    background: var(--rasp-soft);
+    color: var(--rasp);
+  }
+  .b-blue {
+    background: var(--blue-soft);
+    color: var(--blue);
+  }
+  .b-gray {
+    background: #eeebf2;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- tablolar (sınıf-kapsamlı; global table'ı kirletmez) ---------- */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  .data-table th {
+    text-align: left;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    font-weight: 800;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--line);
+  }
+  .data-table td {
+    padding: 11px 10px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  .data-table tr:last-child td {
+    border-bottom: none;
+  }
+  .data-table tbody tr:hover td {
+    background: #faf8fb;
+  }
+  .amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    text-align: right;
+  }
+  .t-right {
+    text-align: right;
+  }
+
+  /* ---------- sekmeler ---------- */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: #edeaf1;
+    border-radius: 11px;
+    padding: 4px;
+    width: max-content;
+  }
+  .tab {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .tab.active {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+
+  /* ---------- bilgi notu ---------- */
+  .note {
+    background: var(--rasp-soft);
+    border: 1px solid #ecc9d6;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #7c2e47;
+    font-weight: 600;
+  }
+
+  /* ---------- erişilebilirlik: odak halkası ---------- */
+  .nav-btn:focus-visible,
+  .btn:focus-visible,
+  .tab:focus-visible {
+    outline: 2px solid var(--rasp);
+    outline-offset: 2px;
+  }
+}

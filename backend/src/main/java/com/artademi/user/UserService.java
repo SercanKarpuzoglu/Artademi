@@ -53,10 +53,13 @@ public class UserService {
 
     private final KeycloakAdminClient kc;
     private final CurrentUser currentUser;
+    private final com.artademi.platform.TenantService tenantService;
 
-    public UserService(KeycloakAdminClient kc, CurrentUser currentUser) {
+    public UserService(KeycloakAdminClient kc, CurrentUser currentUser,
+            com.artademi.platform.TenantService tenantService) {
         this.kc = kc;
         this.currentUser = currentUser;
+        this.tenantService = tenantService;
     }
 
     // =====================================================================
@@ -180,7 +183,14 @@ public class UserService {
                 stringValue(rep, "email"),
                 KeycloakAdminClient.firstAttribute(rep, ATTR_TELEFON),
                 currentUser.realmRoles(),
-                mustChange);
+                mustChange,
+                tenantOf(rep),
+                tenantService.currentName());
+    }
+
+    /** Kullanicinin tenant_id attribute'u (varsa). */
+    private static String tenantOf(Map<String, Object> rep) {
+        return KeycloakAdminClient.firstAttribute(rep, ATTR_TENANT);
     }
 
     /** Oturum sahibinin profilini gunceller (rol/tenant_id/must_change_password DEGISMEZ). */

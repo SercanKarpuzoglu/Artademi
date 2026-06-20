@@ -6,6 +6,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Package,
+  ShieldCheck,
   Tags,
   UserCog,
   Users,
@@ -79,6 +80,14 @@ export const MENU: readonly MenuItem[] = [
     icon: BarChart3,
     section: 'İşletme',
     roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING, Role.FRONTDESK],
+    hazir: true,
+  },
+  {
+    label: 'Kullanıcılar',
+    path: '/kullanicilar',
+    icon: ShieldCheck,
+    section: 'Sistem',
+    roles: [Role.ADMIN],
     hazir: true,
   },
 ];

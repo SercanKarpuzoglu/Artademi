@@ -20,6 +20,65 @@ export interface ApiResponse<T> {
   meta: PageMeta | null;
 }
 
+// --- Kullanıcı yönetimi (User) + Profil (Me) — backend DTO'lari ile birebir aynalanir ---
+
+/** Kullanıcı yaniti — backend UserResponse. roller ham string dizisi. Liste sayfasi YOK (düz dizi). */
+export interface UserResponse {
+  id: string;
+  kullaniciAdi: string;
+  ad: string;
+  soyad: string;
+  email: string | null;
+  telefon: string | null;
+  roller: string[];
+  enabled: boolean;
+}
+
+/** Kullanıcı olusturma govdesi — backend CreateUserRequest. kullaniciAdi + en az bir rol zorunlu. */
+export interface CreateUserInput {
+  kullaniciAdi: string;
+  ad: string;
+  soyad: string;
+  email?: string;
+  telefon?: string;
+  roller: string[];
+}
+
+/** Kullanıcı guncelleme govdesi — backend UpdateUserRequest. kullaniciAdi DEGISMEZ (PUT almaz). */
+export interface UpdateUserInput {
+  ad: string;
+  soyad: string;
+  email?: string;
+  telefon?: string;
+  roller: string[];
+}
+
+/** Oturum sahibi profili — backend MeResponse. mustChangePassword ilk-parola kilidini surer. */
+export interface MeResponse {
+  sub: string;
+  kullaniciAdi: string;
+  ad: string;
+  soyad: string;
+  email: string | null;
+  telefon: string | null;
+  roller: string[];
+  mustChangePassword: boolean;
+}
+
+/** Kendi profilini guncelleme govdesi — backend UpdateMeRequest. */
+export interface UpdateMeInput {
+  ad: string;
+  soyad: string;
+  email?: string;
+  telefon?: string;
+}
+
+/** Şifre degistirme govdesi — backend ChangePasswordRequest. */
+export interface ChangePasswordInput {
+  mevcutParola: string;
+  yeniParola: string;
+}
+
 export type StudentStatus = 'AKTIF' | 'PASIF' | 'DENEME' | 'DONDURULMUS';
 
 /**

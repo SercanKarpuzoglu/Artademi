@@ -13,6 +13,7 @@ import GroupForm from './features/group/GroupForm';
 import GroupListPage from './features/group/GroupListPage';
 import InventoryPage from './features/inventory/InventoryPage';
 import PayoutPage from './features/payout/PayoutPage';
+import ProfilePage from './features/profile/ProfilePage';
 import ReportsPage from './features/report/ReportsPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
@@ -21,6 +22,8 @@ import StudentForm from './features/student/StudentForm';
 import StudentListPage from './features/student/StudentListPage';
 import TeacherForm from './features/teacher/TeacherForm';
 import TeacherListPage from './features/teacher/TeacherListPage';
+import UserForm from './features/usermgmt/UserForm';
+import UserListPage from './features/usermgmt/UserListPage';
 import ProtectedRoute from './routes/ProtectedRoute';
 import RoleRoute from './routes/RoleRoute';
 
@@ -237,6 +240,35 @@ export default function App() {
             </RoleRoute>
           }
         />
+
+        {/* Kullanıcı Yönetimi — YALNIZCA ADMIN */}
+        <Route
+          path="kullanicilar"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <UserListPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="kullanicilar/yeni"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <UserForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="kullanicilar/:id/duzenle"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <UserForm />
+            </RoleRoute>
+          }
+        />
+
+        {/* Profil — her authenticated rol (AppShell + ProtectedRoute zaten sarmalıyor) */}
+        <Route path="profil" element={<ProfilePage />} />
 
         {/* Yetkisiz ekranı — çerçeve içinde kalır (kullanıcı menüyü görmeye devam eder) */}
         <Route path="403" element={<ForbiddenPage />} />

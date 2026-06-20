@@ -63,6 +63,20 @@ export interface MeResponse {
   telefon: string | null;
   roller: string[];
   mustChangePassword: boolean;
+  tenantId: string | null;
+  tenantAdi: string | null;
+}
+
+/** Backend TenantResponse ile birebir. */
+export interface TenantResponse {
+  id: string;
+  ad: string;
+  status: 'AKTIF' | 'ASKIDA';
+}
+
+/** Tenant adi guncelleme govdesi — backend UpdateTenantRequest. */
+export interface UpdateTenantInput {
+  ad: string;
 }
 
 /** Kendi profilini guncelleme govdesi — backend UpdateMeRequest. */

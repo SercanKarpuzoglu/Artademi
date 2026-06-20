@@ -1,8 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { ApiException } from '../../api/client';
+import { updateTenant } from '../../api/tenant';
 import type { MeResponse } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
+import { Role } from '../../auth/roles';
 import { useMe } from '../../auth/useMe';
 import { roleBadgeClass, roleLabel } from '../usermgmt/userDisplay';
 import {
@@ -19,6 +24,7 @@ const inputClass =
 
 export default function ProfilePage() {
   const meQuery = useMe();
+  const { hasRole } = useAuth();
 
   if (meQuery.isLoading) {
     return <div className="card text-center text-ink-soft">Yükleniyor…</div>;
@@ -42,6 +48,7 @@ export default function ProfilePage() {
 
       <div className="space-y-4">
         <ProfileInfoCard me={meQuery.data} />
+        {hasRole(Role.ADMIN) && <KurumAdiCard me={meQuery.data} />}
         <ChangePasswordCard />
       </div>
     </div>
@@ -236,6 +243,81 @@ function ChangePasswordCard() {
       <div className="flex justify-end">
         <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
           {isSubmitting ? 'Değiştiriliyor…' : 'Şifreyi Değiştir'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+const kurumSchema = z.object({ ad: z.string().trim().min(1, 'Kurum adı zorunludur') });
+type KurumFormValues = z.infer<typeof kurumSchema>;
+
+/** Kurum (tenant) adı düzenleme — yalnızca ADMIN. Başarıda ['me'] invalidate → topbar anında güncellenir. */
+function KurumAdiCard({ me }: { me: MeResponse }) {
+  const qc = useQueryClient();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<KurumFormValues>({
+    resolver: zodResolver(kurumSchema),
+    defaultValues: { ad: me.tenantAdi ?? '' },
+  });
+
+  useEffect(() => {
+    reset({ ad: me.tenantAdi ?? '' });
+  }, [me, reset]);
+
+  const updateMut = useMutation({
+    mutationFn: (values: KurumFormValues) => updateTenant({ ad: values.ad.trim() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me'] });
+      qc.invalidateQueries({ queryKey: ['tenant'] });
+    },
+  });
+
+  async function onSubmit(values: KurumFormValues) {
+    setFormError(null);
+    setSuccess(false);
+    try {
+      await updateMut.mutateAsync(values);
+      setSuccess(true);
+    } catch (e) {
+      if (e instanceof ApiException && e.code === 'VALIDATION_ERROR' && e.fields?.ad) {
+        setError('ad', { message: e.fields.ad });
+      } else {
+        setFormError(e instanceof ApiException ? e.message : 'Beklenmeyen bir hata oluştu.');
+      }
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="card space-y-4" noValidate>
+      <h2 className="text-sm font-semibold text-ink">Kurum Adı</h2>
+
+      {formError && (
+        <div className="rounded-[12px] border border-red/30 bg-red-soft px-4 py-2.5 text-[13px] font-semibold text-red">
+          {formError}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-[12px] border border-green/30 bg-green-soft px-4 py-2.5 text-[13px] font-semibold text-green">
+          Kurum adı güncellendi.
+        </div>
+      )}
+
+      <Field label="Kurum Adı" required error={errors.ad?.message}>
+        <input className={inputClass} {...register('ad')} />
+      </Field>
+
+      <div className="flex justify-end">
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          {isSubmitting ? 'Kaydediliyor…' : 'Kaydet'}
         </button>
       </div>
     </form>

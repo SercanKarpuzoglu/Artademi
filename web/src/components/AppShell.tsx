@@ -74,10 +74,16 @@ export default function AppShell() {
       </aside>
 
       <div className="flex min-h-screen flex-col">
-        {/* İnce üst bar: solda kiracı adı slotu (backend ucu yok), sağda kimlik + Profil/Çıkış */}
+        {/* İnce üst bar: solda kurum (tenant) adı (/api/me.tenantAdi), sağda kimlik + Profil/Çıkış */}
         <header className="flex items-center justify-between border-b border-line bg-card px-7 py-2.5">
-          {/* TODO: tenant adı backend ucu gelince bağlanacak (GET /api/me veya /api/tenant) */}
-          <div className="text-[13px] font-semibold text-ink-soft" />
+          {/* Tenant adı yoksa slot gizli (sahte ad yazılmaz). */}
+          {meQuery.data?.tenantAdi ? (
+            <span className="font-fraunces text-[15px] font-semibold text-ink">
+              {meQuery.data.tenantAdi}
+            </span>
+          ) : (
+            <span />
+          )}
           <div className="flex items-center gap-3">
             <span className="text-[13px] font-semibold text-ink">{username}</span>
             {primary && <RoleBadge role={primary} />}

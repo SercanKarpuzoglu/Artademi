@@ -5,7 +5,6 @@ import AppShell from './components/AppShell';
 import BranchForm from './features/branch/BranchForm';
 import BranchListPage from './features/branch/BranchListPage';
 import AttendancePage from './features/attendance/AttendancePage';
-import ComingSoonPage from './features/common/ComingSoonPage';
 import ForbiddenPage from './features/common/ForbiddenPage';
 import DashboardPage from './features/dashboard/DashboardPage';
 import FinancePage from './features/finance/FinancePage';
@@ -14,6 +13,7 @@ import GroupForm from './features/group/GroupForm';
 import GroupListPage from './features/group/GroupListPage';
 import InventoryPage from './features/inventory/InventoryPage';
 import PayoutPage from './features/payout/PayoutPage';
+import ReportsPage from './features/report/ReportsPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
 import StudentDetailPage from './features/student/StudentDetailPage';
@@ -232,8 +232,8 @@ export default function App() {
         <Route
           path="raporlar"
           element={
-            <RoleRoute requiredRoles={[Role.ADMIN, Role.FRONTDESK_ACCOUNTING, Role.FRONTDESK]}>
-              <ComingSoonPage title="Raporlar" />
+            <RoleRoute requiredRoles={[Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING]}>
+              <ReportsPage />
             </RoleRoute>
           }
         />

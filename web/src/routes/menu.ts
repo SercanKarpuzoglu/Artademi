@@ -79,5 +79,6 @@ export const MENU: readonly MenuItem[] = [
     icon: BarChart3,
     section: 'İşletme',
     roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING, Role.FRONTDESK],
+    hazir: true,
   },
 ];

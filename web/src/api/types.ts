@@ -561,3 +561,60 @@ export interface SaleInput {
   satisTarihi?: string;
   aciklama?: string;
 }
+
+// --- Raporlar (Reports) modülü — backend ReportController DTO'lari ile birebir. Salt okunur. ---
+
+/**
+ * Finansal özet yaniti — backend FinancialSummaryResponse. Para alanlari number VEYA string
+ * gelebilir. Net = toplamGelir - toplamGider. YALNIZCA ADMIN.
+ */
+export interface FinancialSummaryResponse {
+  donem: string;
+  gelir: {
+    tahsilat: string | number;
+    urunSatis: string | number;
+    toplamGelir: string | number;
+  };
+  gider: {
+    ofisGideri: string | number;
+    hakedis: string | number;
+    toplamGider: string | number;
+  };
+  net: string | number;
+}
+
+/** Öğrenci borç satiri — backend StudentBalanceRow. Para alanlari number VEYA string gelebilir. */
+export interface StudentBalanceRow {
+  ogrenciId: number;
+  ad: string;
+  soyad: string;
+  toplamTahakkuk: string | number;
+  toplamOdeme: string | number;
+  bakiye: string | number;
+}
+
+/** Öğretmen hakediş satiri — backend TeacherPayoutRow. Para alani number VEYA string gelebilir. */
+export interface TeacherPayoutRow {
+  ogretmenId: number;
+  ad: string;
+  soyad: string;
+  hakedisTipi: HakedisTipi;
+  hesaplananTutar: string | number;
+  durum: PayoutDurumu;
+}
+
+/** Öğretmen hakediş raporu yaniti — backend TeacherPayoutsResponse. */
+export interface TeacherPayoutsResponse {
+  donem: string;
+  toplamHakedis: string | number;
+  kalemler: TeacherPayoutRow[];
+}
+
+/** Grup doluluk satiri — backend GroupOccupancyRow. */
+export interface GroupOccupancyRow {
+  grupId: number;
+  ad: string;
+  tip: GrupTipi;
+  ogretmenAd: string;
+  aktifOgrenciSayisi: number;
+}

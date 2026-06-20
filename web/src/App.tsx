@@ -7,6 +7,9 @@ import BranchListPage from './features/branch/BranchListPage';
 import ComingSoonPage from './features/common/ComingSoonPage';
 import ForbiddenPage from './features/common/ForbiddenPage';
 import DashboardPage from './features/dashboard/DashboardPage';
+import GroupDetailPage from './features/group/GroupDetailPage';
+import GroupForm from './features/group/GroupForm';
+import GroupListPage from './features/group/GroupListPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
 import StudentDetailPage from './features/student/StudentDetailPage';
@@ -81,12 +84,36 @@ export default function App() {
           }
         />
 
-        {/* Diğer modüller — "Yakında" placeholder (sonraki job'lar) */}
+        {/* Gruplar / Kayıt — grup CRUD + grup detayında kayıt yönetimi */}
         <Route
           path="gruplar"
           element={
             <RoleRoute requiredRoles={OFIS}>
-              <ComingSoonPage title="Gruplar / Kayıt" />
+              <GroupListPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="gruplar/yeni"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <GroupForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="gruplar/:id"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <GroupDetailPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="gruplar/:id/duzenle"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <GroupForm />
             </RoleRoute>
           }
         />

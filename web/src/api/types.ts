@@ -145,3 +145,86 @@ export interface TeacherInput {
   ciroOrani?: string;
   bransIds: number[];
 }
+
+// --- Grup / Kayıt modülü — backend DTO'lari ile birebir aynalanir ---
+
+/** Grup tipi: standart grup veya birebir özel ders. */
+export type GrupTipi = 'GRUP' | 'OZEL';
+
+/** Grup yanitindaki branş/salon referansi (özet). */
+export interface GroupRef {
+  id: number;
+  ad: string;
+}
+
+/** Grup yanitindaki öğretmen referansi (özet). */
+export interface GroupTeacherRef {
+  id: number;
+  ad: string;
+  soyad: string;
+}
+
+/** Grup yaniti — backend GroupResponse. Para alanlari number VEYA string gelebilir. */
+export interface GroupResponse {
+  id: number;
+  ad: string;
+  tip: GrupTipi;
+  brans: GroupRef | null;
+  ogretmen: GroupTeacherRef | null;
+  salon: GroupRef | null;
+  seviye: string | null;
+  aylikAidat: string | number | null;
+  dersBasiUcret: string | number | null;
+  aktif: boolean;
+  olusturulmaTarihi: string;
+  guncellenmeTarihi: string;
+}
+
+/**
+ * Grup olusturma/guncelleme govdesi. Para alanlari (aylikAidat/dersBasiUcret) BigDecimal
+ * hassasiyetini korumak icin STRING gonderilir; tipe gore yalnizca ilgili para alani eklenir.
+ */
+export interface GroupInput {
+  ad: string;
+  tip: GrupTipi;
+  bransId: number;
+  ogretmenId: number;
+  salonId?: number;
+  seviye?: string;
+  aylikAidat?: string;
+  dersBasiUcret?: string;
+}
+
+/** Kayıt durumu: grupta aktif ya da ayrılmış. */
+export type EnrollmentDurumu = 'AKTIF' | 'AYRILDI';
+
+/** Kayıt yanitindaki öğrenci referansi (özet). */
+export interface EnrollmentStudentRef {
+  id: number;
+  ad: string;
+  soyad: string;
+}
+
+/** Kayıt yanitindaki grup referansi (özet). */
+export interface EnrollmentGroupRef {
+  id: number;
+  ad: string;
+  tip: GrupTipi;
+}
+
+/** Kayıt yaniti — backend EnrollmentResponse. */
+export interface EnrollmentResponse {
+  id: number;
+  durum: EnrollmentDurumu;
+  kayitTarihi: string;
+  ayrilmaTarihi: string | null;
+  ogrenci: EnrollmentStudentRef;
+  grup: EnrollmentGroupRef;
+}
+
+/** Kayıt olusturma govdesi. kayitTarihi gonderilmezse backend bugunu kullanir. */
+export interface EnrollmentInput {
+  ogrenciId: number;
+  grupId: number;
+  kayitTarihi?: string;
+}

@@ -44,7 +44,7 @@ const OFIS: readonly Role[] = [Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUN
 export const MENU: readonly MenuItem[] = [
   { label: 'Genel Bakış', path: '/dashboard', icon: LayoutDashboard, section: 'Genel', roles: HEPSI, hazir: true },
   { label: 'Öğrenciler', path: '/ogrenciler', icon: Users, section: 'Eğitim', roles: OFIS, hazir: true },
-  { label: 'Gruplar / Kayıt', path: '/gruplar', icon: GraduationCap, section: 'Eğitim', roles: OFIS },
+  { label: 'Gruplar / Kayıt', path: '/gruplar', icon: GraduationCap, section: 'Eğitim', roles: OFIS, hazir: true },
   {
     label: 'Yoklama',
     path: '/yoklama',

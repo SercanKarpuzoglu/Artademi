@@ -8,6 +8,7 @@ import AttendancePage from './features/attendance/AttendancePage';
 import ComingSoonPage from './features/common/ComingSoonPage';
 import ForbiddenPage from './features/common/ForbiddenPage';
 import DashboardPage from './features/dashboard/DashboardPage';
+import FinancePage from './features/finance/FinancePage';
 import GroupDetailPage from './features/group/GroupDetailPage';
 import GroupForm from './features/group/GroupForm';
 import GroupListPage from './features/group/GroupListPage';
@@ -206,7 +207,7 @@ export default function App() {
           path="finans"
           element={
             <RoleRoute requiredRoles={[Role.ADMIN, Role.FRONTDESK_ACCOUNTING]}>
-              <ComingSoonPage title="Finans" />
+              <FinancePage />
             </RoleRoute>
           }
         />

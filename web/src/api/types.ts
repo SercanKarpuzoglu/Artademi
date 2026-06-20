@@ -315,3 +315,121 @@ export interface UpdateEntryItem {
   ogrenciId: number;
   durum: YoklamaDurumu;
 }
+
+// --- Finans modülü (Tahakkuk / Ödeme / Gider / Bakiye) — backend DTO'lari ile birebir aynalanir ---
+
+/** Ödeme yöntemi (backend OdemeYontemi enum). */
+export type OdemeYontemi = 'NAKIT' | 'KART' | 'HAVALE';
+
+/** Finans yanitlarindaki öğrenci referansi (özet). */
+export interface FinanceStudentRef {
+  id: number;
+  ad: string;
+  soyad: string;
+}
+
+/** Finans yanitlarindaki grup referansi (özet). */
+export interface FinanceGroupRef {
+  id: number;
+  ad: string;
+}
+
+/** Tahakkuk yaniti — backend AccrualResponse. Para alanlari number VEYA string gelebilir. */
+export interface AccrualResponse {
+  id: number;
+  tutar: string | number;
+  donem: string | null;
+  aciklama: string | null;
+  ogrenci: FinanceStudentRef;
+  grup: FinanceGroupRef | null;
+}
+
+/**
+ * Tahakkuk olusturma govdesi. Para alani (tutar) BigDecimal hassasiyetini korumak icin STRING
+ * gonderilir. Bos opsiyonel alanlar gonderilmez.
+ */
+export interface AccrualInput {
+  ogrenciId: number;
+  grupId?: number;
+  donem?: string;
+  tutar: string;
+  aciklama?: string;
+}
+
+/** Ödeme yanitindaki tahakkuk referansi (özet). */
+export interface PaymentAccrualRef {
+  id: number;
+  tutar: string | number;
+  donem: string | null;
+}
+
+/** Ödeme yaniti — backend PaymentResponse. Para alanlari number VEYA string gelebilir. */
+export interface PaymentResponse {
+  id: number;
+  tutar: string | number;
+  odemeTarihi: string;
+  odemeYontemi: OdemeYontemi;
+  aciklama: string | null;
+  ogrenci: FinanceStudentRef;
+  grup: FinanceGroupRef | null;
+  accrual: PaymentAccrualRef | null;
+}
+
+/**
+ * Ödeme olusturma govdesi. Para alani (tutar) STRING gonderilir. odemeTarihi gonderilmezse
+ * backend bugunu kullanir. Bos opsiyonel alanlar gonderilmez.
+ */
+export interface PaymentInput {
+  ogrenciId: number;
+  accrualId?: number;
+  grupId?: number;
+  tutar: string;
+  odemeTarihi?: string;
+  odemeYontemi: OdemeYontemi;
+  aciklama?: string;
+}
+
+/** Gider yaniti — backend ExpenseResponse. Para alani number VEYA string gelebilir. */
+export interface ExpenseResponse {
+  id: number;
+  tutar: string | number;
+  giderTarihi: string;
+  kategori: string | null;
+  aciklama: string | null;
+}
+
+/**
+ * Gider olusturma govdesi. Para alani (tutar) STRING gonderilir. giderTarihi gonderilmezse
+ * backend bugunu kullanir. Bos opsiyonel alanlar gonderilmez.
+ */
+export interface ExpenseInput {
+  tutar: string;
+  giderTarihi?: string;
+  kategori?: string;
+  aciklama?: string;
+}
+
+/** Öğrenci bakiyesi — backend BalanceResponse. Para alanlari number VEYA string gelebilir. */
+export interface BalanceResponse {
+  ogrenciId: number;
+  toplamTahakkuk: string | number;
+  toplamOdeme: string | number;
+  bakiye: string | number;
+}
+
+/** Öğrenci finans özeti — backend FinanceSummaryResponse. */
+export interface FinanceSummaryResponse {
+  ogrenciId: number;
+  tahakkuklar: AccrualResponse[];
+  odemeler: PaymentResponse[];
+  bakiye: string | number;
+}
+
+/** Otomatik aylik tahakkuk uretim/onizleme sonucu — backend AccrualGenerationResult. */
+export interface AccrualGenerationResult {
+  donem: string;
+  uretilenSayisi: number;
+  atlananSayisi: number;
+  toplamTutar: string | number;
+  ozet: { ogrenciId: number; grupId: number; tutar: string | number }[];
+}

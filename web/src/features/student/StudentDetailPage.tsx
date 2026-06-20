@@ -2,7 +2,10 @@ import type { ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { StudentResponse } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
+import { Role } from '../../auth/roles';
 import StatusBadge from '../../components/StatusBadge';
+import StudentFinanceCard from '../finance/StudentFinanceCard';
 import { formatDate } from '../../lib/format';
 import { useSiblings, useStudent } from './useStudentMutations';
 
@@ -10,6 +13,8 @@ export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id ? Number(params.id) : undefined;
   const navigate = useNavigate();
+  const { hasAnyRole } = useAuth();
+  const canSeeFinance = hasAnyRole([Role.ADMIN, Role.FRONTDESK_ACCOUNTING]);
 
   const studentQuery = useStudent(id);
   const siblingsQuery = useSiblings(id);
@@ -58,6 +63,9 @@ export default function StudentDetailPage() {
             <Info label="Yetişkin mi" value={s.yetiskinMi ? 'Evet' : 'Hayır'} />
           </dl>
         </Section>
+
+        {/* Finans — yalnizca ADMIN / FRONTDESK_ACCOUNTING (para hassas) */}
+        {canSeeFinance && id !== undefined && <StudentFinanceCard studentId={id} />}
 
         {/* Veli */}
         <Section title="Veli Bilgileri">

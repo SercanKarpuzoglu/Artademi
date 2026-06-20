@@ -24,7 +24,7 @@ export default function AppShell() {
           </div>
         </div>
 
-        <nav className="flex flex-col gap-1">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
           {gorunur.map((m, i) => {
             const Icon = m.icon;
             const yeniBolum = i === 0 || gorunur[i - 1].section !== m.section;

@@ -14,6 +14,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -172,15 +173,39 @@ public class Teacher extends TenantAware {
     }
 
     /**
-     * Brans atamasini topluca yeniden kurar: mevcut baglantilari temizler (orphanRemoval ile
-     * silinir), verilen branch'ler icin yeni {@link TeacherBranch} baglantilari ekler.
-     * Branch'ler servis katmaninda tenant-guvenli ({@code findScopedById}) cozulur.
+     * Brans atamasini istenen kumeyle UZLASTIRIR (reconcile): yalnizca artik istenmeyen baglantilar
+     * silinir (orphanRemoval), yalnizca YENI branslar icin {@link TeacherBranch} eklenir; zaten bagli
+     * olanlar OLDUGU GIBI birakilir. Branch'ler servis katmaninda tenant-guvenli ({@code findScopedById})
+     * cozulur.
+     *
+     * <p>Neden clear()+addAll DEGIL: ayni brans yeniden gonderildiginde clear() eski satiri silmeye,
+     * add() ayni (teacher_id, branch_id) ile yeni satir eklemeye calisirdi; Hibernate insert'i
+     * delete'ten ONCE flush ettiginden {@code uq_teacher_branch} unique kisiti ihlal edilir (500).
+     * Uzlastirma bu cakismayi onler ve guncellemeyi idempotent kilar.
      */
     public void setBranchLinks(Iterable<TeacherBranch> links) {
-        this.branchLinks.clear();
+        Set<Long> istenenBransIds = new LinkedHashSet<>();
         for (TeacherBranch link : links) {
-            link.setTeacher(this);
-            this.branchLinks.add(link);
+            if (link.getBranch() != null) {
+                istenenBransIds.add(link.getBranch().getId());
+            }
+        }
+        // Artik istenmeyen baglantilari kaldir (orphanRemoval ile silinir).
+        this.branchLinks.removeIf(existing -> existing.getBranch() == null
+                || !istenenBransIds.contains(existing.getBranch().getId()));
+        // Halihazirda bagli brans id'leri.
+        Set<Long> mevcutBransIds = new HashSet<>();
+        for (TeacherBranch existing : this.branchLinks) {
+            if (existing.getBranch() != null) {
+                mevcutBransIds.add(existing.getBranch().getId());
+            }
+        }
+        // Yalnizca YENI branslar icin baglanti ekle (mevcutlar tekrar olusturulmaz -> insert cakismasi yok).
+        for (TeacherBranch link : links) {
+            if (link.getBranch() != null && mevcutBransIds.add(link.getBranch().getId())) {
+                link.setTeacher(this);
+                this.branchLinks.add(link);
+            }
         }
     }
 

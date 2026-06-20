@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
+import { formatMoney } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
 import { useBranches } from '../branch/useBranches';
-import { HAKEDIS_BADGE, HAKEDIS_LABEL, formatMoney } from './teacherDisplay';
+import { HAKEDIS_BADGE, HAKEDIS_LABEL } from './teacherDisplay';
 import { useSetTeacherActive, useTeachers } from './useTeachers';
 
 const PAGE_SIZE = 20;

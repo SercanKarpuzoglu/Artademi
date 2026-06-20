@@ -12,14 +12,4 @@ export const HAKEDIS_BADGE: Record<HakedisTipi, string> = {
   CIRO_ORANI: 'b-rasp',
 };
 
-/** Para degerini (number|string|null) defansif bicimde gosterir; bos -> "—". */
-export function formatMoney(v: string | number | null | undefined): string {
-  if (v === null || v === undefined || v === '') {
-    return '—';
-  }
-  const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
-  if (Number.isNaN(n)) {
-    return String(v);
-  }
-  return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// NOT: para bicimleme ortak `lib/format.ts` icindedir (formatMoney) — birden cok feature kullanir.

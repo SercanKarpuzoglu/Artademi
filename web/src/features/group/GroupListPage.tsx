@@ -4,8 +4,8 @@ import { ApiException } from '../../api/client';
 import type { GrupTipi } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
+import { formatMoney } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
-import { formatMoney } from '../teacher/teacherDisplay';
 import { TIP_BADGE, TIP_LABEL } from './groupDisplay';
 import { useGroups, useSetGroupActive } from './useGroups';
 

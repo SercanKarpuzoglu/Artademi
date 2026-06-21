@@ -24,6 +24,9 @@ import TeacherForm from './features/teacher/TeacherForm';
 import TeacherListPage from './features/teacher/TeacherListPage';
 import UserForm from './features/usermgmt/UserForm';
 import UserListPage from './features/usermgmt/UserListPage';
+import PlatformShell from './features/platform/PlatformShell';
+import TenantForm from './features/platform/TenantForm';
+import TenantListPage from './features/platform/TenantListPage';
 import ProtectedRoute from './routes/ProtectedRoute';
 import RoleRoute from './routes/RoleRoute';
 
@@ -43,7 +46,40 @@ function IndexRedirect() {
   return <Navigate to="/dashboard" replace />;
 }
 
+/**
+ * Giriş sonrası rol çatallanması (kararın kalbi): SUPER_ADMIN tamamen AYRI bir ağaca düşer
+ * (PlatformShell — iş AppShell'i HİÇ render edilmez, /api/me çağrılmaz). İş kullanıcıları mevcut
+ * AppShell akışında kalır ve /platform'a erişemez.
+ */
+function PlatformApp() {
+  return (
+    <Routes>
+      <Route
+        path="/platform"
+        element={
+          <ProtectedRoute>
+            <PlatformShell />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/platform/tenants" replace />} />
+        <Route path="tenants" element={<TenantListPage />} />
+        <Route path="tenants/yeni" element={<TenantForm />} />
+      </Route>
+      {/* super.admin iş route'larına URL ile giderse platform konsoluna dön (AppShell render etme). */}
+      <Route path="*" element={<Navigate to="/platform" replace />} />
+    </Routes>
+  );
+}
+
 export default function App() {
+  const { hasRole } = useAuth();
+
+  // SUPER_ADMIN: ayrı platform konsolu ağacı. İş AppShell'ine hiç girmez.
+  if (hasRole(Role.SUPER_ADMIN)) {
+    return <PlatformApp />;
+  }
+
   return (
     <Routes>
       <Route
@@ -273,6 +309,9 @@ export default function App() {
         {/* Yetkisiz ekranı — çerçeve içinde kalır (kullanıcı menüyü görmeye devam eder) */}
         <Route path="403" element={<ForbiddenPage />} />
       </Route>
+
+      {/* İş kullanıcısı platform konsoluna erişemez -> 403 (asıl güvenlik backend'de 403/400). */}
+      <Route path="/platform/*" element={<Navigate to="/403" replace />} />
 
       {/* Bilinmeyen rota -> kök (oradan rol bazlı yönlendirme) */}
       <Route path="*" element={<Navigate to="/" replace />} />

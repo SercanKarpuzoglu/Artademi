@@ -67,11 +67,39 @@ export interface MeResponse {
   tenantAdi: string | null;
 }
 
+/** Tenant durumu (AKTIF = erişim açık, ASKIDA = kullanıcıları kilitli). */
+export type TenantStatus = 'AKTIF' | 'ASKIDA';
+
 /** Backend TenantResponse ile birebir. */
 export interface TenantResponse {
   id: string;
   ad: string;
-  status: 'AKTIF' | 'ASKIDA';
+  status: TenantStatus;
+}
+
+// --- Platform konsolu (SUPER_ADMIN) — backend platform DTO'lari ile birebir ---
+
+/** Platform tenant yaniti — backend PlatformTenantResponse (createdAt dahil). */
+export interface PlatformTenant {
+  id: string;
+  ad: string;
+  status: TenantStatus;
+  createdAt: string;
+}
+
+/** Tenant + ilk admin olusturma govdesi — backend CreateTenantRequest. */
+export interface CreateTenantInput {
+  ad: string;
+  adminEmail: string;
+  adminAd: string;
+  adminSoyad: string;
+}
+
+/** Tenant olusturma sonucu — backend CreateTenantResponse (provisioning sonucu + olası uyari). */
+export interface CreateTenantResult {
+  tenant: PlatformTenant;
+  admin: { username: string | null; email: string; provisioned: boolean };
+  warning: string | null;
 }
 
 /** Tenant adi guncelleme govdesi — backend UpdateTenantRequest. */

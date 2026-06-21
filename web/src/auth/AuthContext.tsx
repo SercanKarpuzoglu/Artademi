@@ -9,6 +9,8 @@ import { filterDomainRoles, primaryRole, type Role } from './roles';
  */
 interface AuthValue {
   username: string;
+  /** Token'daki tam ad ({@code name} claim'i); yoksa null. Platform konsolu /api/me'siz kimlik gosterir. */
+  name: string | null;
   roles: Role[];
   primary: Role | null;
   hasRole: (role: Role) => boolean;
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthValue | null>(null);
 
 interface TokenClaims {
   preferred_username?: string;
+  name?: string;
   realm_access?: { roles?: string[] };
 }
 
@@ -30,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const roleSet = new Set<Role>(roles);
     return {
       username: parsed?.preferred_username ?? 'Kullanıcı',
+      name: parsed?.name ?? null,
       roles,
       primary: primaryRole(roles),
       hasRole: (role) => roleSet.has(role),

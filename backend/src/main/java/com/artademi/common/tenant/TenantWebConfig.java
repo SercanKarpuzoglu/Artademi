@@ -6,20 +6,26 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * {@link RequireTenantInterceptor}'u is uclarina baglar.
+ * Tenant interceptor'larini is uclarina baglar (SIRA ONEMLI — kayit sirasiyla calisirlar):
+ * <ol>
+ *   <li>{@link RequireTenantInterceptor} — tenant boşsa 400 TENANT_REQUIRED.</li>
+ *   <li>{@link TenantStatusInterceptor} — tenant ASKIDA ise 403 TENANT_SUSPENDED.</li>
+ * </ol>
  *
- * <p>Uygulanir: {@code /api/**}. Muaf: {@code /api/ping} (saglik), {@code /actuator/**}
- * (zaten {@code /api} altinda degil) ve {@code /api/platform/**} — platform (SUPER_ADMIN)
- * uclari tenant-bagimsizdir; tenant_id'siz SUPER_ADMIN bunlara ulasabilmeli (diger /api/**
- * hala tenant ister, fail-closed korunur).
+ * <p>RequireTenant muaf: {@code /api/ping}, {@code /api/platform/**} ({@code /actuator/**} zaten
+ * {@code /api} altinda degil). TenantStatus ek olarak {@code /api/me/**} de muaftir: ASKIDA
+ * kullanici kendi durumunu/profilini gorebilsin ("askidasiniz" ekrani /api/me ile calisir).
  */
 @Configuration
 public class TenantWebConfig implements WebMvcConfigurer {
 
     private final RequireTenantInterceptor requireTenantInterceptor;
+    private final TenantStatusInterceptor tenantStatusInterceptor;
 
-    public TenantWebConfig(RequireTenantInterceptor requireTenantInterceptor) {
+    public TenantWebConfig(RequireTenantInterceptor requireTenantInterceptor,
+            TenantStatusInterceptor tenantStatusInterceptor) {
         this.requireTenantInterceptor = requireTenantInterceptor;
+        this.tenantStatusInterceptor = tenantStatusInterceptor;
     }
 
     @Override
@@ -27,5 +33,8 @@ public class TenantWebConfig implements WebMvcConfigurer {
         registry.addInterceptor(requireTenantInterceptor)
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/ping", "/api/platform/**");
+        registry.addInterceptor(tenantStatusInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/ping", "/api/platform/**", "/api/me", "/api/me/**");
     }
 }

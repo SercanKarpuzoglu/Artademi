@@ -8,8 +8,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /**
  * {@link RequireTenantInterceptor}'u is uclarina baglar.
  *
- * <p>Uygulanir: {@code /api/**}. Muaf: {@code /api/ping} (saglik) ve
- * {@code /actuator/**} (zaten {@code /api} altinda olmadigi icin eslesmez).
+ * <p>Uygulanir: {@code /api/**}. Muaf: {@code /api/ping} (saglik), {@code /actuator/**}
+ * (zaten {@code /api} altinda degil) ve {@code /api/platform/**} — platform (SUPER_ADMIN)
+ * uclari tenant-bagimsizdir; tenant_id'siz SUPER_ADMIN bunlara ulasabilmeli (diger /api/**
+ * hala tenant ister, fail-closed korunur).
  */
 @Configuration
 public class TenantWebConfig implements WebMvcConfigurer {
@@ -24,6 +26,6 @@ public class TenantWebConfig implements WebMvcConfigurer {
     public void addInterceptors(@NonNull InterceptorRegistry registry) {
         registry.addInterceptor(requireTenantInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/ping");
+                .excludePathPatterns("/api/ping", "/api/platform/**");
     }
 }

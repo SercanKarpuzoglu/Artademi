@@ -42,6 +42,15 @@ public class Tenant {
         // JPA icin
     }
 
+    /** Yeni tenant olusturur: id = rastgele UUID, status = AKTIF. (Platform/SUPER_ADMIN kullanir.) */
+    public static Tenant create(String ad) {
+        Tenant t = new Tenant();
+        t.id = UUID.randomUUID();
+        t.ad = ad;
+        t.status = TenantStatus.AKTIF;
+        return t;
+    }
+
     public UUID getId() {
         return id;
     }

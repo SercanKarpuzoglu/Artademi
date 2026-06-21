@@ -9,10 +9,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -48,11 +53,28 @@ class PlatformControllerTest {
     @MockBean
     JwtDecoder jwtDecoder;
 
+    /** Keycloak'a cikmadan admin provisioning sonucunu deterministik kontrol etmek icin. */
+    @MockBean
+    TenantAdminProvisioner adminProvisioner;
+
     @Autowired
     MockMvc mockMvc;
 
     @Autowired
     ObjectMapper objectMapper;
+
+    /** Gecerli tenant+admin govdesi (provisioning mock'la basariliya zorlanir). */
+    private static String createBody(String ad) {
+        return "{\"ad\":\"" + ad + "\",\"adminEmail\":\"yonetici@" + ad.replaceAll("\\s+", "").toLowerCase()
+                + ".com\",\"adminAd\":\"Yön\",\"adminSoyad\":\"Etici\"}";
+    }
+
+    @BeforeEach
+    void stubProvisioner() {
+        given(adminProvisioner.provision(any(UUID.class), any(), any(), any()))
+                .willAnswer(inv -> new TenantAdminProvisioner.ProvisionedAdmin(
+                        "yonetici", inv.getArgument(1)));
+    }
 
     /** SUPER_ADMIN token: tenant_id claim'i YOK. */
     private static RequestPostProcessor superAdmin() {
@@ -86,38 +108,69 @@ class PlatformControllerTest {
 
     @Test
     void superAdmin_olustur_mukerrer_bos() throws Exception {
-        // 201 + AKTIF + UUID
+        // 201 + AKTIF + UUID + admin provisioned
         String body = mockMvc.perform(post("/api/platform/tenants").with(superAdmin())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"ad\":\"Test Sanat\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("Test Sanat")))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.ad").value("Test Sanat"))
-                .andExpect(jsonPath("$.data.status").value("AKTIF"))
-                .andExpect(jsonPath("$.data.id").exists())
+                .andExpect(jsonPath("$.data.tenant.ad").value("Test Sanat"))
+                .andExpect(jsonPath("$.data.tenant.status").value("AKTIF"))
+                .andExpect(jsonPath("$.data.tenant.id").exists())
+                .andExpect(jsonPath("$.data.admin.provisioned").value(true))
+                .andExpect(jsonPath("$.data.admin.username").value("yonetici"))
                 .andReturn().getResponse().getContentAsString();
-        java.util.UUID.fromString(objectMapper.readTree(body).path("data").path("id").asText());
+        UUID.fromString(objectMapper.readTree(body).path("data").path("tenant").path("id").asText());
 
-        // Mukerrer ad (ignore-case) -> 409
+        // Mukerrer ad (ignore-case) -> 409 (Keycloak'a hic gidilmez)
         mockMvc.perform(post("/api/platform/tenants").with(superAdmin())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"ad\":\"test sanat\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("test sanat")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("CONFLICT"));
 
-        // Bos ad -> 400 + error.fields.ad
+        // Bos ad -> 400 + error.fields.ad (validasyon commit'ten ONCE; tenant olusmaz)
         mockMvc.perform(post("/api/platform/tenants").with(superAdmin())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"ad\":\"\"}"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ad\":\"\",\"adminEmail\":\"a@b.com\",\"adminAd\":\"A\",\"adminSoyad\":\"B\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.error.fields.ad").exists());
     }
 
     @Test
+    void superAdmin_olustur_gecersizAdminEmail_400_fields() throws Exception {
+        // Gecersiz adminEmail -> 400 + error.fields.adminEmail (tenant OLUSMAZ)
+        mockMvc.perform(post("/api/platform/tenants").with(superAdmin())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ad\":\"Email Test\",\"adminEmail\":\"gecersiz\","
+                                + "\"adminAd\":\"A\",\"adminSoyad\":\"B\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fields.adminEmail").exists());
+    }
+
+    @Test
+    void superAdmin_provisioningPatlarsa_201_warning_tenantKalir() throws Exception {
+        // Keycloak admin yaratimi patlar (ornek: yinelenen email) -> tenant yine olusur, warning doner.
+        given(adminProvisioner.provision(any(UUID.class), any(), any(), any()))
+                .willThrow(new com.artademi.common.exception.ConflictException(
+                        "Kullanıcı adı veya e-posta zaten kayıtlı"));
+
+        mockMvc.perform(post("/api/platform/tenants").with(superAdmin())
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("Warning Kurum")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.tenant.ad").value("Warning Kurum"))
+                .andExpect(jsonPath("$.data.tenant.status").value("AKTIF"))
+                .andExpect(jsonPath("$.data.admin.provisioned").value(false))
+                .andExpect(jsonPath("$.data.warning").exists());
+    }
+
+    @Test
     void superAdmin_durumDegistir_idempotent_ve404() throws Exception {
         // Yeni tenant olustur -> id al
         String body = mockMvc.perform(post("/api/platform/tenants").with(superAdmin())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"ad\":\"Durum Testi\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("Durum Testi")))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        String id = objectMapper.readTree(body).path("data").path("id").asText();
+        String id = objectMapper.readTree(body).path("data").path("tenant").path("id").asText();
 
         // AKTIF -> ASKIDA
         mockMvc.perform(patch("/api/platform/tenants/{id}/status", id).with(superAdmin())
@@ -144,7 +197,7 @@ class PlatformControllerTest {
         mockMvc.perform(get("/api/platform/tenants").with(token(TENANT_A, "ADMIN")))
                 .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/platform/tenants").with(token(TENANT_A, "ADMIN"))
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"ad\":\"X\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("X Kurum")))
                 .andExpect(status().isForbidden());
         mockMvc.perform(patch("/api/platform/tenants/{id}/status", TENANT_A).with(token(TENANT_A, "ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ASKIDA\"}"))

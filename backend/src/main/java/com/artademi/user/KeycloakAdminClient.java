@@ -116,6 +116,23 @@ public class KeycloakAdminClient {
     }
 
     /**
+     * Verilen kullanici adi realm'de (tum tenant'lar genelinde) zaten var mi? Tenant'tan BAGIMSIZ
+     * genel bir kontroldur (username Keycloak'ta realm-genelinde tekildir); bu yuzden provisioning'de
+     * tenant'lar arasi username cakismasi yakalanir. {@code exact=true} ile tam eslesme aranir.
+     */
+    @SuppressWarnings("unchecked")
+    boolean usernameExists(String username) {
+        String uri = UriComponentsBuilder.fromUriString(props.adminBasePath() + "/users")
+                .queryParam("username", username)
+                .queryParam("exact", true)
+                .queryParam("max", 1)
+                .build()
+                .toUriString();
+        List<Map<String, Object>> result = authGet(uri).retrieve().body(List.class);
+        return result != null && !result.isEmpty();
+    }
+
+    /**
      * GET ile tek bir JSON nesnesi okur; 404'te (error body parse etmeden) null doner. Diger
      * hatalar yukari firlatilir.
      */

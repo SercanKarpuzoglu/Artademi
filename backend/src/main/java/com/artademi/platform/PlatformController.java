@@ -2,6 +2,7 @@ package com.artademi.platform;
 
 import com.artademi.common.ApiResponse;
 import com.artademi.platform.dto.CreateTenantRequest;
+import com.artademi.platform.dto.CreateTenantResponse;
 import com.artademi.platform.dto.PlatformTenantResponse;
 import com.artademi.platform.dto.UpdateTenantStatusRequest;
 import jakarta.validation.Valid;
@@ -46,10 +47,13 @@ public class PlatformController {
         return ApiResponse.ok(service.list(status, q));
     }
 
-    /** Yeni tenant olustur (201). */
+    /**
+     * Yeni tenant olustur + ilk ADMIN'i provision et (201). Keycloak admin yaratilamasa bile tenant
+     * olusur; yanitta {@code admin.provisioned=false} + {@code warning} doner (yine 201).
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<PlatformTenantResponse> create(@Valid @RequestBody CreateTenantRequest request) {
+    public ApiResponse<CreateTenantResponse> create(@Valid @RequestBody CreateTenantRequest request) {
         return ApiResponse.ok(service.create(request));
     }
 

@@ -54,12 +54,15 @@ public class UserService {
     private final KeycloakAdminClient kc;
     private final CurrentUser currentUser;
     private final com.artademi.platform.TenantService tenantService;
+    private final com.artademi.platform.SubscriptionService subscriptionService;
 
     public UserService(KeycloakAdminClient kc, CurrentUser currentUser,
-            com.artademi.platform.TenantService tenantService) {
+            com.artademi.platform.TenantService tenantService,
+            com.artademi.platform.SubscriptionService subscriptionService) {
         this.kc = kc;
         this.currentUser = currentUser;
         this.tenantService = tenantService;
+        this.subscriptionService = subscriptionService;
     }
 
     // =====================================================================
@@ -175,6 +178,10 @@ public class UserService {
         }
         boolean mustChange = "true".equalsIgnoreCase(
                 KeycloakAdminClient.firstAttribute(rep, ATTR_MUST_CHANGE));
+        String tenantId = tenantOf(rep);
+        var subscriptionWarning = tenantId == null
+                ? null
+                : subscriptionService.warningFor(UUID.fromString(tenantId));
         return new MeResponse(
                 sub,
                 stringValue(rep, "username"),
@@ -184,8 +191,9 @@ public class UserService {
                 KeycloakAdminClient.firstAttribute(rep, ATTR_TELEFON),
                 currentUser.realmRoles(),
                 mustChange,
-                tenantOf(rep),
-                tenantService.currentName());
+                tenantId,
+                tenantService.currentName(),
+                subscriptionWarning);
     }
 
     /** Kullanicinin tenant_id attribute'u (varsa). */

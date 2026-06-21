@@ -4,6 +4,8 @@ import com.artademi.common.ApiResponse;
 import com.artademi.platform.dto.CreateTenantRequest;
 import com.artademi.platform.dto.CreateTenantResponse;
 import com.artademi.platform.dto.PlatformTenantResponse;
+import com.artademi.platform.dto.SubscriptionResponse;
+import com.artademi.platform.dto.UpdateSubscriptionRequest;
 import com.artademi.platform.dto.UpdateTenantStatusRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -34,9 +36,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlatformController {
 
     private final PlatformService service;
+    private final SubscriptionService subscriptionService;
 
-    public PlatformController(PlatformService service) {
+    public PlatformController(PlatformService service, SubscriptionService subscriptionService) {
         this.service = service;
+        this.subscriptionService = subscriptionService;
     }
 
     /** Tum tenant'lar; ?status=AKTIF|ASKIDA & ?q= (ad arama) opsiyonel. */
@@ -63,5 +67,23 @@ public class PlatformController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateTenantStatusRequest request) {
         return ApiResponse.ok(service.changeStatus(id, request.status()));
+    }
+
+    /** Tenant'in abonelik detayi. Bilinmeyen tenant/abonelik -> 404. */
+    @GetMapping("/{id}/subscription")
+    public ApiResponse<SubscriptionResponse> getSubscription(@PathVariable UUID id) {
+        return ApiResponse.ok(subscriptionService.getByTenant(id));
+    }
+
+    /**
+     * Abonelik odeme/donem guncelle (manuel; iyzico gelene kadar). {@code ODENDI} -> telafi (abonelik
+     * AKTIF + tenant ASKIDA ise AKTIF). Bilinmeyen tenant -> 404.
+     */
+    @PatchMapping("/{id}/subscription")
+    public ApiResponse<SubscriptionResponse> updateSubscription(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateSubscriptionRequest request) {
+        return ApiResponse.ok(
+                subscriptionService.applyPayment(id, request.paymentStatus(), request.currentPeriodEnd()));
     }
 }

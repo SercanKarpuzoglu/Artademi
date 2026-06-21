@@ -5,7 +5,9 @@ import com.artademi.common.exception.NotFoundException;
 import com.artademi.platform.dto.CreateTenantRequest;
 import com.artademi.platform.dto.CreateTenantResponse;
 import com.artademi.platform.dto.PlatformTenantResponse;
+import com.artademi.platform.dto.SubscriptionResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,25 +31,30 @@ public class PlatformService {
 
     private final TenantRepository repository;
     private final TenantAdminProvisioner adminProvisioner;
+    private final SubscriptionService subscriptionService;
     /** Kendi proxy'si: {@code saveTenant}'i AYRI bir transaction'da cagirip ONCE commit etmek icin. */
     private final PlatformService self;
 
     public PlatformService(TenantRepository repository, TenantAdminProvisioner adminProvisioner,
-            @Lazy PlatformService self) {
+            SubscriptionService subscriptionService, @Lazy PlatformService self) {
         this.repository = repository;
         this.adminProvisioner = adminProvisioner;
+        this.subscriptionService = subscriptionService;
         this.self = self;
     }
 
-    /** Tum tenant'lar; status ve q (ad contains, ignore-case) opsiyonel filtreler. */
+    /** Tum tenant'lar (+ abonelik ozeti); status ve q (ad contains, ignore-case) opsiyonel filtreler. */
     @Transactional(readOnly = true)
     public List<PlatformTenantResponse> list(TenantStatus status, String q) {
         Specification<Tenant> spec = Specification
                 .where(hasStatus(status))
                 .and(adContains(q));
-        return repository.findAll(spec, org.springframework.data.domain.Sort.by("ad").ascending())
-                .stream()
-                .map(PlatformTenantResponse::from)
+        List<Tenant> tenantList = repository.findAll(
+                spec, org.springframework.data.domain.Sort.by("ad").ascending());
+        Map<UUID, SubscriptionResponse> subs = subscriptionService.summariesByTenant(
+                tenantList.stream().map(Tenant::getId).toList());
+        return tenantList.stream()
+                .map(t -> PlatformTenantResponse.from(t, subs.get(t.getId())))
                 .toList();
     }
 
@@ -62,6 +69,14 @@ public class PlatformService {
      */
     public CreateTenantResponse create(CreateTenantRequest req) {
         PlatformTenantResponse tenant = self.saveTenant(req); // ayri tx: tenant ONCE commit edilir
+
+        // Trial abonelik (tenant'a bagli; admin provisioning'den BAGIMSIZ). Patlarsa tenant kalir.
+        try {
+            subscriptionService.createTrial(tenant.id());
+        } catch (RuntimeException e) {
+            log.warn("Tenant {} icin trial abonelik olusturulamadi: {}", tenant.id(), e.getMessage());
+        }
+
         String email = req.adminEmail().trim();
         try {
             TenantAdminProvisioner.ProvisionedAdmin admin = adminProvisioner.provision(

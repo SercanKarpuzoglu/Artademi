@@ -1,5 +1,6 @@
 package com.artademi.user.dto;
 
+import com.artademi.platform.dto.SubscriptionWarning;
 import java.util.List;
 
 /**
@@ -8,6 +9,9 @@ import java.util.List;
  *
  * <p>{@code tenantId}/{@code tenantAdi}: oturum sahibinin tenant'i (topbar'da gosterim icin; ayri
  * cagri gerekmesin diye burada doner). Tenant adi yoksa null.
+ *
+ * <p>{@code subscriptionWarning}: tenant aboneligi grace'te ({@code ODEME_BEKLIYOR}) ise dolu olur
+ * (frontend banner yapar); aksi halde null. Odeme/abonelik mantigi platform paketindedir.
  */
 public record MeResponse(
         String sub,
@@ -19,5 +23,6 @@ public record MeResponse(
         List<String> roller,
         boolean mustChangePassword,
         String tenantId,
-        String tenantAdi) {
+        String tenantAdi,
+        SubscriptionWarning subscriptionWarning) {
 }

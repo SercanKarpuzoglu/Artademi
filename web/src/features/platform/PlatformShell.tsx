@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom';
+import amblem from '../../assets/artademi-amblem.png';
 import { useAuth } from '../../auth/AuthContext';
 
 /**
@@ -17,12 +18,10 @@ export default function PlatformShell() {
     <div className="flex min-h-screen flex-col bg-paper">
       <header className="flex items-center justify-between border-b border-line bg-card px-7 py-3">
         <div className="flex items-center gap-2.5">
-          <div className="grid h-8 w-8 place-items-center rounded-[9px] bg-ink font-fraunces text-[15px] font-bold text-white">
-            A
-          </div>
+          <img src={amblem} alt="artademi" className="h-8 w-8 shrink-0 object-contain" />
           <div className="leading-tight">
             <div className="font-fraunces text-[15px] font-semibold text-ink">
-              Artademi · Platform Konsolu
+              artademi · Platform Konsolu
             </div>
             <div className="text-[11.5px] text-ink-soft">Kurum (tenant) yönetimi</div>
           </div>

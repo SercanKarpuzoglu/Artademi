@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { z } from 'zod';
+import amblem from '../assets/artademi-amblem.png';
 import { changePassword } from '../api/me';
 import { ApiException } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
@@ -39,9 +40,13 @@ export default function AppShell() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="mark">A</div>
+          <img
+            src={amblem}
+            alt="artademi"
+            className="h-[34px] w-[34px] shrink-0 object-contain"
+          />
           <div>
-            <b>Artademi</b>
+            <b className="lowercase">artademi</b>
             <small>Yönetim Paneli</small>
           </div>
         </div>
@@ -164,7 +169,10 @@ function FirstPasswordLock({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="flex min-h-screen flex-col bg-paper">
       <header className="flex items-center justify-between border-b border-line bg-card px-7 py-2.5">
-        <span className="font-fraunces text-[16px] font-semibold text-ink">Artademi</span>
+        <span className="flex items-center gap-2">
+          <img src={amblem} alt="" className="h-7 w-7 object-contain" />
+          <span className="font-fraunces text-[16px] font-semibold lowercase text-ink">artademi</span>
+        </span>
         <button type="button" className="btn btn-ghost" onClick={onLogout}>
           Çıkış
         </button>

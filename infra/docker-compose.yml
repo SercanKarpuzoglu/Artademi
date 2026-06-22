@@ -47,6 +47,10 @@ services:
       KC_HEALTH_ENABLED: "true"
     ports:
       - "8080:8080"
+    volumes:
+      # Özel login teması: host'taki tema klasörü Keycloak themes dizinine bağlanır.
+      # start-dev tema cache'ini KAPALI tutar → dosya değişince restart yeterli (jar build YOK).
+      - ./keycloak-theme:/opt/keycloak/themes:ro
     depends_on:
       postgres:
         condition: service_healthy

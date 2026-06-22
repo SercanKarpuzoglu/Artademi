@@ -1,0 +1,179 @@
+/* Artademi login teması — design-reference.html dili (erik-ahududu, Fraunces + Manrope).
+   Klasik "keycloak" login temasının üstüne CSS ile bindirir; .ftl override YOK. Logo CSS
+   background-image ile #kc-header-wrapper'a konur (realm adı metni gizlenir). */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --ink: #2a2230;
+  --ink-soft: #5d5366;
+  --paper: #f5f4f7;
+  --card: #ffffff;
+  --line: #e7e3ec;
+  --rasp: #b43a5e;
+  --rasp-soft: #f7e6ec;
+  --rasp-dark: #9c3050;
+  --red: #b23a3a;
+  --red-soft: #f7e6e6;
+  --r: 14px;
+  --shadow: 0 1px 2px rgba(42, 34, 48, 0.05), 0 6px 18px rgba(42, 34, 48, 0.06);
+}
+
+/* ---------- arka plan: nazik açık erik-ahududu gradyan (renkli logo net okunsun) ---------- */
+html,
+body,
+body.login-pf,
+.login-pf body {
+  background: radial-gradient(1200px 600px at 50% -8%, var(--rasp-soft), var(--paper) 62%) !important;
+  background-attachment: fixed !important;
+  font-family: "Manrope", sans-serif !important;
+  color: var(--ink) !important;
+  height: 100%;
+}
+
+.login-pf-page {
+  padding-top: 40px;
+}
+
+/* ---------- logo (realm adı metni gizlenir, tam logo gösterilir) ---------- */
+#kc-header,
+#kc-header-wrapper {
+  width: 100%;
+  text-align: center;
+}
+
+#kc-header-wrapper {
+  font-size: 0 !important; /* realm adı metnini gizle */
+  color: transparent !important;
+  padding: 0 !important;
+  margin: 0 auto 18px !important;
+  height: 130px;
+  background-image: url("../img/artademi-logo-full.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* ---------- kart ---------- */
+.login-pf-page .card-pf {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 30px 28px 26px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* başlık (Giriş Yap / kurum) */
+#kc-page-title {
+  font-family: "Fraunces", serif !important;
+  font-weight: 600;
+  font-size: 22px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+/* ---------- form alanları ---------- */
+.login-pf-page label,
+.login-pf-page .control-label,
+.login-pf-page .pf-c-form__label,
+.login-pf-page .pf-c-form__label-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.login-pf-page input[type="text"],
+.login-pf-page input[type="email"],
+.login-pf-page input[type="password"],
+.login-pf-page .form-control,
+.login-pf-page .pf-c-form-control {
+  width: 100%;
+  border: 1px solid var(--line) !important;
+  border-radius: 10px !important;
+  background: var(--card) !important;
+  color: var(--ink) !important;
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+  box-shadow: none !important;
+}
+
+.login-pf-page input:focus,
+.login-pf-page .form-control:focus,
+.login-pf-page .pf-c-form-control:focus {
+  border-color: var(--rasp) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px var(--rasp-soft) !important;
+}
+
+/* ---------- birincil buton (Giriş Yap) ---------- */
+.login-pf-page #kc-login,
+.login-pf-page input[type="submit"],
+.login-pf-page .btn-primary,
+.login-pf-page .pf-c-button.pf-m-primary {
+  background: var(--rasp) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  font-family: "Manrope", sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 14.5px !important;
+  padding: 11px 16px !important;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+
+.login-pf-page #kc-login:hover,
+.login-pf-page .btn-primary:hover,
+.login-pf-page .pf-c-button.pf-m-primary:hover {
+  background: var(--rasp-dark) !important;
+}
+
+/* ---------- linkler (şifremi unuttum, kayıt) ---------- */
+.login-pf-page a,
+#kc-form-options a,
+#kc-registration a,
+#kc-info-wrapper a {
+  color: var(--rasp) !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-pf-page a:hover {
+  color: var(--rasp-dark) !important;
+  text-decoration: underline;
+}
+
+/* ---------- "beni hatırla" vb. ---------- */
+.login-pf-page .checkbox label {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+/* ---------- hata / bilgi mesajları ---------- */
+.login-pf-page .alert-error,
+.login-pf-page .pf-c-alert.pf-m-danger,
+.login-pf-page #input-error,
+.login-pf-page .kc-feedback-text {
+  background: var(--red-soft) !important;
+  border: 1px solid rgba(178, 58, 58, 0.3) !important;
+  border-radius: 12px !important;
+  color: var(--red) !important;
+  font-weight: 600;
+}
+
+.login-pf-page .alert-success,
+.login-pf-page .pf-c-alert.pf-m-success {
+  background: #e3f1ea !important;
+  border: 1px solid rgba(47, 125, 91, 0.3) !important;
+  border-radius: 12px !important;
+  color: #2f7d5b !important;
+}
+
+/* alt bilgi alanı (forgot-password "geri dön" vb.) */
+#kc-info-wrapper {
+  margin-top: 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}

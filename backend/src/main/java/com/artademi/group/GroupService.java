@@ -11,8 +11,10 @@ import com.artademi.room.Room;
 import com.artademi.room.RoomRepository;
 import com.artademi.teacher.Teacher;
 import com.artademi.teacher.TeacherRepository;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -91,6 +93,24 @@ public class GroupService {
                 .and(GroupSpecifications.matchesText(q));
         return repository.findAll(spec, pageable)
                 .map(GroupResponse::from);
+    }
+
+    /**
+     * Bir ogretmenin KENDI gruplari (aktif + pasif), ada gore sirali. {@code ogretmenId} null ise
+     * (oturum sahibi bir ogretmenle eslesmiyorsa) bos liste. Yalnizca {@code ogretmenId}'ye sahip
+     * gruplar doner (TenantAware oldugundan tenant izolasyonu otomatik) — baska ogretmenin grubu
+     * ASLA sizmaz. {@code GET /api/groups/mine} bunu kullanir (TEACHER).
+     */
+    @Transactional(readOnly = true)
+    public List<GroupResponse> mine(Long ogretmenId) {
+        if (ogretmenId == null) {
+            return List.of();
+        }
+        Specification<Group> spec = GroupSpecifications.hasOgretmen(ogretmenId);
+        return repository.findAll(spec, Sort.by("ad").ascending())
+                .stream()
+                .map(GroupResponse::from)
+                .toList();
     }
 
     /**

@@ -6,6 +6,8 @@ import com.artademi.group.dto.CreateGroupRequest;
 import com.artademi.group.dto.GroupResponse;
 import com.artademi.group.dto.UpdateActiveRequest;
 import com.artademi.group.dto.UpdateGroupRequest;
+import com.artademi.teacher.CurrentTeacherResolver;
+import com.artademi.teacher.Teacher;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -41,9 +43,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class GroupController {
 
     private final GroupService service;
+    private final CurrentTeacherResolver currentTeacherResolver;
 
-    public GroupController(GroupService service) {
+    public GroupController(GroupService service, CurrentTeacherResolver currentTeacherResolver) {
         this.service = service;
+        this.currentTeacherResolver = currentTeacherResolver;
     }
 
     /** Yeni grup olustur (aktif true), 201. */
@@ -52,6 +56,19 @@ public class GroupController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<GroupResponse> create(@Valid @RequestBody CreateGroupRequest request) {
         return ApiResponse.ok(service.create(request));
+    }
+
+    /**
+     * Oturum sahibi ogretmenin KENDI gruplari (aktif + pasif). YALNIZCA TEACHER: ADMIN/FRONTDESK
+     * zaten genel listeyi gorur. Gruplar gecmis yoklamadan TURETILMEZ — dogrudan grup→ogretmen
+     * atamasindan okunur (oturumsuz yeni grup da gorunur). Oturum sahibi bir ogretmenle eslesmezse
+     * bos liste (200 + []). Baska ogretmenin grubu ASLA sizmaz (sub→teacher + TenantAware).
+     */
+    @GetMapping("/mine")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ApiResponse<List<GroupResponse>> mine() {
+        Long ogretmenId = currentTeacherResolver.current().map(Teacher::getId).orElse(null);
+        return ApiResponse.ok(service.mine(ogretmenId));
     }
 
     /** Tek grup (yoksa 404). */

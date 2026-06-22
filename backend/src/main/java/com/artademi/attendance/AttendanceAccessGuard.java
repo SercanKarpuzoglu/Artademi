@@ -1,14 +1,12 @@
 package com.artademi.attendance;
 
 import com.artademi.group.Group;
+import com.artademi.teacher.CurrentTeacherResolver;
 import com.artademi.teacher.Teacher;
-import com.artademi.teacher.TeacherRepository;
-import java.util.Optional;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 /**
@@ -35,10 +33,10 @@ public class AttendanceAccessGuard {
     private static final String ROLE_FRONTDESK_ACCOUNTING = "ROLE_FRONTDESK_ACCOUNTING";
     private static final String ROLE_TEACHER = "ROLE_TEACHER";
 
-    private final TeacherRepository teacherRepository;
+    private final CurrentTeacherResolver currentTeacherResolver;
 
-    public AttendanceAccessGuard(TeacherRepository teacherRepository) {
-        this.teacherRepository = teacherRepository;
+    public AttendanceAccessGuard(CurrentTeacherResolver currentTeacherResolver) {
+        this.currentTeacherResolver = currentTeacherResolver;
     }
 
     /**
@@ -54,7 +52,7 @@ public class AttendanceAccessGuard {
             return;
         }
         if (hasAnyRole(auth, ROLE_TEACHER)) {
-            Teacher teacher = resolveTeacherOrDeny(auth);
+            Teacher teacher = resolveTeacherOrDeny();
             if (grup.getOgretmen() == null
                     || !grup.getOgretmen().getId().equals(teacher.getId())) {
                 throw new AccessDeniedException("Bu grup için yetkiniz yok");
@@ -77,25 +75,15 @@ public class AttendanceAccessGuard {
             return null;
         }
         if (hasAnyRole(auth, ROLE_TEACHER)) {
-            return resolveTeacherOrDeny(auth).getId();
+            return resolveTeacherOrDeny().getId();
         }
         throw new AccessDeniedException("Yetki yok");
     }
 
-    private Teacher resolveTeacherOrDeny(Authentication auth) {
-        String sub = subject(auth);
-        if (sub == null) {
-            throw new AccessDeniedException("Öğretmen kimliği çözülemedi");
-        }
-        return teacherRepository.findByKeycloakUserId(sub)
+    private Teacher resolveTeacherOrDeny() {
+        // sub -> Teacher.keycloakUserId tek mekanizma (CurrentTeacherResolver); eslesme yoksa 403.
+        return currentTeacherResolver.current()
                 .orElseThrow(() -> new AccessDeniedException("Öğretmen bulunamadı"));
-    }
-
-    private static String subject(Authentication auth) {
-        if (auth instanceof JwtAuthenticationToken jwtAuth) {
-            return jwtAuth.getToken().getSubject();
-        }
-        return null;
     }
 
     private static boolean hasAnyRole(Authentication auth, String... roles) {

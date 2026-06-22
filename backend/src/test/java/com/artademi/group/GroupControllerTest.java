@@ -1,6 +1,9 @@
 package com.artademi.group;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -135,6 +138,120 @@ class GroupControllerTest {
                 .andExpect(jsonPath("$.data.aktif").value(true))
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body).path("data").path("id").asLong();
+    }
+
+    /** keycloakUserId (sub) ile ogretmen olusturur — TEACHER /mine koprusu icin. */
+    private long createTeacherWithSub(String tenantId, String ad, String sub) throws Exception {
+        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\",\"hakedisTipi\":\"SAATLIK\","
+                + "\"saatlikUcret\":200.00,\"bransIds\":[],\"keycloakUserId\":\"" + sub + "\"}";
+        String body = mockMvc.perform(post("/api/teachers")
+                        .with(admin(tenantId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body).path("data").path("id").asLong();
+    }
+
+    /** TEACHER token: JWT {@code sub} (keycloakUserId eslesmesi icin) + tenant_id + TEACHER rolu. */
+    private static RequestPostProcessor teacherToken(String tenantId, String sub) {
+        return jwt()
+                .jwt(builder -> builder
+                        .subject(sub)
+                        .claim("tenant_id", tenantId)
+                        .claim("realm_access", Map.of("roles", List.of("TEACHER"))))
+                .authorities((GrantedAuthority) new SimpleGrantedAuthority("ROLE_TEACHER"));
+    }
+
+    @Test
+    void mine_teacherKendiGruplari_baskaSizmaz_yeniGrupGorunur() throws Exception {
+        String tenant = "a1111111-1111-1111-1111-111111111111";
+        long[] refs = seedRefs(tenant, "mine"); // brans + (kullanilmayan ogretmen) + salon
+        String sub = "sub-mine-selin";
+        long selin = createTeacherWithSub(tenant, "Selin", sub);
+
+        // Selin'in 2 grubu (biri OZEL — HIC yoklamasi yok = tavuk-yumurta senaryosu).
+        long g1 = createGroup(tenant, grupJson("Bale Baslangic", refs[0], selin, refs[2]));
+        long g2 = createGroup(tenant, ozelJson("Selin ile Ozel", refs[0], selin));
+
+        // Baska ogretmenin grubu — /mine'da ASLA gorunmemeli.
+        long diger = createTeacher(tenant, "Diger");
+        createGroup(tenant, grupJson("Diger Grup", refs[0], diger, refs[2]));
+
+        mockMvc.perform(get("/api/groups/mine").with(teacherToken(tenant, sub)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[*].id", containsInAnyOrder((int) g1, (int) g2)))
+                .andExpect(jsonPath("$.data[*].ogretmen.id", everyItem(is((int) selin))))
+                // Tam detay: salon/brans/ucret alanlari dolu.
+                .andExpect(jsonPath("$.data[?(@.tip=='GRUP')].brans.id", containsInAnyOrder((int) refs[0])));
+    }
+
+    @Test
+    void mine_pasifGrupDaGelir() throws Exception {
+        String tenant = "a2222222-2222-2222-2222-222222222222";
+        long[] refs = seedRefs(tenant, "minepasif");
+        String sub = "sub-mine-pasif";
+        long t = createTeacherWithSub(tenant, "Pasifci", sub);
+        long g = createGroup(tenant, grupJson("Pasif Olacak", refs[0], t, refs[2]));
+
+        mockMvc.perform(patch("/api/groups/{id}/active", g)
+                        .with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"aktif\":false}"))
+                .andExpect(status().isOk());
+
+        // Hepsi (aktif+pasif) doner -> pasif grup da listede.
+        mockMvc.perform(get("/api/groups/mine").with(teacherToken(tenant, sub)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].id").value((int) g))
+                .andExpect(jsonPath("$.data[0].aktif").value(false));
+    }
+
+    @Test
+    void mine_subEslesmezse_bosListe() throws Exception {
+        String tenant = "a3333333-3333-3333-3333-333333333333";
+        mockMvc.perform(get("/api/groups/mine").with(teacherToken(tenant, "sub-hic-yok")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
+    void mine_yalnizTeacher_admin403_frontdesk403() throws Exception {
+        String tenant = "a4444444-4444-4444-4444-444444444444";
+        mockMvc.perform(get("/api/groups/mine").with(admin(tenant)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/groups/mine").with(token(tenant, "FRONTDESK")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mine_genelListeHalaTeacherKapali() throws Exception {
+        // /mine acildi ama genel /api/groups TEACHER'a HALA 403 (mevcut davranis korundu).
+        String tenant = "a5555555-5555-5555-5555-555555555555";
+        mockMvc.perform(get("/api/groups").with(token(tenant, "TEACHER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mine_crossTenant_sizmaz() throws Exception {
+        // Ayni sub iki tenant'ta; /mine yalnizca CARI tenant'in ogretmen grubunu doner.
+        String tenantA = "a6666666-6666-6666-6666-666666666666";
+        String tenantB = "a7777777-7777-7777-7777-777777777777";
+        String sub = "sub-cross";
+        long[] refsA = seedRefs(tenantA, "crossA");
+        long[] refsB = seedRefs(tenantB, "crossB");
+        long tA = createTeacherWithSub(tenantA, "CrossA", sub);
+        long tB = createTeacherWithSub(tenantB, "CrossB", sub);
+        createGroup(tenantA, grupJson("A Grup", refsA[0], tA, refsA[2]));
+        long gB = createGroup(tenantB, grupJson("B Grup", refsB[0], tB, refsB[2]));
+
+        // B baglaminda /mine -> sadece B'nin grubu (A sizmaz).
+        mockMvc.perform(get("/api/groups/mine").with(teacherToken(tenantB, sub)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].id").value((int) gB));
     }
 
     @Test

@@ -22,3 +22,17 @@ auth.artademi.com {
 	reverse_proxy keycloak:8080
 	encode gzip
 }
+
+# ───────── artademi.com (kök) → statik landing page ─────────
+# Landing dosyaları infra/landing/ altında; caddy container'ına /srv/landing olarak
+# bağlanır (docker-compose.prod.yml caddy volume). index.html + assets/ doğrudan servis edilir.
+artademi.com {
+	root * /srv/landing
+	file_server
+	encode gzip
+}
+
+# ───────── www.artademi.com → kök domaine kalıcı yönlendirme ─────────
+www.artademi.com {
+	redir https://artademi.com{uri} permanent
+}

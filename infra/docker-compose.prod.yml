@@ -34,7 +34,10 @@ services:
     container_name: artademi-keycloak
     restart: unless-stopped
     # PROD MODE: start-dev DEĞİL. HTTPS proxy arkasında çalışır.
-    command: ["start", "--optimized"]
+    # NOT: "start --optimized" önceden ayrı bir "kc.sh build" ister; tema volume + runtime config ile
+    # bu kurulumda kararsız olabiliyordu. "start" başlangıçta otomatik build eder → dev/prod'da sağlam.
+    # (Sunucudaki çalışan değer buysa repoyla eşleşir; farklıysa Sercan sunucudakine göre düzeltsin.)
+    command: ["start"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -60,7 +63,8 @@ services:
 
   backend:
     build:
-      context: ./backend
+      # Compose infra/ içinde çalıştırılır → context repo köküne göre ../backend (./backend DEĞİL).
+      context: ../backend
       dockerfile: Dockerfile
     container_name: artademi-backend
     restart: unless-stopped
@@ -87,7 +91,8 @@ services:
 
   web:
     build:
-      context: ./web
+      # Compose infra/ içinde çalıştırılır → context ../web (./web DEĞİL).
+      context: ../web
       dockerfile: Dockerfile
       args:
         # VITE_* BUILD sırasında gömülür → prod URL'leri buradan
@@ -109,6 +114,8 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Statik landing page (artademi.com) — infra/landing/ container'a bağlanır.
+      - ./landing:/srv/landing:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:

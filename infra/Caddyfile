@@ -1,0 +1,24 @@
+# Caddyfile — Artademi prod reverse proxy + otomatik HTTPS (Let's Encrypt)
+# Caddy SSL sertifikalarını OTOMATİK alır ve yeniler. Tek koşul: DNS bu sunucuya
+# işaret etmeli (app/auth A kayıtları → sunucu IP) ve 80/443 açık olmalı (UFW'de açtık).
+
+# ───────── app.artademi.com → frontend + /api → backend ─────────
+app.artademi.com {
+	# /api/* → backend (Spring Boot, container adı: backend, port 8081)
+	handle /api/* {
+		reverse_proxy backend:8081
+	}
+
+	# diğer her şey → frontend (nginx statik, container adı: web, port 80)
+	handle {
+		reverse_proxy web:80
+	}
+
+	encode gzip
+}
+
+# ───────── auth.artademi.com → Keycloak ─────────
+auth.artademi.com {
+	reverse_proxy keycloak:8080
+	encode gzip
+}

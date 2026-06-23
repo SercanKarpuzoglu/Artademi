@@ -1,0 +1,127 @@
+# docker-compose.prod.yml — Artademi PRODUCTION
+# Tek sunucuda: PostgreSQL + Keycloak + backend + web (frontend) + Caddy (SSL).
+# Sırlar .env.prod'dan gelir (bu dosyada sabit şifre YOK).
+# Kullanım:  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Domain: app.artademi.com (web + /api), auth.artademi.com (Keycloak)
+# Caddy 80/443'ü dinler, SSL'i otomatik alır. Diğer servisler DIŞARI port AÇMAZ
+# (sadece iç ağda konuşurlar) — güvenlik için kritik.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: artademi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: artademi
+      KEYCLOAK_DB_NAME: keycloak
+    volumes:
+      - artademi-postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    # DIŞARI PORT YOK — sadece iç ağ. (Yerelde 5433 açıktı; prod'da gerekmez/güvensiz.)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d artademi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [artademi]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: artademi-keycloak
+    restart: unless-stopped
+    # PROD MODE: start-dev DEĞİL. HTTPS proxy arkasında çalışır.
+    command: ["start", "--optimized"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Prod hostname — Keycloak kendini bu adresten bilsin (token issuer, redirect)
+      KC_HOSTNAME: https://auth.artademi.com
+      KC_HOSTNAME_STRICT: "false"
+      # Caddy HTTPS'i sonlandırıp HTTP olarak proxy'liyor → Keycloak proxy header'larına güvensin
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak-theme:/opt/keycloak/themes:ro
+    # DIŞARI PORT YOK — Caddy auth.artademi.com'u iç ağdan 8080'e proxy'ler
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [artademi]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: artademi-backend
+    restart: unless-stopped
+    environment:
+      # application.yml'in beklediği değişkenler (yerel .env ile aynı adlar)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/artademi
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SERVER_PORT: "8081"
+      # Keycloak issuer — prod auth alanı (token doğrulama buradan)
+      KEYCLOAK_ISSUER_URI: https://auth.artademi.com/realms/Artademi
+      # Keycloak Admin API (kullanıcı/provisioning) — service account
+      KEYCLOAK_BASE_URL: https://auth.artademi.com
+      KEYCLOAK_REALM: Artademi
+      KEYCLOAK_ADMIN_CLIENT_ID: artademi-backend
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+    # DIŞARI PORT YOK — Caddy /api'yi iç ağdan 8081'e proxy'ler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks: [artademi]
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        # VITE_* BUILD sırasında gömülür → prod URL'leri buradan
+        VITE_KEYCLOAK_URL: https://auth.artademi.com
+        VITE_KEYCLOAK_REALM: Artademi
+        VITE_KEYCLOAK_CLIENT_ID: artademi-app
+        # Tek alan: API aynı origin'de /api yolundan → boş base + /api
+        VITE_API_BASE_URL: https://app.artademi.com
+    container_name: artademi-web
+    restart: unless-stopped
+    networks: [artademi]
+
+  caddy:
+    image: caddy:2
+    container_name: artademi-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - backend
+      - keycloak
+    networks: [artademi]
+
+volumes:
+  artademi-postgres-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  artademi:
+    driver: bridge

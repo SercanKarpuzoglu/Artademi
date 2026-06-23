@@ -60,3 +60,5 @@ ios/
 # ---------- İşletim sistemi ----------
 .DS_Store
 Thumbs.db
+infra/.env.prod
+!infra/.env.prod.example

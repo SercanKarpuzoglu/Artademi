@@ -43,11 +43,15 @@ public class PlatformService {
         this.self = self;
     }
 
-    /** Tum tenant'lar (+ abonelik ozeti); status ve q (ad contains, ignore-case) opsiyonel filtreler. */
+    /**
+     * Tum tenant'lar (+ abonelik ozeti); status ve q (ad contains, ignore-case) opsiyonel filtreler.
+     * {@code status} verilmezse soft-delete'li ({@code SILINDI}) tenant'lar GIZLENIR; {@code SILINDI}
+     * acikca verilirse gosterilir (geri alma/denetim icin).
+     */
     @Transactional(readOnly = true)
     public List<PlatformTenantResponse> list(TenantStatus status, String q) {
         Specification<Tenant> spec = Specification
-                .where(hasStatus(status))
+                .where(statusFilter(status))
                 .and(adContains(q));
         List<Tenant> tenantList = repository.findAll(
                 spec, org.springframework.data.domain.Sort.by("ad").ascending());
@@ -117,8 +121,26 @@ public class PlatformService {
         return PlatformTenantResponse.from(tenant);
     }
 
-    private static Specification<Tenant> hasStatus(TenantStatus status) {
-        return (root, query, cb) -> status == null ? null : cb.equal(root.get("status"), status);
+    /**
+     * Tenant'i SOFT-DELETE eder ({@code status=SILINDI}): listede gizlenir, kullanicilari is
+     * uclarindan kilitlenir (TenantStatusInterceptor). VERI SILINMEZ — geri alinabilir (status'u
+     * AKTIF'e cevirerek). Idempotent; bilinmeyen id -> 404. Gercek kalici silme ayri/elle islemdir.
+     */
+    @Transactional
+    public PlatformTenantResponse softDelete(UUID id) {
+        Tenant tenant = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Tenant bulunamadı: " + id));
+        if (tenant.getStatus() != TenantStatus.SILINDI) {
+            tenant.setStatus(TenantStatus.SILINDI);
+        }
+        return PlatformTenantResponse.from(tenant);
+    }
+
+    /** status verilirse o duruma esitlik; verilmezse SILINDI haricini getir (soft-delete gizli). */
+    private static Specification<Tenant> statusFilter(TenantStatus status) {
+        return (root, query, cb) -> status == null
+                ? cb.notEqual(root.get("status"), TenantStatus.SILINDI)
+                : cb.equal(root.get("status"), status);
     }
 
     private static Specification<Tenant> adContains(String q) {

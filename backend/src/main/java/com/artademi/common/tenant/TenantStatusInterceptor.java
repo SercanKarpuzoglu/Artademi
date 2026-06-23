@@ -45,8 +45,9 @@ public class TenantStatusInterceptor implements HandlerInterceptor {
         if (tenant == null) {
             return true;
         }
-        // 4) ASKIDA -> 403 TENANT_SUSPENDED.
-        if (tenant.getStatus() == TenantStatus.ASKIDA) {
+        // 4) ASKIDA veya SILINDI (soft-delete) -> 403 TENANT_SUSPENDED. Ikisi de is uclarini keser;
+        //    /api/me muaf (bkz. TenantWebConfig) — kullanici durumunu gorebilir.
+        if (tenant.getStatus() == TenantStatus.ASKIDA || tenant.getStatus() == TenantStatus.SILINDI) {
             throw new TenantSuspendedException(
                     "Kurumunuzun erişimi askıya alınmıştır. Lütfen yöneticinizle iletişime geçin.");
         }

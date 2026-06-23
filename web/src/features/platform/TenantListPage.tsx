@@ -4,13 +4,20 @@ import { ApiException } from '../../api/client';
 import type { CreateTenantResult, PlatformTenant, TenantStatus } from '../../api/types';
 import { formatDate } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
-import { useTenants, useUpdateTenantStatus } from './usePlatformTenants';
+import { useSoftDeleteTenant, useTenants, useUpdateTenantStatus } from './usePlatformTenants';
 
 const STATUS_TABS: { label: string; value: TenantStatus | undefined }[] = [
   { label: 'Hepsi', value: undefined },
   { label: 'Aktif', value: 'AKTIF' },
   { label: 'Askıda', value: 'ASKIDA' },
+  { label: 'Silindi', value: 'SILINDI' },
 ];
+
+const STATUS_BADGE: Record<TenantStatus, { cls: string; label: string }> = {
+  AKTIF: { cls: 'b-green', label: 'Aktif' },
+  ASKIDA: { cls: 'b-red', label: 'Askıda' },
+  SILINDI: { cls: 'b-gray', label: 'Silindi' },
+};
 
 const inputClass =
   'rounded-[10px] border border-line bg-card px-3 py-2 text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-rasp';
@@ -51,6 +58,7 @@ export default function TenantListPage() {
 
   const query = useTenants({ q: debouncedQ.trim() || undefined, status });
   const statusMut = useUpdateTenantStatus();
+  const softDeleteMut = useSoftDeleteTenant();
 
   const tenants = query.data ?? [];
   const filtered = Boolean(debouncedQ.trim()) || status !== undefined;
@@ -69,6 +77,20 @@ export default function TenantListPage() {
       await statusMut.mutateAsync({ id: t.id, status: next });
     } catch (e) {
       setActionError(e instanceof ApiException ? e.message : 'Durum değiştirilemedi');
+    }
+  }
+
+  async function handleDelete(t: PlatformTenant) {
+    const ok = window.confirm(
+      `"${t.ad}" silinecek (soft-delete): listeden gizlenir ve tüm kullanıcıları kilitlenir. ` +
+        `Veri SİLİNMEZ; "Silindi" sekmesinden geri alınabilir. Devam edilsin mi?`,
+    );
+    if (!ok) return;
+    setActionError(null);
+    try {
+      await softDeleteMut.mutateAsync(t.id);
+    } catch (e) {
+      setActionError(e instanceof ApiException ? e.message : 'Silinemedi');
     }
   }
 
@@ -142,25 +164,41 @@ export default function TenantListPage() {
             </thead>
             <tbody>
               {tenants.map((t) => (
-                <tr key={t.id}>
+                <tr
+                  key={t.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/platform/tenants/${t.id}`)}
+                >
                   <td>
                     <b>{t.ad}</b>
                   </td>
                   <td>
-                    <span className={`badge ${t.status === 'AKTIF' ? 'b-green' : 'b-red'}`}>
-                      {t.status === 'AKTIF' ? 'Aktif' : 'Askıda'}
+                    <span className={`badge ${STATUS_BADGE[t.status].cls}`}>
+                      {STATUS_BADGE[t.status].label}
                     </span>
                   </td>
                   <td className="text-ink-soft">{formatCreatedAt(t.createdAt)}</td>
-                  <td className="t-right">
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={statusMut.isPending}
-                      onClick={() => handleToggle(t)}
-                    >
-                      {t.status === 'AKTIF' ? 'Askıya Al' : 'Aktif Et'}
-                    </button>
+                  <td className="t-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="inline-flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={statusMut.isPending}
+                        onClick={() => handleToggle(t)}
+                      >
+                        {t.status === 'AKTIF' ? 'Askıya Al' : 'Aktif Et'}
+                      </button>
+                      {t.status !== 'SILINDI' && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost text-red"
+                          disabled={softDeleteMut.isPending}
+                          onClick={() => handleDelete(t)}
+                        >
+                          Sil
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

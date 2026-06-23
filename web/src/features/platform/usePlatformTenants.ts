@@ -1,11 +1,15 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createTenant,
+  createTenantUser,
+  deleteTenantUser,
   getTenants,
+  getTenantUsers,
+  softDeleteTenant,
   updateTenantStatus,
   type GetTenantsParams,
 } from '../../api/platform';
-import type { CreateTenantInput, TenantStatus } from '../../api/types';
+import type { CreateTenantInput, CreateTenantUserInput, TenantStatus } from '../../api/types';
 
 /** Tenant listesi sorgusu. Filtre degisince onceki veriyi korur. */
 export function useTenants(params: GetTenantsParams) {
@@ -35,6 +39,47 @@ export function useUpdateTenantStatus() {
       updateTenantStatus(id, status),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['platform-tenants'] });
+    },
+  });
+}
+
+/** Tenant soft-delete; basarida liste tazelenir. */
+export function useSoftDeleteTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => softDeleteTenant(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-tenants'] });
+    },
+  });
+}
+
+/** Bir tenant'in kullanicilari. */
+export function useTenantUsers(tenantId: string) {
+  return useQuery({
+    queryKey: ['platform-tenant-users', tenantId],
+    queryFn: () => getTenantUsers(tenantId),
+  });
+}
+
+/** Tenant'a kullanici ekle; basarida o tenant'in kullanici listesi tazelenir. */
+export function useCreateTenantUser(tenantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateTenantUserInput) => createTenantUser(tenantId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-tenant-users', tenantId] });
+    },
+  });
+}
+
+/** Tenant'tan kullanici sil; basarida liste tazelenir. */
+export function useDeleteTenantUser(tenantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => deleteTenantUser(tenantId, userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['platform-tenant-users', tenantId] });
     },
   });
 }

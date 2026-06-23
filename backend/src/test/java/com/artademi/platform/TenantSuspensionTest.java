@@ -78,6 +78,15 @@ class TenantSuspensionTest {
     }
 
     @Test
+    void silindiTenant_isUcu403() throws Exception {
+        // Soft-delete edilmiş (SILINDI) tenant da ASKIDA gibi iş uçlarından kilitlenir.
+        String silindi = newTenant("Silindi Kurum", TenantStatus.SILINDI);
+        mockMvc.perform(get("/api/students").with(token(silindi, "ADMIN")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("TENANT_SUSPENDED"));
+    }
+
+    @Test
     void aktifTenant_isUcu200() throws Exception {
         String aktif = newTenant("Aktif Kurum", TenantStatus.AKTIF);
         mockMvc.perform(get("/api/students").with(token(aktif, "ADMIN")))

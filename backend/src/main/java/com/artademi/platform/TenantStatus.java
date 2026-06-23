@@ -5,11 +5,14 @@ package com.artademi.platform;
  *
  * <ul>
  *   <li>{@link #AKTIF} — normal kullanim (varsayilan).</li>
- *   <li>{@link #ASKIDA} — abonelik/odeme nedeniyle askiya alinmis (login engeli ILERIDE; bu surumde
- *       yalnizca alan tutulur).</li>
+ *   <li>{@link #ASKIDA} — abonelik/odeme nedeniyle askiya alinmis; kullanicilari is uclarindan
+ *       kilitlenir (403), {@code /api/me} acik. Geri alinabilir.</li>
+ *   <li>{@link #SILINDI} — platform tarafindan soft-delete; listede gizli, kullanicilari kilitli
+ *       (ASKIDA gibi). VERI SILINMEZ (geri alinabilir) — gercek kalici silme ayri/elle islemdir.</li>
  * </ul>
  */
 public enum TenantStatus {
     AKTIF,
-    ASKIDA
+    ASKIDA,
+    SILINDI
 }

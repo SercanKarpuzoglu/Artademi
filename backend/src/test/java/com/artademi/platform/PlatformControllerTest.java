@@ -1,8 +1,11 @@
 package com.artademi.platform;
 
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -188,6 +191,40 @@ class PlatformControllerTest {
         mockMvc.perform(patch("/api/platform/tenants/{id}/status",
                         "99999999-9999-9999-9999-999999999999").with(superAdmin())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"AKTIF\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void superAdmin_softDelete_listedeGizlenir_statusFiltreyleGorunur() throws Exception {
+        // Tenant oluştur -> id al
+        String body = mockMvc.perform(post("/api/platform/tenants").with(superAdmin())
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("Silinecek Kurum")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String id = objectMapper.readTree(body).path("data").path("tenant").path("id").asText();
+
+        // DELETE -> soft-delete (status=SILINDI), idempotent
+        mockMvc.perform(delete("/api/platform/tenants/{id}", id).with(superAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SILINDI"));
+        mockMvc.perform(delete("/api/platform/tenants/{id}", id).with(superAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SILINDI"));
+
+        // Varsayılan liste SILINDI'yi GİZLER (status'lar arasında SILINDI yok)
+        mockMvc.perform(get("/api/platform/tenants").with(superAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].status", everyItem(not("SILINDI"))));
+
+        // ?status=SILINDI ile AÇIKÇA görünür
+        mockMvc.perform(get("/api/platform/tenants").param("status", "SILINDI").with(superAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].id").value(org.hamcrest.Matchers.hasItem(id)));
+
+        // Bilinmeyen id -> 404
+        mockMvc.perform(delete("/api/platform/tenants/{id}",
+                        "99999999-9999-9999-9999-999999999999").with(superAdmin()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
     }

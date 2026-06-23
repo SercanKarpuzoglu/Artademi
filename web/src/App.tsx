@@ -25,6 +25,7 @@ import TeacherListPage from './features/teacher/TeacherListPage';
 import UserForm from './features/usermgmt/UserForm';
 import UserListPage from './features/usermgmt/UserListPage';
 import PlatformShell from './features/platform/PlatformShell';
+import TenantDetailPage from './features/platform/TenantDetailPage';
 import TenantForm from './features/platform/TenantForm';
 import TenantListPage from './features/platform/TenantListPage';
 import ProtectedRoute from './routes/ProtectedRoute';
@@ -65,6 +66,7 @@ function PlatformApp() {
         <Route index element={<Navigate to="/platform/tenants" replace />} />
         <Route path="tenants" element={<TenantListPage />} />
         <Route path="tenants/yeni" element={<TenantForm />} />
+        <Route path="tenants/:id" element={<TenantDetailPage />} />
       </Route>
       {/* super.admin iş route'larına URL ile giderse platform konsoluna dön (AppShell render etme). */}
       <Route path="*" element={<Navigate to="/platform" replace />} />

@@ -67,8 +67,8 @@ export interface MeResponse {
   tenantAdi: string | null;
 }
 
-/** Tenant durumu (AKTIF = erişim açık, ASKIDA = kullanıcıları kilitli). */
-export type TenantStatus = 'AKTIF' | 'ASKIDA';
+/** Tenant durumu (AKTIF = erişim açık, ASKIDA = kilitli, SILINDI = soft-delete: gizli + kilitli). */
+export type TenantStatus = 'AKTIF' | 'ASKIDA' | 'SILINDI';
 
 /** Backend TenantResponse ile birebir. */
 export interface TenantResponse {
@@ -100,6 +100,28 @@ export interface CreateTenantResult {
   tenant: PlatformTenant;
   admin: { username: string | null; email: string; provisioned: boolean };
   warning: string | null;
+}
+
+/** Platform konsolunda bir tenant'in kullanici satiri — backend TenantUserView. */
+export interface PlatformTenantUser {
+  id: string;
+  kullaniciAdi: string;
+  ad: string;
+  soyad: string;
+  email: string | null;
+  telefon: string | null;
+  roller: string[];
+  enabled: boolean;
+}
+
+/** Platform'dan tenant'a kullanici ekleme govdesi — backend CreateTenantUserRequest. */
+export interface CreateTenantUserInput {
+  kullaniciAdi: string;
+  ad: string;
+  soyad: string;
+  email?: string;
+  telefon?: string;
+  roller: string[];
 }
 
 /** Tenant adi guncelleme govdesi — backend UpdateTenantRequest. */

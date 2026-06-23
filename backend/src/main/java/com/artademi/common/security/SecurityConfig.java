@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -39,6 +40,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    /**
+     * CORS izinli origin'ler — ortamdan ({@code APP_CORS_ALLOWED_ORIGINS}, virgülle ayrık) okunur;
+     * varsayilan yerel gelistirme (web 5173 + backend 8081). Prod'da prod origin'i (ör.
+     * {@code https://app.artademi.com,https://artademi.com}) bu env ile verilir. {@code setAllowCredentials(true)}
+     * ile wildcard {@code *} kullanilamaz; origin'ler ACIKCA listelenir.
+     */
+    @Value("${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8081}")
+    private List<String> allowedOrigins;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -79,11 +89,11 @@ public class SecurityConfig {
                 .collect(Collectors.toList());
     }
 
-    /** Yerel gelistirme icin basit CORS: web (5173) ve backend (8081). */
+    /** CORS: izinli origin'ler {@link #allowedOrigins}'ten (env-driven; dev=localhost, prod=app domain). */
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:8081"));
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

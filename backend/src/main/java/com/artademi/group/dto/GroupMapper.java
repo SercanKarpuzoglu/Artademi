@@ -2,7 +2,9 @@ package com.artademi.group.dto;
 
 import com.artademi.branch.Branch;
 import com.artademi.group.Group;
+import com.artademi.group.GrupTipi;
 import com.artademi.room.Room;
+import com.artademi.teacher.HakedisTipi;
 import com.artademi.teacher.Teacher;
 
 /**
@@ -24,20 +26,32 @@ public final class GroupMapper {
     /** Yeni grup olusturur; aktif true ile baslar (entity varsayilani). */
     public static Group toNewEntity(CreateGroupRequest req, Branch brans, Teacher ogretmen, Room salon) {
         Group g = Group.create();
-        apply(g, req.ad(), req.tip(), brans, ogretmen, salon, req.seviye(), req.aylikAidat(), req.dersBasiUcret());
+        apply(g, req.ad(), req.tip(), req.hakedisTipi(), brans, ogretmen, salon, req.seviye(),
+                req.aylikAidat(), req.dersBasiUcret());
         g.setAktif(true);
         return g;
     }
 
     /** Mevcut grubun alanlarini gunceller; aktif'e DOKUNMAZ. */
     public static void applyUpdate(Group g, UpdateGroupRequest req, Branch brans, Teacher ogretmen, Room salon) {
-        apply(g, req.ad(), req.tip(), brans, ogretmen, salon, req.seviye(), req.aylikAidat(), req.dersBasiUcret());
+        apply(g, req.ad(), req.tip(), req.hakedisTipi(), brans, ogretmen, salon, req.seviye(),
+                req.aylikAidat(), req.dersBasiUcret());
     }
 
-    private static void apply(Group g, String ad, com.artademi.group.GrupTipi tip, Branch brans, Teacher ogretmen,
-            Room salon, String seviye, java.math.BigDecimal aylikAidat, java.math.BigDecimal dersBasiUcret) {
+    /**
+     * Model C: grup tipinden varsayilan hakedis tipi. GRUP->SAATLIK, OZEL->OZEL_DERS. Istekte
+     * hakedisTipi verilmediyse bu uygulanir; verildiyse istemcininki korunur.
+     */
+    private static HakedisTipi defaultHakedisTipi(GrupTipi tip) {
+        return tip == GrupTipi.OZEL ? HakedisTipi.OZEL_DERS : HakedisTipi.SAATLIK;
+    }
+
+    private static void apply(Group g, String ad, GrupTipi tip, HakedisTipi hakedisTipi, Branch brans,
+            Teacher ogretmen, Room salon, String seviye, java.math.BigDecimal aylikAidat,
+            java.math.BigDecimal dersBasiUcret) {
         g.setAd(ad);
         g.setTip(tip);
+        g.setHakedisTipi(hakedisTipi != null ? hakedisTipi : defaultHakedisTipi(tip));
         g.setBrans(brans);
         g.setOgretmen(ogretmen);
         g.setSeviye(seviye);

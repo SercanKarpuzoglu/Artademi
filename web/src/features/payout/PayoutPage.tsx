@@ -43,7 +43,7 @@ function HesaplaCard() {
   const [donem, setDonem] = useState('');
   const [kdvOrani, setKdvOrani] = useState('');
 
-  const [onizleme, setOnizleme] = useState<PayoutResponse | null>(null);
+  const [onizleme, setOnizleme] = useState<PayoutResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -64,6 +64,9 @@ function HesaplaCard() {
     try {
       const data = await onizlePayout(buildPayload());
       setOnizleme(data);
+      if (data.length === 0) {
+        setError('Bu öğretmen için bu dönemde hesaplanacak grup/hakediş bulunamadı.');
+      }
     } catch (e) {
       setOnizleme(null);
       setError(e instanceof ApiException ? e.message : 'Önizleme başarısız oldu.');
@@ -86,7 +89,7 @@ function HesaplaCard() {
       if (e instanceof ApiException) {
         setError(
           e.code === 'CONFLICT'
-            ? 'Bu öğretmen için bu dönemde hakediş zaten hesaplanmış.'
+            ? 'Bu öğretmen için bu dönemde bu hakediş tipi zaten hesaplanmış.'
             : e.message,
         );
       } else {
@@ -165,14 +168,21 @@ function HesaplaCard() {
         </div>
       )}
 
-      {onizleme && <DokumBox payout={onizleme} />}
+      {onizleme && onizleme.length > 0 && (
+        <div className="space-y-2">
+          {onizleme.map((p) => (
+            <DokumBox key={p.hakedisTipi} payout={p} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-/** Önizleme dökümü — kayıt YAZILMAMIŞTIR. Tipe gore farkli satir gosterir. */
+/** Önizleme dökümü — kayıt YAZILMAMIŞTIR. Model C: tip basina bir kutu; tipe gore farkli satir. */
 function DokumBox({ payout }: { payout: PayoutResponse }) {
   const { dokum } = payout;
+  const isSession = payout.hakedisTipi === 'SAATLIK' || payout.hakedisTipi === 'OZEL_DERS';
   return (
     <div className="rounded-[12px] border border-line bg-paper px-4 py-3 space-y-1.5">
       <div className="flex items-center gap-2">
@@ -182,7 +192,7 @@ function DokumBox({ payout }: { payout: PayoutResponse }) {
         <span className="badge b-amber">Önizleme — kaydedilmedi</span>
       </div>
 
-      {payout.hakedisTipi === 'SAATLIK' ? (
+      {isSession ? (
         <p className="text-[13.5px] text-ink">
           Ders sayısı: {dokum.dersSayisi ?? '—'} ×{' '}
           <span className="amount">{formatMoney(dokum.birimUcret)} ₺</span> ={' '}

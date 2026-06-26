@@ -1,16 +1,14 @@
 package com.artademi.teacher.dto;
 
-import com.artademi.teacher.HakedisTipi;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
  * Ogretmen guncelleme istegi. aktif BURADAN degismez (ona ozel PATCH endpoint var).
  *
- * <p>Hakedis tutarliligi {@link HakedisTutarli} ile; brans atamasi {@code bransIds} ile
- * topluca yeniden kurulur (serviste her id {@code findScopedById} ile tenant-guvenli dogrulanir).
+ * <p>Model C: {@code hakedisler} ogretmenin TANIMLADIGI hakedis tipleri + oranlari (en az 1); liste
+ * tutarliligi {@link HakedisTutarli} ile. Brans atamasi {@code bransIds} ile topluca yeniden kurulur
+ * (serviste her id {@code findScopedById} ile tenant-guvenli dogrulanir).
  */
 @HakedisTutarli
 public record UpdateTeacherRequest(
@@ -24,11 +22,7 @@ public record UpdateTeacherRequest(
         String email,
         String keycloakUserId,
 
-        @NotNull(message = "Hakediş tipi zorunludur")
-        HakedisTipi hakedisTipi,
-
-        BigDecimal saatlikUcret,
-        BigDecimal ciroOrani,
+        List<HakedisSatiriRequest> hakedisler,
 
         List<Long> bransIds) implements HakedisBilgisi {
 }

@@ -84,11 +84,12 @@ class TeacherControllerTest {
         return objectMapper.readTree(body).path("data").path("id").asLong();
     }
 
-    /** Gecerli SAATLIK ogretmen JSON'u (istenirse bransIds eklenir). */
+    /** Gecerli SAATLIK ogretmen JSON'u (Model C: hakedisler listesi; istenirse bransIds eklenir). */
     private String saatlikJson(String bransIdsJsonArray) {
         String branslar = bransIdsJsonArray == null ? "[]" : bransIdsJsonArray;
-        return "{\"ad\":\"Ayşe\",\"soyad\":\"Yılmaz\",\"hakedisTipi\":\"SAATLIK\","
-                + "\"saatlikUcret\":200.00,\"bransIds\":" + branslar + "}";
+        return "{\"ad\":\"Ayşe\",\"soyad\":\"Yılmaz\","
+                + "\"hakedisler\":[{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}],"
+                + "\"bransIds\":" + branslar + "}";
     }
 
     private long createTeacher(String tenantId, String json) throws Exception {
@@ -127,10 +128,13 @@ class TeacherControllerTest {
         long teacherId = createTeacher(tenant,
                 saatlikJson("[" + bransPiyano + "," + bransGitar + "]"));
 
-        // TeacherResponse.branslar 2 oge.
+        // TeacherResponse.branslar 2 oge + hakedisler 1 SAATLIK satiri.
         mockMvc.perform(get("/api/teachers/{id}", teacherId).with(admin(tenant)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.branslar", hasSize(2)));
+                .andExpect(jsonPath("$.data.branslar", hasSize(2)))
+                .andExpect(jsonPath("$.data.hakedisler", hasSize(1)))
+                .andExpect(jsonPath("$.data.hakedisler[0].tip").value("SAATLIK"))
+                .andExpect(jsonPath("$.data.hakedisler[0].saatlikUcret").value(200.00));
 
         // ?bransId=<biri> o ogretmeni dondurur.
         mockMvc.perform(get("/api/teachers").param("bransId", String.valueOf(bransPiyano)).with(admin(tenant)))
@@ -155,13 +159,41 @@ class TeacherControllerTest {
 
     @Test
     void hakedisValidasyonu_saatlikUcretYok_400() throws Exception {
+        // SAATLIK satiri var ama saatlikUcret yok -> hakedisler[0].saatlikUcret alanina hata.
         mockMvc.perform(post("/api/teachers")
                         .with(admin(TENANT_A))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ad\":\"Ayşe\",\"soyad\":\"Yılmaz\",\"hakedisTipi\":\"SAATLIK\"}"))
+                        .content("{\"ad\":\"Ayşe\",\"soyad\":\"Yılmaz\","
+                                + "\"hakedisler\":[{\"tip\":\"SAATLIK\"}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.error.fields.saatlikUcret").exists());
+                .andExpect(jsonPath("$.error.fields['hakedisler[0].saatlikUcret']").exists());
+    }
+
+    @Test
+    void hakedisValidasyonu_bosListe_400() throws Exception {
+        // Model C: en az 1 hakedis satiri zorunlu.
+        mockMvc.perform(post("/api/teachers")
+                        .with(admin(TENANT_A))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ad\":\"Ayşe\",\"soyad\":\"Yılmaz\",\"hakedisler\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fields.hakedisler").exists());
+    }
+
+    @Test
+    void hakedisValidasyonu_ayniTipTekrar_400() throws Exception {
+        // Model C: ayni tip birden fazla kez girilemez.
+        mockMvc.perform(post("/api/teachers")
+                        .with(admin(TENANT_A))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ad\":\"Ali\",\"soyad\":\"Demir\",\"hakedisler\":["
+                                + "{\"tip\":\"SAATLIK\",\"saatlikUcret\":100.00},"
+                                + "{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fields.hakedisler").exists());
     }
 
     @Test
@@ -170,19 +202,35 @@ class TeacherControllerTest {
         mockMvc.perform(post("/api/teachers")
                         .with(admin(TENANT_A))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ad\":\"Ali\",\"soyad\":\"Demir\",\"hakedisTipi\":\"CIRO_ORANI\",\"ciroOrani\":0}"))
+                        .content("{\"ad\":\"Ali\",\"soyad\":\"Demir\","
+                                + "\"hakedisler\":[{\"tip\":\"CIRO_ORANI\",\"ciroOrani\":0}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.error.fields.ciroOrani").exists());
+                .andExpect(jsonPath("$.error.fields['hakedisler[0].ciroOrani']").exists());
 
         // oran > 100 -> gecersiz.
         mockMvc.perform(post("/api/teachers")
                         .with(admin(TENANT_A))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ad\":\"Ali\",\"soyad\":\"Demir\",\"hakedisTipi\":\"CIRO_ORANI\",\"ciroOrani\":150}"))
+                        .content("{\"ad\":\"Ali\",\"soyad\":\"Demir\","
+                                + "\"hakedisler\":[{\"tip\":\"CIRO_ORANI\",\"ciroOrani\":150}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.error.fields.ciroOrani").exists());
+                .andExpect(jsonPath("$.error.fields['hakedisler[0].ciroOrani']").exists());
+    }
+
+    @Test
+    void cokluHakedis_uclu_listeDoner() throws Exception {
+        // Model C: ogretmen 3 tipi de TANIMLAYABILIR; response listede 3 satir doner.
+        String tenant = "55555555-5555-5555-5555-555555555555";
+        String json = "{\"ad\":\"Karma\",\"soyad\":\"Hoca\",\"hakedisler\":["
+                + "{\"tip\":\"SAATLIK\",\"saatlikUcret\":350.00},"
+                + "{\"tip\":\"CIRO_ORANI\",\"ciroOrani\":10.00},"
+                + "{\"tip\":\"OZEL_DERS\",\"dersBasiUcret\":500.00}],\"bransIds\":[]}";
+        long id = createTeacher(tenant, json);
+        mockMvc.perform(get("/api/teachers/{id}", id).with(admin(tenant)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hakedisler", hasSize(3)));
     }
 
     @Test
@@ -236,7 +284,8 @@ class TeacherControllerTest {
         mockMvc.perform(post("/api/teachers")
                         .with(admin(TENANT_A))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ad\":\"\",\"soyad\":\"\",\"hakedisTipi\":\"SAATLIK\",\"saatlikUcret\":200.00}"))
+                        .content("{\"ad\":\"\",\"soyad\":\"\","
+                                + "\"hakedisler\":[{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }

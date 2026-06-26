@@ -114,8 +114,8 @@ class AttendanceControllerTest {
     /** keycloakUserId opsiyonel (TEACHER koprusu icin sub ile eslesir). */
     private long createTeacher(String tenantId, String ad, String keycloakUserId) throws Exception {
         StringBuilder json = new StringBuilder("{\"ad\":\"").append(ad)
-                .append("\",\"soyad\":\"Hoca\",\"hakedisTipi\":\"SAATLIK\",")
-                .append("\"saatlikUcret\":200.00,\"bransIds\":[]");
+                .append("\",\"soyad\":\"Hoca\",")
+                .append("\"hakedisler\":[{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}],\"bransIds\":[]");
         if (keycloakUserId != null) {
             json.append(",\"keycloakUserId\":\"").append(keycloakUserId).append("\"");
         }

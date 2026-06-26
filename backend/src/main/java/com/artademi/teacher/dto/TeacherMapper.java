@@ -3,6 +3,7 @@ package com.artademi.teacher.dto;
 import com.artademi.branch.Branch;
 import com.artademi.teacher.Teacher;
 import com.artademi.teacher.TeacherBranch;
+import com.artademi.teacher.TeacherHakedis;
 import java.util.List;
 
 /**
@@ -10,8 +11,10 @@ import java.util.List;
  * yonetilmez: tenant @PrePersist'te TenantContext'ten gelir, aktif ise serviste
  * (yeni kayitta true, degisiklikte PATCH endpoint'i) yonetilir.
  *
- * <p>Brans atamasi (branchLinks), tenant-guvenli cozulmus {@link Branch}'lerle yapilir;
- * cozumleme (findScopedById ile) servis katmaninda yapilir, mapper yalnizca baglar.
+ * <p>Brans atamasi (branchLinks) ve hakedis listesi (Model C), reconcile setter'lar uzerinden
+ * uzlastirilir (mevcutlar korunur, yalnizca delta degisir). Branslar tenant-guvenli cozulmus
+ * {@link Branch}'lerle baglanir (cozumleme servis katmaninda); hakedis satirlari dogrudan
+ * istekten kurulur (tenant'a bagimli referans yok).
  */
 public final class TeacherMapper {
 
@@ -26,25 +29,21 @@ public final class TeacherMapper {
         t.setTelefon(req.telefon());
         t.setEmail(req.email());
         t.setKeycloakUserId(req.keycloakUserId());
-        t.setHakedisTipi(req.hakedisTipi());
-        t.setSaatlikUcret(req.saatlikUcret());
-        t.setCiroOrani(req.ciroOrani());
         t.setAktif(true);
         applyBranchLinks(t, branches);
+        applyHakedisler(t, req.hakedisler());
         return t;
     }
 
-    /** Mevcut ogretmenin alanlarini gunceller; aktif'e DOKUNMAZ. Brans atamasini yeniden kurar. */
+    /** Mevcut ogretmenin alanlarini gunceller; aktif'e DOKUNMAZ. Brans + hakedis atamasini yeniden kurar. */
     public static void applyUpdate(Teacher t, UpdateTeacherRequest req, List<Branch> branches) {
         t.setAd(req.ad());
         t.setSoyad(req.soyad());
         t.setTelefon(req.telefon());
         t.setEmail(req.email());
         t.setKeycloakUserId(req.keycloakUserId());
-        t.setHakedisTipi(req.hakedisTipi());
-        t.setSaatlikUcret(req.saatlikUcret());
-        t.setCiroOrani(req.ciroOrani());
         applyBranchLinks(t, branches);
+        applyHakedisler(t, req.hakedisler());
     }
 
     private static void applyBranchLinks(Teacher t, List<Branch> branches) {
@@ -52,5 +51,12 @@ public final class TeacherMapper {
                 .map(TeacherBranch::of)
                 .toList();
         t.setBranchLinks(links);
+    }
+
+    private static void applyHakedisler(Teacher t, List<HakedisSatiriRequest> rows) {
+        List<TeacherHakedis> hakedisler = rows == null ? List.of() : rows.stream()
+                .map(r -> TeacherHakedis.of(r.tip(), r.saatlikUcret(), r.ciroOrani(), r.dersBasiUcret()))
+                .toList();
+        t.setHakedisler(hakedisler);
     }
 }

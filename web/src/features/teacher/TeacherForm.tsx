@@ -1,12 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
-import type { TeacherResponse } from '../../api/types';
+import type { HakedisTipi, TeacherResponse } from '../../api/types';
 import { useBranches } from '../branch/useBranches';
+import { HAKEDIS_LABEL } from './teacherDisplay';
 import { TeacherFormValues, teacherSchema, toPayload } from './teacherSchema';
 import { useCreateTeacher, useTeacher, useUpdateTeacher } from './useTeachers';
+
+const ALL_TIPLER: HakedisTipi[] = ['SAATLIK', 'CIRO_ORANI', 'OZEL_DERS'];
 
 const EMPTY: TeacherFormValues = {
   ad: '',
@@ -14,9 +17,7 @@ const EMPTY: TeacherFormValues = {
   telefon: '',
   email: '',
   keycloakUserId: '',
-  hakedisTipi: 'SAATLIK',
-  saatlikUcret: '',
-  ciroOrani: '',
+  hakedisler: [{ tip: 'SAATLIK', saatlikUcret: '', ciroOrani: '', dersBasiUcret: '' }],
   bransIds: [],
 };
 
@@ -30,11 +31,25 @@ function toFormValues(t: TeacherResponse): TeacherFormValues {
     telefon: v(t.telefon),
     email: v(t.email),
     keycloakUserId: v(t.keycloakUserId),
-    hakedisTipi: t.hakedisTipi,
-    saatlikUcret: money(t.saatlikUcret),
-    ciroOrani: money(t.ciroOrani),
+    hakedisler:
+      t.hakedisler.length > 0
+        ? t.hakedisler.map((h) => ({
+            tip: h.tip,
+            saatlikUcret: money(h.saatlikUcret),
+            ciroOrani: money(h.ciroOrani),
+            dersBasiUcret: money(h.dersBasiUcret),
+          }))
+        : [{ tip: 'SAATLIK', saatlikUcret: '', ciroOrani: '', dersBasiUcret: '' }],
     bransIds: t.branslar.map((b) => b.id),
   };
+}
+
+/**
+ * Backend error.fields anahtarlarini RHF path'ine cevirir: "hakedisler[0].saatlikUcret" ->
+ * "hakedisler.0.saatlikUcret" (RHF noktayla indeksler). Diger anahtarlar oldugu gibi gecer.
+ */
+function toRhfPath(field: string): string {
+  return field.replace(/\[(\d+)\]/g, '.$1');
 }
 
 const inputClass =
@@ -69,13 +84,19 @@ export default function TeacherForm() {
     defaultValues: EMPTY,
   });
 
+  const { fields, append, remove } = useFieldArray({ control, name: 'hakedisler' });
+
   useEffect(() => {
     if (isEdit && teacherQuery.data) {
       reset(toFormValues(teacherQuery.data));
     }
   }, [isEdit, teacherQuery.data, reset]);
 
-  const hakedisTipi = watch('hakedisTipi');
+  const hakedisRows = watch('hakedisler');
+  const kullanilan = new Set(hakedisRows?.map((r) => r.tip));
+  const eklenebilir = ALL_TIPLER.filter((t) => !kullanilan.has(t));
+  // Liste duzeyi hata mesaji (bos liste / mukerrer tip) — array'in kokune baglanir.
+  const listError = (errors.hakedisler as { message?: string } | undefined)?.message;
 
   async function onSubmit(values: TeacherFormValues) {
     setFormError(null);
@@ -91,7 +112,8 @@ export default function TeacherForm() {
       if (e instanceof ApiException) {
         if (e.code === 'VALIDATION_ERROR' && e.fields) {
           for (const [field, message] of Object.entries(e.fields)) {
-            setError(field as keyof TeacherFormValues, { message });
+            // RHF path'i: "hakedisler[0].saatlikUcret" -> "hakedisler.0.saatlikUcret".
+            setError(toRhfPath(field) as never, { message });
           }
           setFormError('Lütfen işaretli alanları düzeltin.');
         } else {
@@ -154,24 +176,94 @@ export default function TeacherForm() {
         </section>
 
         <section className="card space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700">Hakediş</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Hakediş Tipi" required error={errors.hakedisTipi?.message}>
-              <select className={inputClass} {...register('hakedisTipi')}>
-                <option value="SAATLIK">Saatlik</option>
-                <option value="CIRO_ORANI">Cirodan (Oran)</option>
-              </select>
-            </Field>
-            {hakedisTipi === 'SAATLIK' ? (
-              <Field label="Saatlik Ücret (₺)" required error={errors.saatlikUcret?.message}>
-                <input className={inputClass} inputMode="decimal" {...register('saatlikUcret')} />
-              </Field>
-            ) : (
-              <Field label="Ciro Oranı (%)" required error={errors.ciroOrani?.message}>
-                <input className={inputClass} inputMode="decimal" {...register('ciroOrani')} />
-              </Field>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">Hakediş Tipleri</h2>
+            {eklenebilir.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() =>
+                  append({
+                    tip: eklenebilir[0],
+                    saatlikUcret: '',
+                    ciroOrani: '',
+                    dersBasiUcret: '',
+                  })
+                }
+              >
+                + Hakediş Tipi Ekle
+              </button>
             )}
           </div>
+          <p className="text-[13px] text-ink-soft">
+            Öğretmen birden çok hakediş tipi tanımlayabilir; hangi tipin uygulanacağını grup belirler.
+          </p>
+
+          {listError && <p className="text-xs text-red-600">{listError}</p>}
+
+          {fields.map((row, i) => {
+            const rowErrors = errors.hakedisler?.[i];
+            const tip = hakedisRows?.[i]?.tip;
+            return (
+              <div key={row.id} className="rounded-[12px] border border-line bg-paper p-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Hakediş Tipi" required error={rowErrors?.tip?.message}>
+                    <select className={inputClass} {...register(`hakedisler.${i}.tip` as const)}>
+                      {ALL_TIPLER.map((t) => (
+                        <option key={t} value={t}>
+                          {HAKEDIS_LABEL[t]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  {tip === 'SAATLIK' && (
+                    <Field
+                      label="Saatlik Ücret (₺)"
+                      required
+                      error={rowErrors?.saatlikUcret?.message}
+                    >
+                      <input
+                        className={inputClass}
+                        inputMode="decimal"
+                        {...register(`hakedisler.${i}.saatlikUcret` as const)}
+                      />
+                    </Field>
+                  )}
+                  {tip === 'CIRO_ORANI' && (
+                    <Field label="Ciro Oranı (%)" required error={rowErrors?.ciroOrani?.message}>
+                      <input
+                        className={inputClass}
+                        inputMode="decimal"
+                        {...register(`hakedisler.${i}.ciroOrani` as const)}
+                      />
+                    </Field>
+                  )}
+                  {tip === 'OZEL_DERS' && (
+                    <Field
+                      label="Ders Başı Ücret (₺)"
+                      required
+                      error={rowErrors?.dersBasiUcret?.message}
+                    >
+                      <input
+                        className={inputClass}
+                        inputMode="decimal"
+                        {...register(`hakedisler.${i}.dersBasiUcret` as const)}
+                      />
+                    </Field>
+                  )}
+                </div>
+
+                {fields.length > 1 && (
+                  <div className="mt-3 flex justify-end">
+                    <button type="button" className="btn btn-ghost" onClick={() => remove(i)}>
+                      Kaldır
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </section>
 
         <section className="card space-y-4">

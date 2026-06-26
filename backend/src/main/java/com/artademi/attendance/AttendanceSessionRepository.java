@@ -46,6 +46,16 @@ public interface AttendanceSessionRepository
     long countByOgretmenAndTarihAraligi(@Param("ogretmenId") Long ogretmenId,
             @Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    /**
+     * BELIRLI bir grubun [from,to] araligindaki yoklama OTURUMU sayisi (her oturum = 1 ders birimi).
+     * Model C: hakedis tipi gruba bagli oldugundan SAATLIK/OZEL_DERS hesabi grup bazinda yapilir.
+     * JPQL oldugu icin tenant filtresine tabidir (yalnizca aktif tenant).
+     */
+    @Query("SELECT COUNT(s) FROM AttendanceSession s "
+            + "WHERE s.grup.id = :grupId AND s.tarih BETWEEN :from AND :to")
+    long countByGrupAndTarihAraligi(@Param("grupId") Long grupId,
+            @Param("from") LocalDate from, @Param("to") LocalDate to);
+
     // NOT: grup + [from,to] tarih araligi sorgusu, opsiyonel sinirlarda Postgres untyped-null
     // hatasini onlemek icin Specification ile yapilir (bkz. AttendanceSessionSpecifications +
     // AttendanceService.listByGroup), JPQL "IS NULL OR" anti-pattern'i ile DEGIL.

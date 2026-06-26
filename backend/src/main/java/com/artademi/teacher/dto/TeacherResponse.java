@@ -10,8 +10,9 @@ import java.util.List;
 /**
  * Ogretmen yanit DTO'su. Entity disariya dogrudan donmez. tenant_id sizdirilmaz.
  *
- * <p>{@code branslar}: ogretmene atanmis branslarin {@link BranchRef} ozetleri (branchLinks'ten
- * map'lenir). Branch, TeacherBranch.branch @ManyToOne uzerinden tenant-filtreli yuklenir.
+ * <p>Model C: {@code hakedisler} ogretmenin TANIMLADIGI hakedis tipleri + oranlari (her tip icin
+ * yalnizca eslesen tutar alani dolu). {@code branslar} atanmis branslarin {@link BranchRef}
+ * ozetleri (branchLinks'ten map'lenir).
  */
 public record TeacherResponse(
         Long id,
@@ -20,9 +21,7 @@ public record TeacherResponse(
         String telefon,
         String email,
         String keycloakUserId,
-        HakedisTipi hakedisTipi,
-        BigDecimal saatlikUcret,
-        BigDecimal ciroOrani,
+        List<HakedisRow> hakedisler,
         boolean aktif,
         List<BranchRef> branslar,
         Instant olusturulmaTarihi,
@@ -32,10 +31,26 @@ public record TeacherResponse(
     public record BranchRef(Long id, String ad) {
     }
 
+    /**
+     * Tek hakedis satiri ozeti (Model C). Yalnizca {@code tip} ile eslesen tutar alani doludur,
+     * digerleri null.
+     */
+    public record HakedisRow(
+            HakedisTipi tip,
+            BigDecimal saatlikUcret,
+            BigDecimal ciroOrani,
+            BigDecimal dersBasiUcret) {
+    }
+
     public static TeacherResponse from(Teacher t) {
         List<BranchRef> branslar = t.getBranchLinks().stream()
                 .map(link -> new BranchRef(link.getBranch().getId(), link.getBranch().getAd()))
                 .sorted(Comparator.comparing(BranchRef::ad, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .toList();
+        List<HakedisRow> hakedisler = t.getHakedisler().stream()
+                .map(h -> new HakedisRow(h.getTip(), h.getSaatlikUcret(), h.getCiroOrani(),
+                        h.getDersBasiUcret()))
+                .sorted(Comparator.comparing(h -> h.tip().name()))
                 .toList();
         return new TeacherResponse(
                 t.getId(),
@@ -44,9 +59,7 @@ public record TeacherResponse(
                 t.getTelefon(),
                 t.getEmail(),
                 t.getKeycloakUserId(),
-                t.getHakedisTipi(),
-                t.getSaatlikUcret(),
-                t.getCiroOrani(),
+                hakedisler,
                 t.isAktif(),
                 branslar,
                 t.getOlusturulmaTarihi(),

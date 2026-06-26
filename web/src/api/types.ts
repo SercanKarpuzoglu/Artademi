@@ -227,8 +227,8 @@ export interface RoomInput {
   aciklama?: string;
 }
 
-/** Öğretmen hakediş tipi. */
-export type HakedisTipi = 'SAATLIK' | 'CIRO_ORANI';
+/** Öğretmen/grup hakediş tipi (Model C). */
+export type HakedisTipi = 'SAATLIK' | 'CIRO_ORANI' | 'OZEL_DERS';
 
 /** Öğretmenin bağlı olduğu branş referansı (özet). */
 export interface TeacherBranchRef {
@@ -236,7 +236,18 @@ export interface TeacherBranchRef {
   ad: string;
 }
 
-/** Öğretmen yaniti — backend TeacherResponse. Para alanlari number VEYA string gelebilir. */
+/**
+ * Öğretmenin TANIMLADIĞI tek hakediş satırı (Model C) — backend TeacherResponse.HakedisRow.
+ * Yalnızca tip ile eşleşen para alanı doludur; diğerleri null. Para alanlari number VEYA string.
+ */
+export interface TeacherHakedisRow {
+  tip: HakedisTipi;
+  saatlikUcret: string | number | null;
+  ciroOrani: string | number | null;
+  dersBasiUcret: string | number | null;
+}
+
+/** Öğretmen yaniti — backend TeacherResponse. Model C: hakedisler listesi. */
 export interface TeacherResponse {
   id: number;
   ad: string;
@@ -244,9 +255,7 @@ export interface TeacherResponse {
   telefon: string | null;
   email: string | null;
   keycloakUserId: string | null;
-  hakedisTipi: HakedisTipi;
-  saatlikUcret: string | number | null;
-  ciroOrani: string | number | null;
+  hakedisler: TeacherHakedisRow[];
   aktif: boolean;
   branslar: TeacherBranchRef[];
   olusturulmaTarihi: string;
@@ -254,8 +263,19 @@ export interface TeacherResponse {
 }
 
 /**
- * Öğretmen olusturma/guncelleme govdesi. Para alanlari (saatlikUcret/ciroOrani) BigDecimal
- * hassasiyetini korumak icin STRING gonderilir; hakediş tipine gore yalnizca ilgili alan eklenir.
+ * Öğretmen olusturma/guncelleme govdesindeki tek hakediş satırı (Model C). Para alanlari BigDecimal
+ * hassasiyetini korumak icin STRING gonderilir; yalnizca tip ile eslesen alan doldurulur.
+ */
+export interface HakedisSatiriInput {
+  tip: HakedisTipi;
+  saatlikUcret?: string;
+  ciroOrani?: string;
+  dersBasiUcret?: string;
+}
+
+/**
+ * Öğretmen olusturma/guncelleme govdesi (Model C). {@code hakedisler} en az 1 satir; her tip &le;1
+ * kez. Para alanlari STRING gonderilir.
  */
 export interface TeacherInput {
   ad: string;
@@ -263,9 +283,7 @@ export interface TeacherInput {
   telefon?: string;
   email?: string;
   keycloakUserId?: string;
-  hakedisTipi: HakedisTipi;
-  saatlikUcret?: string;
-  ciroOrani?: string;
+  hakedisler: HakedisSatiriInput[];
   bransIds: number[];
 }
 
@@ -292,6 +310,7 @@ export interface GroupResponse {
   id: number;
   ad: string;
   tip: GrupTipi;
+  hakedisTipi: HakedisTipi;
   brans: GroupRef | null;
   ogretmen: GroupTeacherRef | null;
   salon: GroupRef | null;
@@ -310,6 +329,8 @@ export interface GroupResponse {
 export interface GroupInput {
   ad: string;
   tip: GrupTipi;
+  /** Model C: opsiyonel; verilmezse backend grup tipinden varsayilan atar (GRUP→SAATLIK, OZEL→OZEL_DERS). */
+  hakedisTipi?: HakedisTipi;
   bransId: number;
   ogretmenId: number;
   salonId?: number;

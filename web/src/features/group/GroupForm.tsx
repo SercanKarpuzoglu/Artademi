@@ -13,6 +13,7 @@ import { useCreateGroup, useGroup, useUpdateGroup } from './useGroups';
 const EMPTY: GroupFormValues = {
   ad: '',
   tip: 'GRUP',
+  hakedisTipi: 'SAATLIK',
   bransId: 0,
   ogretmenId: 0,
   salonId: undefined,
@@ -21,12 +22,18 @@ const EMPTY: GroupFormValues = {
   dersBasiUcret: '',
 };
 
+/** Model C: grup tipinden varsayilan hakediş tipi (GRUP→SAATLIK, OZEL→OZEL_DERS). */
+function defaultHakedisTipi(tip: GroupFormValues['tip']): GroupFormValues['hakedisTipi'] {
+  return tip === 'OZEL' ? 'OZEL_DERS' : 'SAATLIK';
+}
+
 function toFormValues(g: GroupResponse): GroupFormValues {
   const money = (x: string | number | null) =>
     x === null || x === undefined ? '' : String(x);
   return {
     ad: g.ad,
     tip: g.tip,
+    hakedisTipi: g.hakedisTipi,
     bransId: g.brans?.id ?? 0,
     ogretmenId: g.ogretmen?.id ?? 0,
     salonId: g.salon?.id ?? undefined,
@@ -62,6 +69,7 @@ export default function GroupForm() {
     reset,
     watch,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<GroupFormValues>({
     resolver: zodResolver(groupSchema),
@@ -164,9 +172,24 @@ export default function GroupForm() {
               <input className={inputClass} {...register('ad')} />
             </Field>
             <Field label="Tip" required error={errors.tip?.message}>
-              <select className={inputClass} {...register('tip')}>
+              <select
+                className={inputClass}
+                {...register('tip', {
+                  onChange: (e) => {
+                    // Tip degisince hakediş tipini varsayilana cek (kullanici sonra degistirebilir).
+                    setValue('hakedisTipi', defaultHakedisTipi(e.target.value as GroupFormValues['tip']));
+                  },
+                })}
+              >
                 <option value="GRUP">Grup</option>
                 <option value="OZEL">Özel</option>
+              </select>
+            </Field>
+            <Field label="Hakediş Tipi" required error={errors.hakedisTipi?.message}>
+              <select className={inputClass} {...register('hakedisTipi')}>
+                <option value="SAATLIK">Saatlik</option>
+                <option value="CIRO_ORANI">Cirodan (Oran)</option>
+                <option value="OZEL_DERS">Ders Başı</option>
               </select>
             </Field>
             <Field label="Branş" required error={errors.bransId?.message}>

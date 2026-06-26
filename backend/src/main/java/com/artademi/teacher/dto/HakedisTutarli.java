@@ -8,10 +8,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Sinif duzeyi kural: hakedis tipine gore ilgili tutar alani zorunlu ve gecerli olmalidir.
+ * Sinif duzeyi kural (Model C — hakedis LISTESI): en az 1 satir, her tip &le;1 kez ve her satirin
+ * tipiyle eslesen tutar alani zorunlu/gecerli olmalidir.
  * <ul>
- *   <li>SAATLIK -> {@code saatlikUcret} zorunlu ve &gt; 0 (yoksa hata {@code saatlikUcret} alanina).</li>
- *   <li>CIRO_ORANI -> {@code ciroOrani} zorunlu ve 0 &lt; oran &le; 100 (hata {@code ciroOrani} alanina).</li>
+ *   <li>SAATLIK -> {@code saatlikUcret} zorunlu ve &gt; 0.</li>
+ *   <li>CIRO_ORANI -> {@code ciroOrani} zorunlu ve 0 &lt; oran &le; 100.</li>
+ *   <li>OZEL_DERS -> {@code dersBasiUcret} zorunlu ve &gt; 0.</li>
  * </ul>
  * Bean Validation uzerinden calistigi icin eksik/gecersizse GlobalExceptionHandler
  * 400 VALIDATION_ERROR (error.fields dolu) doner.

@@ -87,8 +87,8 @@ class AccrualGenerationTest {
     }
 
     private long createTeacher(String t, String ad) throws Exception {
-        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\",\"hakedisTipi\":\"SAATLIK\","
-                + "\"saatlikUcret\":200.00,\"bransIds\":[]}";
+        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\","
+                + "\"hakedisler\":[{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}],\"bransIds\":[]}";
         return idOf(mockMvc.perform(post("/api/teachers").with(admin(t))
                 .contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());

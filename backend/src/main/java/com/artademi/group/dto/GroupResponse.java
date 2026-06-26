@@ -2,6 +2,7 @@ package com.artademi.group.dto;
 
 import com.artademi.group.Group;
 import com.artademi.group.GrupTipi;
+import com.artademi.teacher.HakedisTipi;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -16,6 +17,7 @@ public record GroupResponse(
         Long id,
         String ad,
         GrupTipi tip,
+        HakedisTipi hakedisTipi,
         BranchRef brans,
         TeacherRef ogretmen,
         RoomRef salon,
@@ -52,6 +54,7 @@ public record GroupResponse(
                 g.getId(),
                 g.getAd(),
                 g.getTip(),
+                g.getHakedisTipi(),
                 brans,
                 ogretmen,
                 salon,

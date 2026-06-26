@@ -4,14 +4,11 @@ import com.artademi.common.tenant.TenantAware;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -27,6 +24,11 @@ import org.hibernate.annotations.UpdateTimestamp;
  * <p>Ogretmen <-> Brans cok-coga iliskisi ACIK baglanti entity'si {@link TeacherBranch}
  * uzerinden tutulur (join satiri da tenant_id tasisin diye). Brans atamasi {@link #setBranchLinks}
  * ile yonetilir (mevcutlar temizlenip yenileri eklenir).
+ *
+ * <p>Model C: hakedis tipi ogretmenin uzerinde TEK alan DEGIL; ogretmen birden cok hakedis tipi
+ * TANIMLAYABILIR ({@link TeacherHakedis} satirlari, oranlari tasir). Hangi tipin uygulanacagini
+ * GRUP belirler (bkz. {@code Group.hakedisTipi}). Hakedis listesi {@link #setHakedisler} ile
+ * yonetilir (reconcile — branchLinks ile birebir ayni delta mantigi).
  *
  * <p>Silme YOK: kayit silinmez, {@code aktif} alani ile pasiflestirilir (bkz. TeacherService).
  */
@@ -54,16 +56,6 @@ public class Teacher extends TenantAware {
     @Column(name = "keycloak_user_id", length = 255)
     private String keycloakUserId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "hakedis_tipi", nullable = false, length = 20)
-    private HakedisTipi hakedisTipi;
-
-    @Column(name = "saatlik_ucret", precision = 10, scale = 2)
-    private BigDecimal saatlikUcret;
-
-    @Column(name = "ciro_orani", precision = 5, scale = 2)
-    private BigDecimal ciroOrani;
-
     @Column(name = "aktif", nullable = false)
     private boolean aktif = true;
 
@@ -74,6 +66,14 @@ public class Teacher extends TenantAware {
      */
     @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<TeacherBranch> branchLinks = new HashSet<>();
+
+    /**
+     * Ogretmenin TANIMLADIGI hakedis tipleri + oranlari (Model C). cascade=ALL + orphanRemoval
+     * sayesinde {@link #setHakedisler} ile yonetilir; her {@link TeacherHakedis} kendi
+     * tenant_id'sini @PrePersist'te alir. Her tip yalnizca BIR kez (DB UNIQUE).
+     */
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<TeacherHakedis> hakedisler = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "olusturulma_tarihi", nullable = false, updatable = false)
@@ -136,30 +136,6 @@ public class Teacher extends TenantAware {
         this.keycloakUserId = keycloakUserId;
     }
 
-    public HakedisTipi getHakedisTipi() {
-        return hakedisTipi;
-    }
-
-    public void setHakedisTipi(HakedisTipi hakedisTipi) {
-        this.hakedisTipi = hakedisTipi;
-    }
-
-    public BigDecimal getSaatlikUcret() {
-        return saatlikUcret;
-    }
-
-    public void setSaatlikUcret(BigDecimal saatlikUcret) {
-        this.saatlikUcret = saatlikUcret;
-    }
-
-    public BigDecimal getCiroOrani() {
-        return ciroOrani;
-    }
-
-    public void setCiroOrani(BigDecimal ciroOrani) {
-        this.ciroOrani = ciroOrani;
-    }
-
     public boolean isAktif() {
         return aktif;
     }
@@ -205,6 +181,54 @@ public class Teacher extends TenantAware {
             if (link.getBranch() != null && mevcutBransIds.add(link.getBranch().getId())) {
                 link.setTeacher(this);
                 this.branchLinks.add(link);
+            }
+        }
+    }
+
+    public Set<TeacherHakedis> getHakedisler() {
+        return hakedisler;
+    }
+
+    /**
+     * Hakedis listesini istenen kumeyle UZLASTIRIR (reconcile) — {@link #setBranchLinks} ile birebir
+     * AYNI delta mantigi (tip bazinda): artik istenmeyen tipler silinir (orphanRemoval), yalnizca
+     * YENI tipler icin satir eklenir; zaten var olan tipler OLDUGU GIBI birakilir.
+     *
+     * <p>Var olan bir tip yeniden gonderildiyse, tutar(lar)i mevcut satir uzerinde GUNCELLENIR
+     * (silip-yeniden-ekleme YOK) — boylece {@code uq (teacher_id, tip)} insert-before-delete 500
+     * hatasi olusmaz ve guncelleme idempotent kalir (bkz. setBranchLinks yorumu).
+     */
+    public void setHakedisler(Iterable<TeacherHakedis> rows) {
+        Set<HakedisTipi> istenenTipler = new LinkedHashSet<>();
+        for (TeacherHakedis row : rows) {
+            if (row.getTip() != null) {
+                istenenTipler.add(row.getTip());
+            }
+        }
+        // Artik istenmeyen tipleri kaldir (orphanRemoval ile silinir).
+        this.hakedisler.removeIf(existing -> existing.getTip() == null
+                || !istenenTipler.contains(existing.getTip()));
+        // Halihazirda var olan tipleri tutar guncellemesi icin haritala.
+        for (TeacherHakedis row : rows) {
+            if (row.getTip() == null) {
+                continue;
+            }
+            TeacherHakedis mevcut = null;
+            for (TeacherHakedis existing : this.hakedisler) {
+                if (existing.getTip() == row.getTip()) {
+                    mevcut = existing;
+                    break;
+                }
+            }
+            if (mevcut != null) {
+                // Var olan tip: tutarlari guncelle (silme/yeniden ekleme YOK -> uq cakismasi yok).
+                mevcut.setSaatlikUcret(row.getSaatlikUcret());
+                mevcut.setCiroOrani(row.getCiroOrani());
+                mevcut.setDersBasiUcret(row.getDersBasiUcret());
+            } else {
+                // Yeni tip: ekle.
+                row.setTeacher(this);
+                this.hakedisler.add(row);
             }
         }
     }

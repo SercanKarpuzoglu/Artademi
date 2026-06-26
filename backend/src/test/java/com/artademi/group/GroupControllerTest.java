@@ -98,8 +98,8 @@ class GroupControllerTest {
     }
 
     private long createTeacher(String tenantId, String ad) throws Exception {
-        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\",\"hakedisTipi\":\"SAATLIK\","
-                + "\"saatlikUcret\":200.00,\"bransIds\":[]}";
+        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\","
+                + "\"hakedisler\":[{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}],\"bransIds\":[]}";
         String body = mockMvc.perform(post("/api/teachers")
                         .with(admin(tenantId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -142,8 +142,9 @@ class GroupControllerTest {
 
     /** keycloakUserId (sub) ile ogretmen olusturur — TEACHER /mine koprusu icin. */
     private long createTeacherWithSub(String tenantId, String ad, String sub) throws Exception {
-        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\",\"hakedisTipi\":\"SAATLIK\","
-                + "\"saatlikUcret\":200.00,\"bransIds\":[],\"keycloakUserId\":\"" + sub + "\"}";
+        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\","
+                + "\"hakedisler\":[{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}],\"bransIds\":[],"
+                + "\"keycloakUserId\":\"" + sub + "\"}";
         String body = mockMvc.perform(post("/api/teachers")
                         .with(admin(tenantId))
                         .contentType(MediaType.APPLICATION_JSON)

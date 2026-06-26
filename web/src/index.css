@@ -282,6 +282,10 @@
     background: #eeebf2;
     color: var(--ink-soft);
   }
+  .b-plum {
+    background: #ece6f2;
+    color: var(--plum);
+  }
 
   /* ---------- tablolar (sınıf-kapsamlı; global table'ı kirletmez) ---------- */
   .data-table {

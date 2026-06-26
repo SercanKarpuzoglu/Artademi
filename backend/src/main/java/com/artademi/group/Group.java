@@ -3,6 +3,7 @@ package com.artademi.group;
 import com.artademi.branch.Branch;
 import com.artademi.common.tenant.TenantAware;
 import com.artademi.room.Room;
+import com.artademi.teacher.HakedisTipi;
 import com.artademi.teacher.Teacher;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,6 +50,15 @@ public class Group extends TenantAware {
     @Enumerated(EnumType.STRING)
     @Column(name = "tip", nullable = false, length = 20)
     private GrupTipi tip;
+
+    /**
+     * Model C: bu grubun hakedis tipi — grup tam olarak BIR tip ile odenir (cifte sayim imkansiz).
+     * Ogretmenin ilgili {@code TeacherHakedis} satirindaki oran uygulanir. Istekte opsiyonel;
+     * verilmezse grup tipinden varsayilan (GRUP->SAATLIK, OZEL->OZEL_DERS) atanir.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hakedis_tipi", nullable = false, length = 20)
+    private HakedisTipi hakedisTipi;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brans_id", nullable = false)
@@ -109,6 +119,14 @@ public class Group extends TenantAware {
 
     public void setTip(GrupTipi tip) {
         this.tip = tip;
+    }
+
+    public HakedisTipi getHakedisTipi() {
+        return hakedisTipi;
+    }
+
+    public void setHakedisTipi(HakedisTipi hakedisTipi) {
+        this.hakedisTipi = hakedisTipi;
     }
 
     public Branch getBrans() {

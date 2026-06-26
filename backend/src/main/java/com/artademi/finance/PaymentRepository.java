@@ -55,6 +55,16 @@ public interface PaymentRepository
             @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /**
+     * BELIRLI bir gruba ait [from,to] araligindaki tahsilatlarin TOPLAMI. COALESCE ile bos sonuc 0.
+     * Model C: CIRO_ORANI hakedis hesabi grup bazinda yapilir (her grup kendi hakedis tipiyle).
+     * JPQL oldugu icin tenant filtresine tabidir (yalnizca aktif tenant).
+     */
+    @Query("SELECT COALESCE(SUM(p.tutar), 0) FROM Payment p "
+            + "WHERE p.grup.id = :grupId AND p.odemeTarihi BETWEEN :from AND :to")
+    BigDecimal sumTutarByGrupAndTarihAraligi(@Param("grupId") Long grupId,
+            @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /**
      * Verilen [from,to] araligindaki TUM tahsilatlarin toplami (RAPOR). COALESCE ile bos sonuc 0.
      * JPQL oldugu icin global tenant filtresine tabidir (yalnizca aktif tenant). Salt okunur.
      */

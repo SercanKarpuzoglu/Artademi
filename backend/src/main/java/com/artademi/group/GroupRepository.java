@@ -1,5 +1,6 @@
 package com.artademi.group;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -25,4 +26,11 @@ public interface GroupRepository
      */
     @Query("SELECT g FROM Group g WHERE g.id = :id")
     Optional<Group> findScopedById(@Param("id") Long id);
+
+    /**
+     * Bir ogretmenin gruplari (Model C hakedis hesabi icin). JPQL oldugu icin global tenant filtresine
+     * tabidir: baska tenant'in grubu ASLA donmez. Sabit siralama icin id artan.
+     */
+    @Query("SELECT g FROM Group g WHERE g.ogretmen.id = :ogretmenId ORDER BY g.id ASC")
+    List<Group> findByOgretmenId(@Param("ogretmenId") Long ogretmenId);
 }

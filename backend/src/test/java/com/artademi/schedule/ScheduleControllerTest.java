@@ -99,8 +99,8 @@ class ScheduleControllerTest {
     }
 
     private long createTeacher(String tenantId, String ad) throws Exception {
-        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\",\"hakedisTipi\":\"SAATLIK\","
-                + "\"saatlikUcret\":200.00,\"bransIds\":[]}";
+        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\","
+                + "\"hakedisler\":[{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}],\"bransIds\":[]}";
         String body = mockMvc.perform(post("/api/teachers")
                         .with(admin(tenantId))
                         .contentType(MediaType.APPLICATION_JSON)

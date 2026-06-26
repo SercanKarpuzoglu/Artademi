@@ -1,6 +1,7 @@
 package com.artademi.group.dto;
 
 import com.artademi.group.GrupTipi;
+import com.artademi.teacher.HakedisTipi;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -10,6 +11,9 @@ import java.math.BigDecimal;
  *
  * <p>Tipe gore salon/ucret zorunlulugu {@link GrupTutarli} ile; brans/ogretmen/salon referanslari
  * serviste {@code findScopedById} ile tenant-guvenli dogrulanir.
+ *
+ * <p>Model C: {@code hakedisTipi} OPSIYONEL; verilmezse grup tipinden varsayilan atanir
+ * (GRUP->SAATLIK, OZEL->OZEL_DERS).
  */
 @GrupTutarli
 public record UpdateGroupRequest(
@@ -18,6 +22,8 @@ public record UpdateGroupRequest(
 
         @NotNull(message = "Tip zorunludur")
         GrupTipi tip,
+
+        HakedisTipi hakedisTipi,
 
         @NotNull(message = "Branş zorunludur")
         Long bransId,

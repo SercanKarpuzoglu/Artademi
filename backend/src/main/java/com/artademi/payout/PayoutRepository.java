@@ -29,14 +29,14 @@ public interface PayoutRepository
     Optional<Payout> findScopedById(@Param("id") Long id);
 
     /**
-     * Verilen ogretmen + donem icin hakediş zaten var mi? JPQL oldugu icin tenant filtresine tabidir
-     * (yalnizca aktif tenant kapsaminda). Mukerrer hakediş engellemesi icin (DB unique kisit ile de
-     * zorlanir).
+     * Model C: verilen ogretmen + donem + TIP icin hakediş zaten var mi? Mukerrer engeli artik TIP
+     * bazinda (bir ogretmen ayni donemde birden cok tipte hakedis alabilir). JPQL oldugu icin tenant
+     * filtresine tabidir (yalnizca aktif tenant kapsaminda; DB unique kisit ile de zorlanir).
      */
     @Query("SELECT (COUNT(p) > 0) FROM Payout p "
-            + "WHERE p.ogretmen.id = :ogretmenId AND p.donem = :donem")
-    boolean existsByOgretmenAndDonem(@Param("ogretmenId") Long ogretmenId,
-            @Param("donem") String donem);
+            + "WHERE p.ogretmen.id = :ogretmenId AND p.donem = :donem AND p.hakedisTipi = :tip")
+    boolean existsByOgretmenAndDonemAndTip(@Param("ogretmenId") Long ogretmenId,
+            @Param("donem") String donem, @Param("tip") com.artademi.teacher.HakedisTipi tip);
 
     /**
      * Verilen donemdeki hakedislerin toplami (RAPOR — finansal ozet/ogretmen hakedisleri). COALESCE

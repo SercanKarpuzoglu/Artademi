@@ -57,7 +57,7 @@ export default function TeacherPayoutsTab() {
               </thead>
               <tbody>
                 {kalemler.map((k) => (
-                  <tr key={k.ogretmenId}>
+                  <tr key={`${k.ogretmenId}-${k.hakedisTipi}`}>
                     <td>
                       <b>
                         {k.ad} {k.soyad}

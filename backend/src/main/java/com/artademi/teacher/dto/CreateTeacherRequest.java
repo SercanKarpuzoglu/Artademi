@@ -1,17 +1,15 @@
 package com.artademi.teacher.dto;
 
-import com.artademi.teacher.HakedisTipi;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
  * Ogretmen olusturma istegi. tenant_id ve aktif ALINMAZ: tenant JWT'den gelir, yeni kayit
  * her zaman aktif (true) baslar.
  *
- * <p>Hakedis tipine gore tutar zorunlulugu {@link HakedisTutarli} sinif duzeyi validasyonu ile;
- * eksik/gecersizse 400 VALIDATION_ERROR (error.fields.saatlikUcret / error.fields.ciroOrani).
+ * <p>Model C: {@code hakedisler} ogretmenin TANIMLADIGI hakedis tipleri + oranlari (en az 1).
+ * Liste tutarliligi {@link HakedisTutarli} sinif duzeyi validasyonu ile; eksik/gecersizse 400
+ * VALIDATION_ERROR (error.fields.hakedisler / hakedisler[i].saatlikUcret vb.).
  *
  * <p>{@code bransIds}: atanacak brans id'leri; her biri serviste {@code findScopedById} ile
  * tenant-guvenli dogrulanir (baska tenant'in / yok olan branş -> 404).
@@ -28,11 +26,7 @@ public record CreateTeacherRequest(
         String email,
         String keycloakUserId,
 
-        @NotNull(message = "Hakediş tipi zorunludur")
-        HakedisTipi hakedisTipi,
-
-        BigDecimal saatlikUcret,
-        BigDecimal ciroOrani,
+        List<HakedisSatiriRequest> hakedisler,
 
         List<Long> bransIds) implements HakedisBilgisi {
 }

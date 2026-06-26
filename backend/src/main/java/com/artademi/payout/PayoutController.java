@@ -45,16 +45,19 @@ public class PayoutController {
         this.service = service;
     }
 
-    /** Hakedisi hesaplar ve kaydeder, 201. Mukerrer (ogretmen+donem) -> 409. */
+    /**
+     * Hakedisi hesaplar ve kaydeder, 201. Model C: tip basina BIR satir (ogretmenin gruplari kendi
+     * hakedis tipleriyle hesaplanip toplanir) -> LISTE doner. Mukerrer (ogretmen+donem+tip) -> 409.
+     */
     @PostMapping("/hesapla")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<PayoutResponse> hesapla(@Valid @RequestBody CalculatePayoutRequest request) {
+    public ApiResponse<List<PayoutResponse>> hesapla(@Valid @RequestBody CalculatePayoutRequest request) {
         return ApiResponse.ok(service.hesapla(request));
     }
 
-    /** Kayitsiz onizleme: ayni dokumu uretir ama satir OLUSTURMAZ. */
+    /** Kayitsiz onizleme: ayni dokumu (tip basina) uretir ama satir OLUSTURMAZ. */
     @GetMapping("/onizle")
-    public ApiResponse<PayoutResponse> onizle(
+    public ApiResponse<List<PayoutResponse>> onizle(
             @RequestParam Long ogretmenId,
             @RequestParam String donem,
             @RequestParam(required = false) BigDecimal kdvOrani) {

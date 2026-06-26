@@ -96,8 +96,8 @@ class ReportControllerTest {
 
     /** SAATLIK ogretmen. */
     private long createTeacher(String tenantId, String ad) throws Exception {
-        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\",\"hakedisTipi\":\"SAATLIK\","
-                + "\"saatlikUcret\":200.00,\"bransIds\":[]}";
+        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Hoca\","
+                + "\"hakedisler\":[{\"tip\":\"SAATLIK\",\"saatlikUcret\":200.00}],\"bransIds\":[]}";
         String body = mockMvc.perform(post("/api/teachers")
                         .with(admin(tenantId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,8 +109,8 @@ class ReportControllerTest {
 
     /** CIRO_ORANI ogretmen (donem tahsilatlarindan hakedis uretebilmek icin). */
     private long createCiroTeacher(String tenantId, String ad, String oran) throws Exception {
-        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Ciro\",\"hakedisTipi\":\"CIRO_ORANI\","
-                + "\"ciroOrani\":" + oran + ",\"bransIds\":[]}";
+        String json = "{\"ad\":\"" + ad + "\",\"soyad\":\"Ciro\","
+                + "\"hakedisler\":[{\"tip\":\"CIRO_ORANI\",\"ciroOrani\":" + oran + "}],\"bransIds\":[]}";
         String body = mockMvc.perform(post("/api/teachers")
                         .with(admin(tenantId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -121,9 +121,16 @@ class ReportControllerTest {
     }
 
     private long createGroup(String tenantId, String suffix, long ogretmenId) throws Exception {
+        return createGroup(tenantId, suffix, ogretmenId, "SAATLIK");
+    }
+
+    /** Model C: grubun hakedis tipini acikca verir (ogretmenin tanimladigi tiple eslessin diye). */
+    private long createGroup(String tenantId, String suffix, long ogretmenId, String hakedisTipi)
+            throws Exception {
         long brans = createBranch(tenantId, "Brans-" + suffix);
         long salon = createRoom(tenantId, "Salon-" + suffix);
-        String json = "{\"ad\":\"Grup-" + suffix + "\",\"tip\":\"GRUP\",\"bransId\":" + brans
+        String json = "{\"ad\":\"Grup-" + suffix + "\",\"tip\":\"GRUP\",\"hakedisTipi\":\""
+                + hakedisTipi + "\",\"bransId\":" + brans
                 + ",\"ogretmenId\":" + ogretmenId + ",\"salonId\":" + salon + ",\"aylikAidat\":500.00}";
         String body = mockMvc.perform(post("/api/groups")
                         .with(admin(tenantId))
@@ -225,7 +232,8 @@ class ReportControllerTest {
                         .content(json))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(body).path("data").path("id").asLong();
+        // Model C: data artik LISTE (tip basina bir satir); ilk satirin id'si yeterli.
+        return objectMapper.readTree(body).path("data").path(0).path("id").asLong();
     }
 
     // --- 1. financial-summary: dogruluk (KRITIK net = gelir - gider) ---
@@ -235,9 +243,9 @@ class ReportControllerTest {
         String tenant = "00000000-0000-0000-0000-000000000101";
         String donem = "2026-06";
 
-        // CIRO_ORANI ogretmen + grup; gruba bagli tahsilat hakedis uretsin (oran %10, KDV varsayilan 20).
+        // CIRO_ORANI ogretmen + CIRO_ORANI grup; gruba bagli tahsilat hakedis uretsin (oran %10, KDV 20).
         long ogretmen = createCiroTeacher(tenant, "Ciro", "10.00");
-        long grup = createGroup(tenant, "fs", ogretmen);
+        long grup = createGroup(tenant, "fs", ogretmen, "CIRO_ORANI");
         long ogrenci = createStudent(tenant, "FS", "21000000001");
         createEnrollment(tenant, ogrenci, grup);
 
@@ -359,8 +367,9 @@ class ReportControllerTest {
     void teacherPayouts_donemAggregate() throws Exception {
         String tenant = "00000000-0000-0000-0000-000000000106";
         String donem = "2026-06";
-        // SAATLIK ogretmen, oturum yok -> hesaplananTutar 0.00 (yine de kalem doner, toplam 0).
+        // SAATLIK ogretmen + SAATLIK grup, oturum yok -> hesaplananTutar 0.00 (yine de kalem doner).
         long ogretmen = createTeacher(tenant, "Pay");
+        createGroup(tenant, "tpagg", ogretmen);
         hesaplaPayout(tenant, ogretmen, donem);
 
         mockMvc.perform(get("/api/reports/teacher-payouts").param("donem", donem)
@@ -379,7 +388,7 @@ class ReportControllerTest {
         String tenant = "00000000-0000-0000-0000-000000000107";
         String donem = "2026-06";
         long ogretmen = createCiroTeacher(tenant, "CiroPay", "10.00");
-        long grup = createGroup(tenant, "tp", ogretmen);
+        long grup = createGroup(tenant, "tp", ogretmen, "CIRO_ORANI");
         long ogrenci = createStudent(tenant, "TP", "24000000001");
         createEnrollment(tenant, ogrenci, grup);
         createPayment(tenant, ogrenci, grup, "1100.00", "2026-06-15");

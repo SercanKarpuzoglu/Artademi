@@ -133,13 +133,27 @@ export default function TeacherListPage() {
                       {t.branslar.length > 0 ? t.branslar.map((b) => b.ad).join(', ') : '—'}
                     </td>
                     <td>
-                      <span className={`badge ${HAKEDIS_BADGE[t.hakedisTipi]}`}>
-                        {HAKEDIS_LABEL[t.hakedisTipi]}
-                      </span>
-                      {t.hakedisTipi === 'SAATLIK' ? (
-                        <span className="amount ml-2">{formatMoney(t.saatlikUcret)} ₺</span>
+                      {t.hakedisler.length === 0 ? (
+                        <span className="text-ink-soft">—</span>
                       ) : (
-                        <span className="amount ml-2">%{formatMoney(t.ciroOrani)}</span>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          {t.hakedisler.map((h) => (
+                            <span key={h.tip} className="inline-flex items-center gap-1.5">
+                              <span className={`badge ${HAKEDIS_BADGE[h.tip]}`}>
+                                {HAKEDIS_LABEL[h.tip]}
+                              </span>
+                              {h.tip === 'SAATLIK' && (
+                                <span className="amount">{formatMoney(h.saatlikUcret)} ₺</span>
+                              )}
+                              {h.tip === 'CIRO_ORANI' && (
+                                <span className="amount">%{formatMoney(h.ciroOrani)}</span>
+                              )}
+                              {h.tip === 'OZEL_DERS' && (
+                                <span className="amount">{formatMoney(h.dersBasiUcret)} ₺</span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </td>
                     <td>

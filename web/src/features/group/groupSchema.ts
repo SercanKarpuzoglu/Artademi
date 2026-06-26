@@ -17,6 +17,10 @@ export const groupSchema = z
   .object({
     ad: z.string().trim().min(1, 'Ad zorunludur'),
     tip: z.enum(['GRUP', 'OZEL'], { message: 'Tip zorunludur' }),
+    // Model C: grubun hakediş tipi (zorunlu seçim; varsayilan tipe gore on-doldurulur).
+    hakedisTipi: z.enum(['SAATLIK', 'CIRO_ORANI', 'OZEL_DERS'], {
+      message: 'Hakediş tipi zorunludur',
+    }),
     bransId: z.number({ message: 'Branş zorunludur' }).int().positive('Branş zorunludur'),
     ogretmenId: z
       .number({ message: 'Öğretmen zorunludur' })
@@ -88,6 +92,7 @@ export function toPayload(values: GroupFormValues): GroupInput {
   return {
     ad: values.ad.trim(),
     tip,
+    hakedisTipi: values.hakedisTipi,
     bransId: values.bransId,
     ogretmenId: values.ogretmenId,
     salonId: tip === 'GRUP' ? values.salonId : values.salonId || undefined,

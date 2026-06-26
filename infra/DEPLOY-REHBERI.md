@@ -164,3 +164,28 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d backend
 - **Keycloak redirect hatası:** Client redirect URI / web origins prod adresi mi (Bölüm 5b).
 - **Backend 500 / token hatası:** KEYCLOAK_ISSUER_URI = https://auth.artademi.com/realms/Artademi mi? Secret doğru mu?
 - **Build OOM (bellek):** CX33 8GB yeter ama eşzamanlı build zorlarsa servisleri tek tek build et (`up -d --build backend`, sonra `web`).
+
+---
+
+## GÜNCEL DURUM (2026-06 — CANLI) ✅
+
+**Yayında:** app.artademi.com (web + /api), auth.artademi.com (Keycloak), **artademi.com + www** (landing; Caddy `file_server`, www→apex 301). Hepsi SSL'li (Caddy/Let's Encrypt, Cloudflare DNS-only). Prod DB **Flyway v16**. Tek tenant **Lina Sanat Merkezi** (AKTIF) + super.admin; test tenant'ları (test/test2/Tab Sanat) kalıcı silindi (psql+kcadm).
+
+### Platform 403 zinciri — ÇÖZÜLDÜ (eskiden "açık debug" idi; artık geçersiz)
+Platform konsolundan kurum/kullanıcı oluşturma 403 veriyordu; **üç ayrı kök neden** bulundu ve çözüldü:
+1. **Security 403** — çalışan backend imajı eski commit'ten build'di (`PlatformController` jar'da yoktu). → `docker compose -f docker-compose.prod.yml build --no-cache backend` + `up -d`.
+2. **Provisioning 403** — Keycloak service-account `service-account-artademi-backend`'de realm-management rolleri (`manage-users`/`view-users`/`view-realm`) eksikti (realm import getirmemişti). → `kcadm` ile eklendi; **`infra/artademi-realm.json` export'una işlendi** (bir dahaki import getirir). (Keycloak admin parolası container env `KC_BOOTSTRAP_ADMIN_PASSWORD`.)
+3. **CORS 403 "Invalid CORS request"** — backend CORS yalnız localhost'a izin veriyordu. Tek-domain'de tarayıcı same-origin POST'ta bile `Origin` header gönderir → reddediliyordu (GET/curl Origin göndermediği için geçiyordu). → CORS env-driven (`APP_CORS_ALLOWED_ORIGINS=https://app.artademi.com,https://artademi.com`), compose backend env'inde. Commit `61e4a1a`.
+
+> ⚠️ "No static resource api/…" (500) = **eski/yarım derlenmiş kod** sinyali. Çözüm temiz build: `up -d --build backend` (yerelde `./mvnw clean compile`).
+
+### Deploy hatırlatma (migration'lı sürüm)
+```
+cd /opt/artademi && git pull && cd infra
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build backend web
+```
+Flyway başlangıçta V15/V16'yı uygular (öğretmen hakediş göçü + grup hakediş_tipi). Keycloak/postgres/caddy'ye dokunma. `.env.prod` git'te DEĞİL.
+
+### Kalan açık işler (prod)
+- **SMTP yok** → forgot-password sayfası temalı ama mail göndermez; provisioning maili yok (info@artademi.com / Zoho bekliyor).
+- **Ödeme entegrasyonu yok** (PayTR/iyzico) — subscription `paymentStatus` elle/`markPaid`.

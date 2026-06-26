@@ -353,4 +353,151 @@ class EnrollmentControllerTest {
         mockMvc.perform(get("/api/enrollments").with(token(tenant, "FRONTDESK")))
                 .andExpect(status().isOk());
     }
+
+    // --- Grup transferi (İş A) ---
+
+    private static final String DONEM = "2026-03";
+
+    /** GRUP tipi grup, verilen aidatla. */
+    private long createGroupAidat(String tenantId, String suffix, String aidat) throws Exception {
+        long brans = createBranch(tenantId, "Brans-" + suffix);
+        long ogretmen = createTeacher(tenantId, "Ogretmen-" + suffix);
+        long salon = createRoom(tenantId, "Salon-" + suffix);
+        String json = "{\"ad\":\"Grup-" + suffix + "\",\"tip\":\"GRUP\",\"bransId\":" + brans
+                + ",\"ogretmenId\":" + ogretmen + ",\"salonId\":" + salon + ",\"aylikAidat\":" + aidat + "}";
+        String body = mockMvc.perform(post("/api/groups").with(admin(tenantId))
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body).path("data").path("id").asLong();
+    }
+
+    /** OZEL tipi grup (dersBasiUcret). */
+    private long createOzelGroup(String tenantId, String suffix) throws Exception {
+        long brans = createBranch(tenantId, "OBrans-" + suffix);
+        long ogretmen = createTeacher(tenantId, "OOgretmen-" + suffix);
+        String json = "{\"ad\":\"Ozel-" + suffix + "\",\"tip\":\"OZEL\",\"bransId\":" + brans
+                + ",\"ogretmenId\":" + ogretmen + ",\"dersBasiUcret\":300.00}";
+        String body = mockMvc.perform(post("/api/groups").with(admin(tenantId))
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body).path("data").path("id").asLong();
+    }
+
+    private void createAccrual(String tenantId, long ogrenciId, long grupId, String tutar) throws Exception {
+        String json = "{\"ogrenciId\":" + ogrenciId + ",\"grupId\":" + grupId + ",\"donem\":\"" + DONEM
+                + "\",\"tutar\":" + tutar + ",\"aciklama\":\"test tahakkuk\"}";
+        mockMvc.perform(post("/api/accruals").with(admin(tenantId))
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated());
+    }
+
+    private String transferJson(long yeniGrupId) {
+        return "{\"yeniGrupId\":" + yeniGrupId + ",\"donem\":\"" + DONEM + "\"}";
+    }
+
+    @Test
+    void transfer_happyPath_iadeVeEk_bakiyeDogru() throws Exception {
+        String tenant = "11111111-aaaa-aaaa-aaaa-111111111111";
+        long eski = createGroupAidat(tenant, "eski", "500.00");
+        long yeni = createGroupAidat(tenant, "yeni", "800.00");
+        long ogrenci = createStudent(tenant, "Trans", "11111111101");
+        long enrId = createEnrollment(tenant, ogrenci, eski);
+        // O dönem eski grup tahakkuku üretilmiş (500)
+        createAccrual(tenant, ogrenci, eski, "500.00");
+
+        // Transfer -> 200, yeni AKTIF kayıt, yeni grup
+        String body = mockMvc.perform(post("/api/enrollments/{id}/transfer", enrId).with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON).content(transferJson(yeni)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.durum").value("AKTIF"))
+                .andExpect(jsonPath("$.data.grup.id").value((int) yeni))
+                .andReturn().getResponse().getContentAsString();
+        long yeniEnr = objectMapper.readTree(body).path("data").path("id").asLong();
+        org.junit.jupiter.api.Assertions.assertNotEquals(enrId, yeniEnr);
+
+        // Eski kayıt AYRILDI
+        mockMvc.perform(get("/api/enrollments/{id}", enrId).with(admin(tenant)))
+                .andExpect(jsonPath("$.data.durum").value("AYRILDI"));
+
+        // Bakiye = 500 (eski) − 500 (iade) + 800 (yeni) = 800
+        mockMvc.perform(get("/api/students/{id}/balance", ogrenci).with(admin(tenant)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bakiye").value(800.00));
+    }
+
+    @Test
+    void transfer_donemTahakkukYok_iadeUretilmez() throws Exception {
+        String tenant = "22222222-aaaa-aaaa-aaaa-222222222222";
+        long eski = createGroupAidat(tenant, "eski2", "500.00");
+        long yeni = createGroupAidat(tenant, "yeni2", "800.00");
+        long ogrenci = createStudent(tenant, "Trans2", "22222222101");
+        long enrId = createEnrollment(tenant, ogrenci, eski);
+        // Tahakkuk YOK
+
+        mockMvc.perform(post("/api/enrollments/{id}/transfer", enrId).with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON).content(transferJson(yeni)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.durum").value("AKTIF"));
+
+        // Hiç tahakkuk üretilmedi -> bakiye 0
+        mockMvc.perform(get("/api/students/{id}/balance", ogrenci).with(admin(tenant)))
+                .andExpect(jsonPath("$.data.bakiye").value(0.00));
+    }
+
+    @Test
+    void transfer_ozelGrup_400() throws Exception {
+        String tenant = "33333333-aaaa-aaaa-aaaa-333333333333";
+        long eski = createGroupAidat(tenant, "eski3", "500.00");
+        long ozel = createOzelGroup(tenant, "ozel3");
+        long ogrenci = createStudent(tenant, "Trans3", "33333333101");
+        long enrId = createEnrollment(tenant, ogrenci, eski);
+
+        mockMvc.perform(post("/api/enrollments/{id}/transfer", enrId).with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON).content(transferJson(ozel)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void transfer_caprazTenant_404() throws Exception {
+        String tenant = "44444444-aaaa-aaaa-aaaa-444444444444";
+        String tenantB = "44444444-bbbb-bbbb-bbbb-444444444444";
+        long eski = createGroupAidat(tenant, "eski4", "500.00");
+        long yeniB = createGroupAidat(tenantB, "yeni4b", "800.00");
+        long ogrenci = createStudent(tenant, "Trans4", "44444444101");
+        long enrId = createEnrollment(tenant, ogrenci, eski);
+
+        mockMvc.perform(post("/api/enrollments/{id}/transfer", enrId).with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON).content(transferJson(yeniB)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void transfer_zatenAktifGrup_409() throws Exception {
+        String tenant = "55555555-aaaa-aaaa-aaaa-555555555555";
+        long g1 = createGroupAidat(tenant, "g1", "500.00");
+        long g2 = createGroupAidat(tenant, "g2", "800.00");
+        long ogrenci = createStudent(tenant, "Trans5", "55555555101");
+        long enr1 = createEnrollment(tenant, ogrenci, g1);
+        createEnrollment(tenant, ogrenci, g2); // zaten g2'de aktif
+
+        mockMvc.perform(post("/api/enrollments/{id}/transfer", enr1).with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON).content(transferJson(g2)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("CONFLICT"));
+    }
+
+    @Test
+    void transfer_teacher_403() throws Exception {
+        String tenant = "66666666-aaaa-aaaa-aaaa-666666666666";
+        long eski = createGroupAidat(tenant, "eski6", "500.00");
+        long yeni = createGroupAidat(tenant, "yeni6", "800.00");
+        long ogrenci = createStudent(tenant, "Trans6", "66666666101");
+        long enrId = createEnrollment(tenant, ogrenci, eski);
+
+        mockMvc.perform(post("/api/enrollments/{id}/transfer", enrId).with(token(tenant, "TEACHER"))
+                        .contentType(MediaType.APPLICATION_JSON).content(transferJson(yeni)))
+                .andExpect(status().isForbidden());
+    }
 }

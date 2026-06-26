@@ -3,6 +3,7 @@ import {
   createEnrollment,
   getGroupEnrollments,
   leaveEnrollment,
+  transferEnrollment,
 } from '../../api/enrollments';
 import type { EnrollmentDurumu, EnrollmentInput } from '../../api/types';
 
@@ -31,6 +32,18 @@ export function useLeaveEnrollment(groupId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => leaveEnrollment(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['group', groupId, 'enrollments'] });
+    },
+  });
+}
+
+/** Öğrenciyi başka GRUP'a transfer eder; basarida ilgili grubun kayıt listesi tazelenir. */
+export function useTransferEnrollment(groupId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, yeniGrupId }: { id: number; yeniGrupId: number }) =>
+      transferEnrollment(id, { yeniGrupId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['group', groupId, 'enrollments'] });
     },

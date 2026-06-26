@@ -9,8 +9,13 @@ import { useDebounce } from '../../lib/useDebounce';
 import { useStudents } from '../student/useStudents';
 import GroupSchedulePanel from './GroupSchedulePanel';
 import { DURUM_BADGE, DURUM_LABEL, TIP_BADGE, TIP_LABEL } from './groupDisplay';
-import { useCreateEnrollment, useEnrollments, useLeaveEnrollment } from './useEnrollments';
-import { useGroup } from './useGroups';
+import {
+  useCreateEnrollment,
+  useEnrollments,
+  useLeaveEnrollment,
+  useTransferEnrollment,
+} from './useEnrollments';
+import { useGroup, useGroups } from './useGroups';
 
 const ENROLLMENT_ROLES = [Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING] as const;
 
@@ -88,7 +93,7 @@ export default function GroupDetailPage() {
         </Section>
 
         {id !== undefined && (
-          <EnrollmentSection groupId={id} canManage={canManageEnrollment} />
+          <EnrollmentSection group={g} canManage={canManageEnrollment} />
         )}
 
         {id !== undefined && (
@@ -102,13 +107,20 @@ export default function GroupDetailPage() {
 const inputClass =
   'w-full rounded-[10px] border border-line bg-card px-3 py-2 text-[13.5px] focus:border-rasp focus:outline-none focus:ring-1 focus:ring-rasp';
 
-function EnrollmentSection({ groupId, canManage }: { groupId: number; canManage: boolean }) {
+function EnrollmentSection({ group, canManage }: { group: GroupResponse; canManage: boolean }) {
+  const groupId = group.id;
   const [showLeft, setShowLeft] = useState(false);
   const durum: EnrollmentDurumu | undefined = showLeft ? undefined : 'AKTIF';
 
   const enrollmentsQuery = useEnrollments(groupId, durum);
   const createMut = useCreateEnrollment(groupId);
   const leaveMut = useLeaveEnrollment(groupId);
+
+  // Grup transferi: yalnızca GRUP↔GRUP (OZEL grupta transfer yok).
+  const canTransfer = canManage && group.tip === 'GRUP';
+  const [transferRow, setTransferRow] = useState<
+    { id: number; ogrenciAd: string } | null
+  >(null);
 
   const [picker, setPicker] = useState('');
   const debouncedPicker = useDebounce(picker, 300);
@@ -236,14 +248,30 @@ function EnrollmentSection({ groupId, canManage }: { groupId: number; canManage:
                 {canManage && (
                   <td className="t-right">
                     {e.durum === 'AKTIF' && (
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        disabled={leaveMut.isPending}
-                        onClick={() => onLeave(e.id)}
-                      >
-                        Çıkar
-                      </button>
+                      <div className="inline-flex gap-2">
+                        {canTransfer && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() =>
+                              setTransferRow({
+                                id: e.id,
+                                ogrenciAd: `${e.ogrenci.ad} ${e.ogrenci.soyad}`,
+                              })
+                            }
+                          >
+                            Grup Değiştir
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={leaveMut.isPending}
+                          onClick={() => onLeave(e.id)}
+                        >
+                          Çıkar
+                        </button>
+                      </div>
                     )}
                   </td>
                 )}
@@ -252,7 +280,126 @@ function EnrollmentSection({ groupId, canManage }: { groupId: number; canManage:
           </tbody>
         </table>
       )}
+
+      {transferRow && (
+        <TransferModal
+          currentGroup={group}
+          enrollmentId={transferRow.id}
+          ogrenciAd={transferRow.ogrenciAd}
+          onClose={() => setTransferRow(null)}
+        />
+      )}
     </section>
+  );
+}
+
+/** Grup transfer onay modalı: hedef GRUP seç + eski/yeni aidat + fark göster, onayla. */
+function TransferModal({
+  currentGroup,
+  enrollmentId,
+  ogrenciAd,
+  onClose,
+}: {
+  currentGroup: GroupResponse;
+  enrollmentId: number;
+  ogrenciAd: string;
+  onClose: () => void;
+}) {
+  const transferMut = useTransferEnrollment(currentGroup.id);
+  const [yeniGrupId, setYeniGrupId] = useState<number | ''>('');
+  const [error, setError] = useState<string | null>(null);
+
+  // Hedef: aktif GRUP'lar (mevcut grup hariç).
+  const groupsQuery = useGroups({ tip: 'GRUP', aktif: true, size: 200 });
+  const targets = (groupsQuery.data?.data ?? []).filter((x) => x.id !== currentGroup.id);
+  const selected = targets.find((x) => x.id === yeniGrupId) ?? null;
+
+  const eskiAidat = Number(currentGroup.aylikAidat ?? 0);
+  const yeniAidat = selected ? Number(selected.aylikAidat ?? 0) : null;
+  const fark = yeniAidat !== null ? yeniAidat - eskiAidat : null;
+
+  async function onConfirm() {
+    if (yeniGrupId === '') return;
+    setError(null);
+    try {
+      await transferMut.mutateAsync({ id: enrollmentId, yeniGrupId });
+      onClose();
+    } catch (e) {
+      setError(e instanceof ApiException ? e.message : 'Transfer başarısız oldu');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="card w-full max-w-md space-y-4"
+        onClick={(ev) => ev.stopPropagation()}
+      >
+        <h3>Grup Değiştir</h3>
+        <p className="text-[13px] text-ink-soft">
+          <b>{ogrenciAd}</b> — <b>{currentGroup.ad}</b> grubundan başka bir gruba transfer.
+        </p>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-ink">Yeni Grup</span>
+          <select
+            className={inputClass}
+            value={yeniGrupId}
+            onChange={(e) => setYeniGrupId(e.target.value ? Number(e.target.value) : '')}
+          >
+            <option value="">Seçiniz…</option>
+            {targets.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.ad} ({formatMoney(x.aylikAidat)} ₺)
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {selected && (
+          <div className="rounded-[10px] border border-line bg-paper px-4 py-3 text-[13px]">
+            <div className="flex justify-between">
+              <span className="text-ink-soft">Eski aidat</span>
+              <span>{formatMoney(eskiAidat)} ₺</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-ink-soft">Yeni aidat</span>
+              <span>{formatMoney(yeniAidat)} ₺</span>
+            </div>
+            <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold">
+              <span>Fark</span>
+              <span className={fark !== null && fark < 0 ? 'text-green' : 'text-ink'}>
+                {fark !== null && fark > 0 ? '+' : ''}
+                {formatMoney(fark)} ₺
+              </span>
+            </div>
+            <p className="mt-2 text-[12px] text-ink-soft">
+              Bu dönem eski grup tahakkuku üretilmişse iade + yeni grup tahakkuku otomatik işlenir.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-[12px] border border-red/30 bg-red-soft px-4 py-2.5 text-[13px] font-semibold text-red">
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            İptal
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={yeniGrupId === '' || transferMut.isPending}
+            onClick={onConfirm}
+          >
+            {transferMut.isPending ? 'Transfer ediliyor…' : 'Transfer Et'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -4,6 +4,7 @@ import com.artademi.common.ApiResponse;
 import com.artademi.common.PageMeta;
 import com.artademi.enrollment.dto.CreateEnrollmentRequest;
 import com.artademi.enrollment.dto.EnrollmentResponse;
+import com.artademi.enrollment.dto.TransferEnrollmentRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -63,6 +64,18 @@ public class EnrollmentController {
     @PatchMapping("/api/enrollments/{id}/leave")
     public ApiResponse<EnrollmentResponse> leave(@PathVariable Long id) {
         return ApiResponse.ok(service.leave(id));
+    }
+
+    /**
+     * Grup transferi (GRUP↔GRUP): eski kayit AYRILDI, yeni gruba AKTIF kayit, o donem aidat farki
+     * otomatik tahakkuk. Yeni AKTIF kaydi doner. OZEL grup -> 400; baska tenant grup -> 404; zaten
+     * aktif -> 409.
+     */
+    @PostMapping("/api/enrollments/{id}/transfer")
+    public ApiResponse<EnrollmentResponse> transfer(
+            @PathVariable Long id,
+            @Valid @RequestBody TransferEnrollmentRequest request) {
+        return ApiResponse.ok(service.transfer(id, request));
     }
 
     /** Filtreli/sayfali liste: ?ogrenciId=&grupId=&durum=&page=0&size=20 (hepsi opsiyonel). */

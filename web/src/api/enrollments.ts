@@ -35,3 +35,18 @@ export async function leaveEnrollment(id: number): Promise<EnrollmentResponse> {
   const res = await api.patch<ApiResponse<EnrollmentResponse>>(`/api/enrollments/${id}/leave`);
   return res.data.data;
 }
+
+/**
+ * Öğrenciyi başka bir GRUP dersine transfer eder (eski AYRILDI, yeni AKTIF + aidat farkı tahakkuk).
+ * Yalnızca GRUP↔GRUP; backend OZEL grupta 400 döner. Yeni AKTIF kaydı döner.
+ */
+export async function transferEnrollment(
+  id: number,
+  payload: { yeniGrupId: number; donem?: string },
+): Promise<EnrollmentResponse> {
+  const res = await api.post<ApiResponse<EnrollmentResponse>>(
+    `/api/enrollments/${id}/transfer`,
+    payload,
+  );
+  return res.data.data;
+}

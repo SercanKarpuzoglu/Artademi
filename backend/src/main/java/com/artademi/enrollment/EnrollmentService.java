@@ -6,12 +6,17 @@ import com.artademi.common.exception.ValidationException;
 import com.artademi.enrollment.dto.CreateEnrollmentRequest;
 import com.artademi.enrollment.dto.EnrollmentMapper;
 import com.artademi.enrollment.dto.EnrollmentResponse;
+import com.artademi.enrollment.dto.TransferEnrollmentRequest;
+import com.artademi.finance.AccrualRepository;
+import com.artademi.finance.dto.AccrualMapper;
 import com.artademi.group.Group;
 import com.artademi.group.GroupRepository;
+import com.artademi.group.GrupTipi;
 import com.artademi.student.Student;
 import com.artademi.student.StudentRepository;
 import com.artademi.student.StudentStatus;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -48,12 +53,14 @@ public class EnrollmentService {
     private final EnrollmentRepository repository;
     private final StudentRepository studentRepository;
     private final GroupRepository groupRepository;
+    private final AccrualRepository accrualRepository;
 
     public EnrollmentService(EnrollmentRepository repository, StudentRepository studentRepository,
-            GroupRepository groupRepository) {
+            GroupRepository groupRepository, AccrualRepository accrualRepository) {
         this.repository = repository;
         this.groupRepository = groupRepository;
         this.studentRepository = studentRepository;
+        this.accrualRepository = accrualRepository;
     }
 
     /** Yeni kayit olusturur; durum AKTIF ile baslar. */
@@ -86,6 +93,61 @@ public class EnrollmentService {
         e.setDurum(EnrollmentDurumu.AYRILDI);
         e.setAyrilmaTarihi(LocalDate.now());
         return EnrollmentResponse.from(e);
+    }
+
+    /**
+     * Ogrenciyi bir GRUP dersinden baska bir GRUP dersine transfer eder (tek transaction): eski kayit
+     * AYRILDI, yeni gruba AKTIF kayit acilir, ve o donem icin aidat farki otomatik tahakkuk edilir.
+     *
+     * <p><b>Kapsam:</b> yalniz GRUP↔GRUP. Eski veya yeni grup OZEL ise -> 400 (ozel derste aylik aidat
+     * yoktur; transfer kavrami gecersiz).
+     *
+     * <p><b>Aidat farki (donem = req.donem veya bugunun ayi):</b> eski grubun o donem aidat tahakkuku
+     * ZATEN urediyse: eski grup icin NEGATIF tahakkuk (iade = −eskiAidat) + yeni grup icin POZITIF
+     * tahakkuk (+yeniAidat) acilir; net = aidat farki, bakiye dogru hesaplanir. Eski grubun o donem
+     * tahakkuku YOKSA hicbir tahakkuk uretilmez (olusmamis borcun iadesi olmaz; bir sonraki otomatik
+     * tahakkuk yeni grubu zaten keser).
+     */
+    @Transactional
+    public EnrollmentResponse transfer(Long id, TransferEnrollmentRequest req) {
+        Enrollment mevcut = findOrThrow(id);
+        Student ogrenci = mevcut.getOgrenci();
+        Group eskiGrup = mevcut.getGrup();
+        Group yeniGrup = resolveGroup(req.yeniGrupId());
+
+        if (eskiGrup.getTip() != GrupTipi.GRUP || yeniGrup.getTip() != GrupTipi.GRUP) {
+            throw new ValidationException("Transfer yalnızca grup dersleri arasında yapılır");
+        }
+        if (!YAZILABILIR_STATULER.contains(ogrenci.getStatus())) {
+            throw new ValidationException("Bu statüdeki öğrenci gruba yazılamaz");
+        }
+        // Ayni gruba veya zaten aktif oldugu gruba transfer -> 409 (mevcut hala AKTIF iken kontrol).
+        if (repository.existsAktifByOgrenciAndGrup(ogrenci.getId(), yeniGrup.getId())) {
+            throw new ConflictException("Öğrenci bu gruba zaten aktif olarak kayıtlı");
+        }
+
+        // 1) Eski kaydi AYRILDI yap (leave mantigi).
+        mevcut.setDurum(EnrollmentDurumu.AYRILDI);
+        mevcut.setAyrilmaTarihi(LocalDate.now());
+
+        // 2) Yeni gruba AKTIF kayit.
+        Enrollment yeni = repository.save(
+                EnrollmentMapper.toNewEntity(ogrenci, yeniGrup, LocalDate.now()));
+
+        // 3) Aidat farki — yalnizca eski grubun o donem tahakkuku zaten urediyse.
+        String donem = (req.donem() != null && !req.donem().isBlank())
+                ? req.donem()
+                : YearMonth.now().toString();
+        if (accrualRepository.existsByOgrenciAndGrupAndDonem(ogrenci.getId(), eskiGrup.getId(), donem)) {
+            accrualRepository.save(AccrualMapper.toNewEntity(ogrenci, eskiGrup, donem,
+                    eskiGrup.getAylikAidat().negate(),
+                    eskiGrup.getAd() + " grubundan ayrılma iadesi (" + donem + ")"));
+            accrualRepository.save(AccrualMapper.toNewEntity(ogrenci, yeniGrup, donem,
+                    yeniGrup.getAylikAidat(),
+                    yeniGrup.getAd() + " grubuna geçiş (" + donem + ")"));
+        }
+
+        return EnrollmentResponse.from(yeni);
     }
 
     /** Filtreli/sayfali liste; tum filtreler opsiyonel (null gecilebilir). */

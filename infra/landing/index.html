@@ -3,311 +3,225 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Artademi — Sanat okulları için tek panelden yönetim</title>
+<title>Artademi — Sanat akademiniz için tek panelden yönetim</title>
 <meta name="description" content="Öğrenci, yoklama, tahsilat, hakediş ve raporlar tek panelde. Sanat ve eğitim kurumları için çok-şubeli yönetim platformu." />
 <link rel="icon" type="image/png" href="assets/favicon.png" />
-
-<!-- Open Graph -->
-<meta property="og:title" content="Artademi — Sanat okulları için tek panelden yönetim" />
+<meta property="og:title" content="Artademi — Sanat akademiniz için tek panelden yönetim" />
 <meta property="og:description" content="Öğrenci, yoklama, tahsilat, hakediş ve raporlar tek panelde." />
 <meta property="og:type" content="website" />
-
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
 <style>
   :root {
-    /* Erik + ahududu sistemi */
-    --erik-900: #2a1220;
-    --erik-800: #3d1a2f;
-    --erik-700: #4f2240;
-    --erik-600: #6b2e54;
-    --ahududu: #c0396b;
-    --ahududu-soft: #e0578a;
-    --ahududu-glow: #ff7aa8;
-    --krem: #faf4ee;
-    --krem-2: #f3e7dc;
-    --kum: #e8d5c4;
-    --ink: #1d0e18;
-    --muted: #8a6f80;
+    /* Erik+ahududu çekirdek */
+    --erik-950: #160812;
+    --erik-900: #210b1a;
+    --erik-800: #321026;
+    --erik-700: #4a1839;
+    --ahududu: #d8417a;
+    --ahududu-soft: #f06597;
 
-    --maxw: 1180px;
-    --r: 18px;
+    /* Neon aksanlar (sci-fi katman) */
+    --neon-cyan: #45e8d4;
+    --neon-violet: #9d6bff;
+    --neon-pink: #ff5fb4;
+    --neon-glow: #ff7ac4;
+
+    --krem: #f6eef4;
+    --muted: #b89ab0;
+    --line: rgba(246,238,244,0.10);
+    --glass: rgba(255,255,255,0.045);
+    --glass-brd: rgba(255,255,255,0.12);
+
+    --maxw: 1200px;
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   html { scroll-behavior: smooth; }
-
   body {
     font-family: 'Manrope', system-ui, sans-serif;
-    color: var(--ink);
-    background: var(--krem);
+    color: var(--krem);
+    background: var(--erik-950);
     line-height: 1.6;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
   }
-
-  h1, h2, h3, .display {
-    font-family: 'Fraunces', Georgia, serif;
-    font-weight: 600;
-    line-height: 1.04;
-    letter-spacing: -0.02em;
-  }
-
+  h1,h2,h3,.display { font-family: 'Fraunces', Georgia, serif; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
+  .mono { font-family: 'Space Grotesk', monospace; }
   a { color: inherit; text-decoration: none; }
-
   .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
 
-  /* ---------------- NAV ---------------- */
-  header {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    transition: background .4s var(--ease), box-shadow .4s var(--ease), backdrop-filter .4s var(--ease);
-  }
-  header.scrolled {
-    background: rgba(250, 244, 238, 0.82);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 1px 0 rgba(42,18,32,0.08);
-  }
-  .nav {
-    display: flex; align-items: center; justify-content: space-between;
-    height: 74px;
-  }
-  .brand { display: flex; align-items: center; gap: 11px; font-family: 'Fraunces'; font-weight: 600; font-size: 22px; color: var(--erik-800); }
+  /* ambient global glow blobs */
+  .bg-field { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .bg-field .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .55; }
+  .orb.c1 { width: 540px; height: 540px; background: radial-gradient(circle, var(--ahududu), transparent 65%); top: -160px; right: -120px; }
+  .orb.c2 { width: 480px; height: 480px; background: radial-gradient(circle, var(--neon-violet), transparent 65%); top: 40%; left: -180px; opacity:.35; }
+  .orb.c3 { width: 420px; height: 420px; background: radial-gradient(circle, var(--neon-cyan), transparent 65%); bottom: -160px; right: 10%; opacity:.28; }
+
+  #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+  /* ---------- NAV ---------- */
+  header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; transition: background .4s var(--ease), backdrop-filter .4s, border-color .4s; border-bottom: 1px solid transparent; }
+  header.scrolled { background: rgba(22,8,18,0.72); backdrop-filter: blur(16px); border-bottom: 1px solid var(--line); }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 76px; position: relative; z-index: 2; }
+  .brand { display: flex; align-items: center; gap: 11px; font-family: 'Fraunces'; font-weight: 600; font-size: 22px; }
   .brand .logo-img { height: 34px; width: auto; display: block; }
-  .brand .amblem {
-    height: 30px; width: 30px; border-radius: 9px;
-    background: linear-gradient(135deg, var(--ahududu), var(--erik-700));
-    display: grid; place-items: center; color: #fff; font-size: 16px;
-    box-shadow: 0 4px 14px rgba(192,57,107,0.35);
-  }
+  .brand .amblem { height: 32px; width: 32px; border-radius: 9px; background: linear-gradient(135deg, var(--ahududu), var(--neon-violet)); display:grid; place-items:center; color:#fff; font-size:17px; box-shadow: 0 0 18px rgba(216,65,122,0.55); }
   .nav-links { display: flex; align-items: center; gap: 30px; }
-  .nav-links a { font-size: 15px; font-weight: 500; color: var(--erik-700); opacity: .85; transition: opacity .2s; }
-  .nav-links a:hover { opacity: 1; }
-  .nav-cta {
-    padding: 10px 20px; border-radius: 999px; font-weight: 600; font-size: 14px;
-    background: var(--erik-800); color: var(--krem) !important;
-    transition: transform .25s var(--ease), box-shadow .25s var(--ease);
-  }
-  .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(42,18,32,0.28); }
-  .menu-btn { display: none; background: none; border: 0; font-size: 26px; color: var(--erik-800); cursor: pointer; }
+  .nav-links a { font-size: 15px; font-weight: 500; color: var(--krem); opacity: .8; transition: opacity .2s, color .2s; }
+  .nav-links a:hover { opacity: 1; color: var(--neon-glow); }
+  .nav-cta { padding: 10px 22px; border-radius: 999px; font-weight: 600; font-size: 14px; border: 1px solid var(--glass-brd); background: var(--glass); backdrop-filter: blur(8px); transition: transform .25s var(--ease), box-shadow .25s, border-color .25s; }
+  .nav-cta:hover { transform: translateY(-2px); border-color: var(--neon-cyan); box-shadow: 0 0 22px rgba(69,232,212,0.3); color: #fff !important; opacity:1; }
+  .menu-btn { display: none; background: none; border: 0; font-size: 26px; color: var(--krem); cursor: pointer; }
 
-  /* ---------------- HERO ---------------- */
-  .hero {
-    position: relative; min-height: 100vh; display: flex; align-items: center;
-    background: var(--erik-900);
-    color: var(--krem);
-    overflow: hidden;
-  }
-  /* akan sahne perdesi / ışık animasyonu */
-  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  .hero-veil {
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(1200px 600px at 75% -10%, rgba(192,57,107,0.35), transparent 60%),
-      radial-gradient(900px 700px at 10% 110%, rgba(107,46,84,0.5), transparent 60%),
-      linear-gradient(180deg, rgba(42,18,32,0.2), rgba(42,18,32,0.65));
-    pointer-events: none;
-  }
-  .hero-inner { position: relative; z-index: 3; width: 100%; padding-top: 90px; }
-  .eyebrow {
-    display: inline-flex; align-items: center; gap: 9px;
-    font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
-    color: var(--ahududu-glow);
-    padding: 7px 15px; border-radius: 999px;
-    border: 1px solid rgba(255,122,168,0.3);
-    background: rgba(255,122,168,0.07);
-    margin-bottom: 26px;
-  }
-  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ahududu-glow); box-shadow: 0 0 12px var(--ahududu-glow); animation: pulse 2.4s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  /* ---------- HERO ---------- */
+  .hero { position: relative; min-height: 100vh; display: flex; align-items: center; z-index: 1; overflow: hidden; }
+  .hero canvas#particles { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .hero-grid-overlay { position:absolute; inset:0; z-index:0; opacity:.4;
+    background-image: linear-gradient(rgba(157,107,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(157,107,255,0.06) 1px, transparent 1px);
+    background-size: 64px 64px; mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 30%, transparent 75%); }
+  .hero-inner { position: relative; z-index: 3; width: 100%; padding-top: 90px; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 40px; align-items: center; }
 
-  .hero h1 { font-size: clamp(40px, 7vw, 86px); color: #fff; max-width: 14ch; }
-  .hero h1 .accent {
-    background: linear-gradient(100deg, var(--ahududu-soft), var(--ahududu-glow));
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    font-style: italic; font-weight: 500;
-  }
-  .hero p.lead {
-    font-size: clamp(17px, 2.2vw, 21px); color: rgba(250,244,238,0.78);
-    max-width: 52ch; margin: 28px 0 38px;
-  }
+  .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-family:'Space Grotesk'; font-size: 12.5px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--neon-cyan); padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(69,232,212,0.3); background: rgba(69,232,212,0.06); margin-bottom: 26px; }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--neon-cyan); box-shadow: 0 0 12px var(--neon-cyan); animation: pulse 2.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .hero h1 { font-size: clamp(42px, 6.4vw, 82px); color: #fff; max-width: 15ch; text-shadow: 0 0 60px rgba(216,65,122,0.25); }
+  .hero h1 .accent { background: linear-gradient(100deg, var(--neon-glow), var(--neon-violet) 60%, var(--neon-cyan)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-style: italic; font-weight: 500; }
+  .hero p.lead { font-size: clamp(16px, 2vw, 20px); color: rgba(246,238,244,0.78); max-width: 50ch; margin: 28px 0 38px; }
   .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 
-  .btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 15px 28px; border-radius: 999px; font-weight: 600; font-size: 16px;
-    cursor: pointer; border: 0; transition: transform .25s var(--ease), box-shadow .25s var(--ease), background .25s;
-    font-family: inherit;
-  }
-  .btn-primary { background: linear-gradient(100deg, var(--ahududu), var(--ahududu-soft)); color: #fff; box-shadow: 0 12px 30px rgba(192,57,107,0.45); }
-  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgba(192,57,107,0.55); }
-  .btn-ghost { background: rgba(250,244,238,0.08); color: var(--krem); border: 1px solid rgba(250,244,238,0.25); }
-  .btn-ghost:hover { background: rgba(250,244,238,0.16); transform: translateY(-3px); }
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 15px 28px; border-radius: 999px; font-weight: 600; font-size: 16px; cursor: pointer; border: 0; transition: transform .25s var(--ease), box-shadow .25s, background .25s; font-family: inherit; }
+  .btn-primary { background: linear-gradient(100deg, var(--ahududu), var(--neon-violet)); color: #fff; box-shadow: 0 0 0 1px rgba(255,122,196,0.4), 0 12px 36px rgba(157,107,255,0.4); }
+  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--neon-glow), 0 18px 48px rgba(216,65,122,0.55); }
+  .btn-ghost { background: var(--glass); color: var(--krem); border: 1px solid var(--glass-brd); backdrop-filter: blur(8px); }
+  .btn-ghost:hover { transform: translateY(-3px); border-color: var(--neon-cyan); box-shadow: 0 0 22px rgba(69,232,212,0.25); }
   .btn .arrow { transition: transform .25s var(--ease); }
   .btn:hover .arrow { transform: translateX(4px); }
 
-  .hero-meta { display: flex; gap: 36px; margin-top: 56px; flex-wrap: wrap; }
-  .hero-meta .item { }
-  .hero-meta .num { font-family: 'Fraunces'; font-size: 30px; font-weight: 600; color: #fff; }
-  .hero-meta .lbl { font-size: 13.5px; color: rgba(250,244,238,0.6); }
+  .hero-meta { display: flex; gap: 34px; margin-top: 52px; flex-wrap: wrap; }
+  .hero-meta .num { font-family: 'Fraunces'; font-size: 28px; font-weight: 600; color: #fff; }
+  .hero-meta .lbl { font-family:'Space Grotesk'; font-size: 12.5px; color: var(--muted); letter-spacing:.03em; }
 
-  .scroll-hint {
-    position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
-    z-index: 3; color: rgba(250,244,238,0.55); font-size: 12px; letter-spacing: .2em; text-transform: uppercase;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-  }
-  .scroll-hint .line { width: 1px; height: 38px; background: linear-gradient(rgba(255,122,168,0.8), transparent); animation: drop 1.8s infinite; }
+  /* HERO holographic instrument panel */
+  .holo { position: relative; height: 440px; perspective: 1200px; }
+  .holo-card { position: absolute; border-radius: 18px; background: linear-gradient(150deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02)); border: 1px solid var(--glass-brd); backdrop-filter: blur(14px); box-shadow: 0 20px 60px rgba(0,0,0,0.4); padding: 18px; }
+  .holo-card .tag { font-family:'Space Grotesk'; font-size: 11px; letter-spacing:.12em; text-transform: uppercase; color: var(--neon-cyan); margin-bottom: 10px; }
+  .holo-1 { width: 230px; top: 20px; left: 0; animation: float1 7s ease-in-out infinite; }
+  .holo-2 { width: 210px; top: 150px; right: 0; animation: float2 8s ease-in-out infinite; }
+  .holo-3 { width: 180px; bottom: 10px; left: 40px; animation: float1 9s ease-in-out infinite reverse; }
+  @keyframes float1 { 0%,100%{transform: translateY(0) rotateX(4deg) rotateY(-6deg)} 50%{transform: translateY(-16px) rotateX(4deg) rotateY(-6deg)} }
+  @keyframes float2 { 0%,100%{transform: translateY(0) rotateX(-3deg) rotateY(7deg)} 50%{transform: translateY(-20px) rotateX(-3deg) rotateY(7deg)} }
+  .holo svg { display:block; width:100%; height:auto; }
+
+  .scroll-hint { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 3; color: var(--muted); font-family:'Space Grotesk'; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .scroll-hint .line { width: 1px; height: 38px; background: linear-gradient(var(--neon-cyan), transparent); animation: drop 1.8s infinite; }
   @keyframes drop { 0%{transform:scaleY(0);transform-origin:top} 50%{transform:scaleY(1);transform-origin:top} 51%{transform-origin:bottom} 100%{transform:scaleY(0);transform-origin:bottom} }
 
-  /* ---------------- REVEAL ---------------- */
+  /* ---------- REVEAL ---------- */
   .reveal { opacity: 0; transform: translateY(34px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
   .reveal.in { opacity: 1; transform: none; }
-  .reveal.d1 { transition-delay: .08s } .reveal.d2 { transition-delay: .16s } .reveal.d3 { transition-delay: .24s } .reveal.d4 { transition-delay: .32s }
+  .d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}
 
-  /* ---------------- SECTION SHELL ---------------- */
-  section { position: relative; }
-  .pad { padding: 110px 0; }
-  .sec-head { max-width: 640px; margin-bottom: 58px; }
-  .sec-eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ahududu); margin-bottom: 16px; }
-  .sec-head h2 { font-size: clamp(30px, 4.4vw, 50px); color: var(--erik-800); }
+  section { position: relative; z-index: 1; }
+  .pad { padding: 120px 0; }
+  .sec-head { max-width: 660px; margin-bottom: 60px; }
+  .sec-eyebrow { font-family:'Space Grotesk'; font-size: 12.5px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--neon-cyan); margin-bottom: 16px; }
+  .sec-head h2 { font-size: clamp(30px, 4.4vw, 52px); color: #fff; }
   .sec-head p { margin-top: 18px; font-size: 18px; color: var(--muted); }
 
-  /* ---------------- FEATURES ---------------- */
-  .features { background: var(--krem); }
-  .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-  .feat {
-    background: #fff; border-radius: var(--r); padding: 32px 28px;
-    border: 1px solid rgba(42,18,32,0.06);
-    transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s;
-    position: relative; overflow: hidden;
-  }
-  .feat::after {
-    content:''; position:absolute; inset:0; border-radius: var(--r);
-    background: linear-gradient(135deg, rgba(192,57,107,0.06), transparent 50%);
-    opacity: 0; transition: opacity .35s;
-  }
-  .feat:hover { transform: translateY(-6px); box-shadow: 0 22px 50px rgba(42,18,32,0.12); border-color: rgba(192,57,107,0.2); }
-  .feat:hover::after { opacity: 1; }
-  .feat .ic {
-    width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center;
-    background: linear-gradient(135deg, var(--erik-700), var(--ahududu)); color: #fff;
-    margin-bottom: 20px; font-size: 24px;
-    box-shadow: 0 8px 20px rgba(192,57,107,0.3);
-  }
-  .feat h3 { font-size: 21px; color: var(--erik-800); margin-bottom: 9px; font-weight: 600; }
+  /* ---------- FEATURES ---------- */
+  .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feat { position: relative; background: var(--glass); border-radius: 18px; padding: 30px 26px; border: 1px solid var(--glass-brd); backdrop-filter: blur(10px); transition: transform .35s var(--ease), box-shadow .35s, border-color .35s; overflow: hidden; }
+  .feat::before { content:''; position:absolute; inset:0; border-radius:18px; padding:1px; background: linear-gradient(135deg, var(--neon-cyan), transparent 40%, transparent 60%, var(--ahududu)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity:0; transition: opacity .35s; }
+  .feat:hover { transform: translateY(-6px); box-shadow: 0 24px 60px rgba(0,0,0,0.45), 0 0 30px rgba(157,107,255,0.18); border-color: transparent; }
+  .feat:hover::before { opacity: 1; }
+  .feat .ic { width: 56px; height: 56px; border-radius: 14px; display:grid; place-items:center; margin-bottom: 20px; background: linear-gradient(135deg, rgba(216,65,122,0.25), rgba(157,107,255,0.18)); border: 1px solid var(--glass-brd); }
+  .feat .ic svg { width: 28px; height: 28px; }
+  .feat h3 { font-size: 21px; color: #fff; margin-bottom: 9px; font-weight: 600; }
   .feat p { font-size: 15px; color: var(--muted); }
 
-  /* ---------------- HOW ---------------- */
-  .how { background: linear-gradient(180deg, var(--krem-2), var(--krem)); }
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; counter-reset: step; }
+  /* ---------- HOW ---------- */
+  .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
   .step { position: relative; padding-top: 30px; }
-  .step .n {
-    font-family: 'Fraunces'; font-size: 56px; font-weight: 600; line-height: 1;
-    color: transparent; -webkit-text-stroke: 1.5px var(--ahududu); margin-bottom: 14px;
-  }
-  .step h3 { font-size: 22px; color: var(--erik-800); margin-bottom: 10px; }
+  .step::before { content:''; position:absolute; top:0; left:0; width: 46px; height: 2px; background: linear-gradient(90deg, var(--neon-cyan), transparent); }
+  .step .n { font-family:'Space Grotesk'; font-size: 14px; letter-spacing:.1em; color: var(--neon-cyan); margin-bottom: 14px; }
+  .step h3 { font-size: 22px; color: #fff; margin-bottom: 10px; }
   .step p { color: var(--muted); font-size: 15.5px; }
-  .step::before {
-    content:''; position:absolute; top: 0; left: 0; width: 46px; height: 3px;
-    background: linear-gradient(90deg, var(--ahududu), transparent); border-radius: 2px;
-  }
 
-  /* ---------------- PRICING ---------------- */
-  .pricing { background: var(--erik-900); color: var(--krem); overflow: hidden; position: relative; }
-  .pricing .glow { position:absolute; width: 700px; height: 700px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(192,57,107,0.3), transparent 65%); top: -200px; right: -150px; filter: blur(20px); }
-  .pricing .sec-head h2 { color: #fff; }
-  .pricing .sec-head p { color: rgba(250,244,238,0.7); }
-  .price-card {
-    position: relative; z-index: 2; max-width: 460px; margin: 0 auto;
-    background: linear-gradient(160deg, rgba(250,244,238,0.09), rgba(250,244,238,0.03));
-    border: 1px solid rgba(255,122,168,0.25); border-radius: 26px; padding: 44px 40px;
-    backdrop-filter: blur(8px);
-    text-align: center;
-  }
-  .price-card .plan { font-size: 14px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ahududu-glow); }
-  .price-card .amount { font-family: 'Fraunces'; font-size: 72px; font-weight: 600; color: #fff; margin: 14px 0 2px; line-height: 1; }
+  /* ---------- DISCIPLINES (sanat görselleri) ---------- */
+  .disc-row { display:grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+  .disc { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--glass-brd); background: linear-gradient(160deg, rgba(50,16,38,0.6), rgba(22,8,18,0.4)); aspect-ratio: 4/3; }
+  .disc svg { position:absolute; inset:0; width:100%; height:100%; }
+  .disc .lab { position:absolute; left:18px; bottom:16px; font-family:'Fraunces'; font-size: 20px; color:#fff; text-shadow: 0 2px 12px rgba(0,0,0,0.6); z-index:2; }
+  .disc .lab small { display:block; font-family:'Space Grotesk'; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color: var(--neon-glow); margin-top:2px; }
+
+  /* ---------- PRICING ---------- */
+  .price-card { position: relative; z-index: 2; max-width: 480px; margin: 0 auto; border-radius: 26px; padding: 46px 42px; text-align: center; background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)); border: 1px solid var(--glass-brd); backdrop-filter: blur(14px); box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 50px rgba(157,107,255,0.15); }
+  .price-card .plan { font-family:'Space Grotesk'; font-size: 13px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--neon-cyan); }
+  .price-card .amount { font-family: 'Fraunces'; font-size: 74px; font-weight: 600; color: #fff; margin: 14px 0 2px; line-height: 1; }
   .price-card .amount span { font-size: 26px; vertical-align: super; }
-  .price-card .per { color: rgba(250,244,238,0.65); font-size: 15px; margin-bottom: 28px; }
+  .price-card .per { color: var(--muted); font-size: 15px; margin-bottom: 28px; font-family:'Space Grotesk'; }
   .price-card ul { list-style: none; text-align: left; margin: 28px 0 32px; display: grid; gap: 13px; }
-  .price-card li { display: flex; gap: 12px; align-items: flex-start; font-size: 15.5px; color: rgba(250,244,238,0.9); }
-  .price-card li .ck { color: var(--ahududu-glow); flex-shrink: 0; margin-top: 2px; }
+  .price-card li { display: flex; gap: 12px; align-items: flex-start; font-size: 15.5px; color: rgba(246,238,244,0.92); }
+  .price-card li .ck { color: var(--neon-cyan); flex-shrink: 0; margin-top: 3px; }
   .price-card .btn-primary { width: 100%; justify-content: center; }
-  .price-note { text-align:center; color: rgba(250,244,238,0.55); font-size: 13.5px; margin-top: 18px; }
+  .price-note { color: var(--muted); font-size: 13.5px; margin-top: 18px; }
+  .price-note a { color: var(--neon-glow); font-weight: 600; }
 
-  /* ---------------- FAQ ---------------- */
-  .faq { background: var(--krem); }
-  .faq-wrap { max-width: 780px; margin: 0 auto; }
-  .qa { border-bottom: 1px solid rgba(42,18,32,0.1); }
-  .qa button {
-    width: 100%; background: none; border: 0; cursor: pointer; font-family: inherit;
-    display: flex; justify-content: space-between; align-items: center; gap: 20px;
-    padding: 26px 4px; text-align: left; font-size: 19px; font-weight: 600; color: var(--erik-800);
-  }
-  .qa .q-ic { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--ahududu);
-    color: var(--ahududu); display: grid; place-items: center; font-size: 18px; transition: transform .3s var(--ease), background .3s, color .3s; }
-  .qa.open .q-ic { transform: rotate(45deg); background: var(--ahududu); color: #fff; }
+  /* ---------- FAQ + LEGAL ---------- */
+  .faq-wrap, .legal-wrap { max-width: 800px; margin: 0 auto; }
+  .qa { border-bottom: 1px solid var(--line); }
+  .qa button { width: 100%; background: none; border: 0; cursor: pointer; font-family: inherit; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 26px 4px; text-align: left; font-size: 19px; font-weight: 600; color: #fff; }
+  .qa .q-ic { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--neon-cyan); color: var(--neon-cyan); display: grid; place-items: center; font-size: 18px; transition: transform .3s var(--ease), background .3s, color .3s; }
+  .qa.open .q-ic { transform: rotate(45deg); background: var(--neon-cyan); color: var(--erik-950); }
   .qa .a { max-height: 0; overflow: hidden; transition: max-height .4s var(--ease); }
   .qa .a p { padding: 0 4px 26px; color: var(--muted); font-size: 16px; }
+  .qa .a p a { color: var(--neon-glow); font-weight:600; }
 
-  /* ---------------- CTA / CONTACT ---------------- */
-  .cta { background: linear-gradient(180deg, var(--krem), var(--krem-2)); }
-  .cta-card {
-    background: linear-gradient(135deg, var(--erik-800), var(--erik-600));
-    border-radius: 30px; padding: 64px 56px; position: relative; overflow: hidden;
-    box-shadow: 0 30px 70px rgba(42,18,32,0.3);
-  }
-  .cta-card .blob { position:absolute; width: 460px; height: 460px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,122,168,0.4), transparent 65%); bottom: -220px; left: -120px; }
+  /* ---------- CTA ---------- */
+  .cta-card { position: relative; border-radius: 30px; padding: 64px 56px; overflow: hidden; background: linear-gradient(135deg, rgba(74,24,57,0.85), rgba(33,11,26,0.9)); border: 1px solid var(--glass-brd); box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+  .cta-card .blob { position:absolute; width: 460px; height: 460px; border-radius: 50%; background: radial-gradient(circle, rgba(157,107,255,0.4), transparent 65%); bottom: -220px; left: -120px; filter: blur(30px); }
   .cta-grid { position: relative; z-index: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
   .cta-grid h2 { font-size: clamp(28px, 3.6vw, 42px); color: #fff; }
-  .cta-grid p { color: rgba(250,244,238,0.78); margin-top: 16px; font-size: 17px; }
-  .cta-grid .mailto { display:inline-flex; align-items:center; gap:8px; margin-top: 22px; color: var(--ahududu-glow); font-weight: 600; }
+  .cta-grid p { color: rgba(246,238,244,0.8); margin-top: 16px; font-size: 17px; }
+  .cta-grid .mailto { display:inline-flex; align-items:center; gap:8px; margin-top: 22px; color: var(--neon-cyan); font-weight: 600; }
 
   form .row { display: grid; gap: 14px; }
-  form .field label { display:block; font-size: 13.5px; font-weight: 600; color: rgba(250,244,238,0.85); margin-bottom: 7px; }
-  form input, form textarea, form select {
-    width: 100%; padding: 13px 16px; border-radius: 12px; border: 1px solid rgba(250,244,238,0.2);
-    background: rgba(250,244,238,0.07); color: #fff; font-family: inherit; font-size: 15px; transition: border-color .25s, background .25s;
-  }
-  form input::placeholder, form textarea::placeholder { color: rgba(250,244,238,0.4); }
-  form input:focus, form textarea:focus, form select:focus { outline: none; border-color: var(--ahududu-glow); background: rgba(250,244,238,0.12); }
+  form .field label { display:block; font-family:'Space Grotesk'; font-size: 12.5px; font-weight: 500; letter-spacing:.04em; color: rgba(246,238,244,0.85); margin-bottom: 7px; }
+  form input, form textarea { width: 100%; padding: 13px 16px; border-radius: 12px; border: 1px solid var(--glass-brd); background: rgba(255,255,255,0.05); color: #fff; font-family: inherit; font-size: 15px; transition: border-color .25s, box-shadow .25s; }
+  form input::placeholder { color: rgba(246,238,244,0.35); }
+  form input:focus, form textarea:focus { outline: none; border-color: var(--neon-cyan); box-shadow: 0 0 0 3px rgba(69,232,212,0.12); }
   form .choice { display:flex; gap: 10px; }
-  form .choice label {
-    flex:1; cursor:pointer; padding: 11px; border-radius: 12px; text-align:center; font-size: 14px; font-weight: 600;
-    border: 1px solid rgba(250,244,238,0.2); color: rgba(250,244,238,0.8); transition: all .2s;
-  }
+  form .choice label { flex:1; cursor:pointer; padding: 11px; border-radius: 12px; text-align:center; font-size: 14px; font-weight: 600; border: 1px solid var(--glass-brd); color: rgba(246,238,244,0.8); transition: all .2s; }
   form .choice input { display:none; }
-  form .choice input:checked + label { background: var(--ahududu); border-color: var(--ahududu); color:#fff; }
+  form .choice input:checked + label { background: linear-gradient(100deg, var(--ahududu), var(--neon-violet)); border-color: transparent; color:#fff; }
   form button[type=submit] { width:100%; justify-content:center; margin-top: 4px; }
-  select option { color: #1d0e18; }
 
-  /* ---------------- FOOTER ---------------- */
-  footer { background: var(--erik-900); color: rgba(250,244,238,0.6); padding: 54px 0 40px; }
+  /* ---------- FOOTER ---------- */
+  footer { background: var(--erik-950); border-top: 1px solid var(--line); padding: 54px 0 40px; position: relative; z-index: 1; color: var(--muted); }
   .foot { display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
   .foot .brand { color: var(--krem); }
-  .foot a:hover { color: var(--ahududu-glow); }
+  .foot a:hover { color: var(--neon-glow); }
   .foot-links { display:flex; gap: 26px; font-size: 14.5px; }
-  .foot-bottom { margin-top: 36px; padding-top: 24px; border-top: 1px solid rgba(250,244,238,0.1); font-size: 13.5px; display:flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .foot-bottom { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 13.5px; display:flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-family:'Space Grotesk'; }
 
-  /* ---------------- RESPONSIVE ---------------- */
-  @media (max-width: 880px) {
-    .nav-links { position: fixed; inset: 74px 0 auto 0; background: rgba(42,18,32,0.97); backdrop-filter: blur(10px);
-      flex-direction: column; gap: 0; padding: 10px 24px 24px; transform: translateY(-130%); transition: transform .4s var(--ease); }
+  @media (max-width: 920px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .holo { display:none; }
+    .nav-links { position: fixed; inset: 76px 0 auto 0; background: rgba(22,8,18,0.97); backdrop-filter: blur(12px); flex-direction: column; gap: 0; padding: 10px 24px 24px; transform: translateY(-130%); transition: transform .4s var(--ease); border-bottom:1px solid var(--line); }
     .nav-links.open { transform: none; }
-    .nav-links a { padding: 15px 0; width:100%; border-bottom: 1px solid rgba(250,244,238,0.08); color: var(--krem); }
+    .nav-links a { padding: 15px 0; width:100%; border-bottom: 1px solid var(--line); }
     .nav-cta { text-align:center; margin-top: 12px; }
     .menu-btn { display:block; }
-    .feat-grid, .steps { grid-template-columns: 1fr; }
+    .feat-grid, .steps, .disc-row { grid-template-columns: 1fr; }
     .cta-grid { grid-template-columns: 1fr; gap: 36px; }
     .cta-card { padding: 44px 28px; }
-    .pad { padding: 78px 0; }
-    .hero-meta { gap: 26px; }
+    .pad { padding: 84px 0; }
   }
-
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
     .reveal { opacity: 1; transform: none; }
@@ -316,15 +230,16 @@
 </head>
 <body>
 
-<!-- ============ NAV ============ -->
+<div class="bg-field"><span class="orb c1"></span><span class="orb c2"></span><span class="orb c3"></span></div>
+<canvas id="stars"></canvas>
+
+<!-- NAV -->
 <header id="hdr">
   <div class="wrap nav">
-    <a href="#top" class="brand">
-      <img src="assets/amblem.png" class="logo-img" alt="Artademi" />
-      <span>artademi</span>
-    </a>
+    <a href="#top" class="brand"><img src="assets/amblem.png" class="logo-img" alt="Artademi" style="height:34px;width:auto"><span>artademi</span></a>
     <nav class="nav-links" id="navlinks">
       <a href="#features">Özellikler</a>
+      <a href="#disciplines">Disiplinler</a>
       <a href="#how">Nasıl çalışır</a>
       <a href="#pricing">Fiyatlandırma</a>
       <a href="#faq">SSS</a>
@@ -334,67 +249,160 @@
   </div>
 </header>
 
-<!-- ============ HERO ============ -->
+<!-- HERO -->
 <section class="hero" id="top">
-  <canvas id="ribbons"></canvas>
-  <div class="hero-veil"></div>
+  <canvas id="particles"></canvas>
+  <div class="hero-grid-overlay"></div>
   <div class="wrap hero-inner">
-    <span class="eyebrow"><span class="dot"></span> Sanat ve eğitim kurumları için</span>
-    <h1>Sanat okulunuzu <span class="accent">tek panelden</span> yönetin.</h1>
-    <p class="lead">Öğrenci kaydından yoklamaya, tahsilattan öğretmen hakedişine ve raporlara kadar — dans, bale ve müzik okullarının tüm işleyişi tek yerde, düzen içinde.</p>
-    <div class="hero-actions">
-      <a href="#pricing" class="btn btn-primary">Satın al <span class="arrow">→</span></a>
-      <a href="#contact" class="btn btn-ghost">Demo iste</a>
+    <div>
+      <span class="eyebrow"><span class="dot"></span> Sanat ve eğitim kurumları için</span>
+      <h1>Sanat akademinizi <span class="accent">tek panelden</span> yönetin.</h1>
+      <p class="lead">Öğrenci kaydından yoklamaya, tahsilattan öğretmen hakedişine ve raporlara kadar — dans, bale ve müzik akademilerinin tüm işleyişi tek yerde, düzen içinde.</p>
+      <div class="hero-actions">
+        <a href="#pricing" class="btn btn-primary">Satın al <span class="arrow">→</span></a>
+        <a href="#contact" class="btn btn-ghost">Demo iste</a>
+      </div>
+      <div class="hero-meta">
+        <div><div class="num">8+</div><div class="lbl">Hazır modül</div></div>
+        <div><div class="num">Çok şube</div><div class="lbl">Tek hesapta yönetim</div></div>
+        <div><div class="num">Rol bazlı</div><div class="lbl">Yetkiye göre erişim</div></div>
+      </div>
     </div>
-    <div class="hero-meta">
-      <div class="item"><div class="num">8+</div><div class="lbl">Hazır modül</div></div>
-      <div class="item"><div class="num">Çok şube</div><div class="lbl">Tek hesapta yönetim</div></div>
-      <div class="item"><div class="num">Rol bazlı</div><div class="lbl">Yetkiye göre erişim</div></div>
+    <div class="holo">
+      <!-- holografik kart: piyano -->
+      <div class="holo-card holo-1">
+        <div class="tag">// öğrenci paneli</div>
+        <svg viewBox="0 0 200 70" fill="none">
+          <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#45e8d4"/><stop offset="1" stop-color="#9d6bff"/></linearGradient></defs>
+          <g stroke="url(#g1)" stroke-width="1.4">
+            <rect x="6" y="10" width="188" height="50" rx="6" stroke-opacity="0.5"/>
+            <line x1="30" y1="10" x2="30" y2="60"/><line x1="54" y1="10" x2="54" y2="60"/><line x1="78" y1="10" x2="78" y2="60"/><line x1="102" y1="10" x2="102" y2="60"/><line x1="126" y1="10" x2="126" y2="60"/><line x1="150" y1="10" x2="150" y2="60"/><line x1="174" y1="10" x2="174" y2="60"/>
+          </g>
+          <rect x="22" y="10" width="13" height="30" rx="2" fill="#d8417a" fill-opacity="0.55"/>
+          <rect x="94" y="10" width="13" height="30" rx="2" fill="#9d6bff" fill-opacity="0.5"/>
+        </svg>
+      </div>
+      <!-- holografik kart: dalga/ses -->
+      <div class="holo-card holo-2">
+        <div class="tag">// tahsilat akışı</div>
+        <svg viewBox="0 0 190 60" fill="none">
+          <defs><linearGradient id="g2" x1="0" x2="1"><stop offset="0" stop-color="#ff5fb4"/><stop offset="1" stop-color="#45e8d4"/></linearGradient></defs>
+          <g stroke="url(#g2)" stroke-width="2" stroke-linecap="round">
+            <line x1="12" y1="30" x2="12" y2="30"/><line x1="26" y1="22" x2="26" y2="38"/><line x1="40" y1="12" x2="40" y2="48"/><line x1="54" y1="24" x2="54" y2="36"/><line x1="68" y1="6" x2="68" y2="54"/><line x1="82" y1="20" x2="82" y2="40"/><line x1="96" y1="14" x2="96" y2="46"/><line x1="110" y1="26" x2="110" y2="34"/><line x1="124" y1="10" x2="124" y2="50"/><line x1="138" y1="22" x2="138" y2="38"/><line x1="152" y1="16" x2="152" y2="44"/><line x1="166" y1="26" x2="166" y2="34"/><line x1="178" y1="20" x2="178" y2="40"/>
+          </g>
+        </svg>
+      </div>
+      <!-- holografik kart: rapor grafiği -->
+      <div class="holo-card holo-3">
+        <div class="tag">// rapor</div>
+        <svg viewBox="0 0 160 60" fill="none">
+          <defs><linearGradient id="g3" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#9d6bff" stop-opacity="0.1"/><stop offset="1" stop-color="#45e8d4" stop-opacity="0.6"/></linearGradient></defs>
+          <polyline points="8,48 36,34 64,40 92,20 120,28 150,8" stroke="#45e8d4" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <polygon points="8,48 36,34 64,40 92,20 120,28 150,8 150,56 8,56" fill="url(#g3)"/>
+        </svg>
+      </div>
     </div>
   </div>
   <div class="scroll-hint"><span>keşfet</span><span class="line"></span></div>
 </section>
 
-<!-- ============ FEATURES ============ -->
-<section class="features pad" id="features">
+<!-- FEATURES -->
+<section class="pad" id="features">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="sec-eyebrow">Modüller</div>
-      <h2>Okulun her işi için bir ekran</h2>
+      <div class="sec-eyebrow">// modüller</div>
+      <h2>Akademinin her işi için bir ekran</h2>
       <p>Dağınık tablolar ve defterler yerine, birbirine bağlı modüller. Bir yere girdiğiniz veri her yerde doğru.</p>
     </div>
     <div class="feat-grid">
-      <div class="feat reveal d1"><div class="ic">🎓</div><h3>Öğrenci yönetimi</h3><p>Kayıt, veli bilgisi, statü ve kardeş eşleştirme. Her öğrencinin geçmişi tek kartta.</p></div>
-      <div class="feat reveal d2"><div class="ic">🗓️</div><h3>Yoklama</h3><p>Grup bazlı oturumlar, tek dokunuşla devamsızlık. Öğretmen yalnızca kendi grubunu görür.</p></div>
-      <div class="feat reveal d3"><div class="ic">💳</div><h3>Tahsilat & finans</h3><p>Aylık aidat tahakkuku, ödeme takibi, bakiye ve gider. Kimin ne kadar borcu var, anında belli.</p></div>
-      <div class="feat reveal d1"><div class="ic">📊</div><h3>Öğretmen hakediş</h3><p>Saatlik veya ciro oranına göre otomatik hesaplama. Maaş kapanışı dakikalar içinde.</p></div>
-      <div class="feat reveal d2"><div class="ic">📈</div><h3>Raporlar</h3><p>Finansal özet, borç listesi, grup doluluk. Karar vereceğiniz sayılar tek bakışta.</p></div>
-      <div class="feat reveal d3"><div class="ic">🏛️</div><h3>Çok şube & roller</h3><p>Birden çok şube tek hesapta. Yönetici, ön büro, muhasebe ve öğretmen — herkes yetkisi kadar görür.</p></div>
+      <div class="feat reveal d1"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#f06597" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></div><h3>Öğrenci yönetimi</h3><p>Kayıt, veli bilgisi, statü ve kardeş eşleştirme. Her öğrencinin geçmişi tek kartta.</p></div>
+      <div class="feat reveal d2"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#45e8d4" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4M9 14l2 2 4-4"/></svg></div><h3>Yoklama</h3><p>Grup bazlı oturumlar, tek dokunuşla devamsızlık. Öğretmen yalnızca kendi grubunu görür.</p></div>
+      <div class="feat reveal d3"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9d6bff" stroke-width="1.6"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/></svg></div><h3>Tahsilat & finans</h3><p>Aylık aidat tahakkuku, ödeme takibi, bakiye ve gider. Kimin ne kadar borcu var, anında belli.</p></div>
+      <div class="feat reveal d1"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#f06597" stroke-width="1.6"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></div><h3>Öğretmen hakediş</h3><p>Saatlik, ciro oranı veya özel ders — her grup kendi tipine göre otomatik hesaplanır.</p></div>
+      <div class="feat reveal d2"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#45e8d4" stroke-width="1.6"><path d="M4 20V14M10 20V8M16 20v-10M21 4l-5 6-4-3-5 5"/></svg></div><h3>Raporlar</h3><p>Finansal özet, borç listesi, grup doluluk. Karar vereceğiniz sayılar tek bakışta.</p></div>
+      <div class="feat reveal d3"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9d6bff" stroke-width="1.6"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg></div><h3>Çok şube & roller</h3><p>Birden çok şube tek hesapta. Yönetici, ön büro, muhasebe ve öğretmen — herkes yetkisi kadar görür.</p></div>
     </div>
   </div>
 </section>
 
-<!-- ============ HOW ============ -->
-<section class="how pad" id="how">
+<!-- DISCIPLINES (sanat görselleri) -->
+<section class="pad" id="disciplines">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="sec-eyebrow">Nasıl çalışır</div>
-      <h2>Kurulumdan ilk derse üç adım</h2>
+      <div class="sec-eyebrow">// disiplinler</div>
+      <h2>Hangi sanatı öğretiyorsanız</h2>
+      <p>Bale, müzik, tiyatro — Artademi disiplinden bağımsız çalışır. Branş, grup ve ders yapınız ne olursa olsun uyum sağlar.</p>
     </div>
-    <div class="steps">
-      <div class="step reveal d1"><div class="n">1</div><h3>Hesabınızı açın</h3><p>Aboneliğinizi başlatın, okulunuza özel paneliniz ve yönetici girişiniz hazır olsun.</p></div>
-      <div class="step reveal d2"><div class="n">2</div><h3>Okulunuzu tanımlayın</h3><p>Şube, salon, branş ve öğretmenleri girin; grupları ve haftalık programı oluşturun.</p></div>
-      <div class="step reveal d3"><div class="n">3</div><h3>Yönetmeye başlayın</h3><p>Öğrencileri kaydedin, yoklama alın, tahsilatı takip edin. Gerisini Artademi hesaplar.</p></div>
+    <div class="disc-row">
+      <!-- BALE -->
+      <div class="disc reveal d1">
+        <svg viewBox="0 0 300 225" preserveAspectRatio="xMidYMid slice" fill="none">
+          <defs><radialGradient id="db1" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#4a1839"/><stop offset="1" stop-color="#160812"/></radialGradient><linearGradient id="dl1" x1="0" x2="1"><stop offset="0" stop-color="#f06597"/><stop offset="1" stop-color="#9d6bff"/></linearGradient></defs>
+          <rect width="300" height="225" fill="url(#db1)"/>
+          <g stroke="url(#dl1)" stroke-width="2.4" stroke-linecap="round" fill="none" opacity="0.95">
+            <circle cx="150" cy="60" r="12"/>
+            <path d="M150 72 C150 100 150 110 150 120"/>
+            <path d="M150 84 C130 92 116 88 104 78"/>
+            <path d="M150 84 C172 92 190 86 206 72"/>
+            <path d="M150 120 C138 150 126 168 100 186"/>
+            <path d="M150 120 C160 150 168 174 186 196"/>
+          </g>
+          <circle cx="150" cy="120" r="60" stroke="#45e8d4" stroke-opacity="0.2" stroke-width="1"/>
+        </svg>
+        <div class="lab">Bale & Dans<small>hareket · ritim · sahne</small></div>
+      </div>
+      <!-- MÜZİK -->
+      <div class="disc reveal d2">
+        <svg viewBox="0 0 300 225" preserveAspectRatio="xMidYMid slice" fill="none">
+          <defs><radialGradient id="db2" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#321026"/><stop offset="1" stop-color="#160812"/></radialGradient></defs>
+          <rect width="300" height="225" fill="url(#db2)"/>
+          <g stroke="#45e8d4" stroke-width="1.6" opacity="0.85">
+            <line x1="40" y1="70" x2="260" y2="70"/><line x1="40" y1="90" x2="260" y2="90"/><line x1="40" y1="110" x2="260" y2="110"/><line x1="40" y1="130" x2="260" y2="130"/><line x1="40" y1="150" x2="260" y2="150"/>
+          </g>
+          <g fill="#f06597"><ellipse cx="90" cy="150" rx="11" ry="8" transform="rotate(-20 90 150)"/><ellipse cx="150" cy="110" rx="11" ry="8" transform="rotate(-20 150 110)"/><ellipse cx="210" cy="130" rx="11" ry="8" transform="rotate(-20 210 130)"/></g>
+          <g stroke="#9d6bff" stroke-width="2.4" stroke-linecap="round"><line x1="100" y1="150" x2="100" y2="96"/><line x1="160" y1="110" x2="160" y2="56"/><line x1="220" y1="130" x2="220" y2="76"/><path d="M100 96 C112 92 150 86 160 56" stroke="#9d6bff" fill="none"/></g>
+        </svg>
+        <div class="lab">Müzik<small>piyano · gitar · keman</small></div>
+      </div>
+      <!-- TİYATRO -->
+      <div class="disc reveal d3">
+        <svg viewBox="0 0 300 225" preserveAspectRatio="xMidYMid slice" fill="none">
+          <defs><radialGradient id="db3" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#4a1839"/><stop offset="1" stop-color="#160812"/></radialGradient></defs>
+          <rect width="300" height="225" fill="url(#db3)"/>
+          <g opacity="0.9">
+            <path d="M70 70 q40 -20 70 0 q4 50 -10 80 q-25 26 -50 0 q-14 -38 -10 -80Z" fill="none" stroke="#f06597" stroke-width="2.4"/>
+            <circle cx="92" cy="105" r="5" fill="#45e8d4"/><circle cx="124" cy="105" r="5" fill="#45e8d4"/>
+            <path d="M90 140 q18 14 36 0" stroke="#45e8d4" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          </g>
+          <g opacity="0.9">
+            <path d="M160 80 q40 -20 70 0 q4 50 -10 80 q-25 26 -50 0 q-14 -38 -10 -80Z" fill="none" stroke="#9d6bff" stroke-width="2.4"/>
+            <circle cx="182" cy="115" r="5" fill="#45e8d4"/><circle cx="214" cy="115" r="5" fill="#45e8d4"/>
+            <path d="M180 142 q18 -14 36 0" stroke="#45e8d4" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          </g>
+        </svg>
+        <div class="lab">Tiyatro & Sahne<small>oyun · ifade · sahne</small></div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ============ PRICING ============ -->
-<section class="pricing pad" id="pricing">
-  <div class="glow"></div>
+<!-- HOW -->
+<section class="pad" id="how">
   <div class="wrap">
-    <div class="sec-head reveal" style="margin-left:auto;margin-right:auto;text-align:center;">
-      <div class="sec-eyebrow" style="color:var(--ahududu-glow)">Fiyatlandırma</div>
+    <div class="sec-head reveal"><div class="sec-eyebrow">// nasıl çalışır</div><h2>Kurulumdan ilk derse üç adım</h2></div>
+    <div class="steps">
+      <div class="step reveal d1"><div class="n">01</div><h3>Hesabınızı açın</h3><p>Aboneliğinizi başlatın, akademinize özel paneliniz ve yönetici girişiniz hazır olsun.</p></div>
+      <div class="step reveal d2"><div class="n">02</div><h3>Akademinizi tanımlayın</h3><p>Şube, salon, branş ve öğretmenleri girin; grupları ve haftalık programı oluşturun.</p></div>
+      <div class="step reveal d3"><div class="n">03</div><h3>Yönetmeye başlayın</h3><p>Öğrencileri kaydedin, yoklama alın, tahsilatı takip edin. Gerisini Artademi hesaplar.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pad" id="pricing">
+  <div class="wrap">
+    <div class="sec-head reveal" style="margin:0 auto 60px;text-align:center;">
+      <div class="sec-eyebrow">// fiyatlandırma</div>
       <h2>Tek plan, sınırsız iş</h2>
       <p>Karmaşık paketler yok. Tüm modüller, tüm roller, çok şube — hepsi dahil.</p>
     </div>
@@ -403,28 +411,25 @@
       <div class="amount"><span>₺</span>4.000</div>
       <div class="per">aylık · KDV hariç</div>
       <ul>
-        <li><span class="ck">✓</span> Tüm modüller: öğrenci, yoklama, finans, hakediş, stok, raporlar</li>
-        <li><span class="ck">✓</span> Çok şubeli yönetim, sınırsız kullanıcı</li>
-        <li><span class="ck">✓</span> Rol bazlı erişim ve güvenli giriş</li>
-        <li><span class="ck">✓</span> Otomatik aylık aidat tahakkuku</li>
-        <li><span class="ck">✓</span> Kurulum ve aktarım desteği</li>
+        <li><span class="ck">✦</span> Tüm modüller: öğrenci, yoklama, finans, hakediş, stok, raporlar</li>
+        <li><span class="ck">✦</span> Çok şubeli yönetim, sınırsız kullanıcı</li>
+        <li><span class="ck">✦</span> Rol bazlı erişim ve güvenli giriş</li>
+        <li><span class="ck">✦</span> Otomatik aylık aidat tahakkuku</li>
+        <li><span class="ck">✦</span> Kurulum ve aktarım desteği</li>
       </ul>
       <a href="#contact" class="btn btn-primary">Satın al <span class="arrow">→</span></a>
-      <div class="price-note">Önce görmek ister misiniz? <a href="#contact" style="color:var(--ahududu-glow);font-weight:600">Demo isteyin →</a></div>
+      <div class="price-note">Önce görmek ister misiniz? <a href="#contact">Demo isteyin →</a></div>
     </div>
   </div>
 </section>
 
-<!-- ============ FAQ ============ -->
-<section class="faq pad" id="faq">
+<!-- FAQ -->
+<section class="pad" id="faq">
   <div class="wrap">
-    <div class="sec-head reveal" style="margin-left:auto;margin-right:auto;text-align:center;">
-      <div class="sec-eyebrow">Sık sorulanlar</div>
-      <h2>Merak edilenler</h2>
-    </div>
+    <div class="sec-head reveal" style="margin:0 auto 60px;text-align:center;"><div class="sec-eyebrow">// sık sorulanlar</div><h2>Merak edilenler</h2></div>
     <div class="faq-wrap">
-      <div class="qa reveal"><button>Artademi hangi okullar için uygun? <span class="q-ic">+</span></button><div class="a"><p>Dans, bale ve müzik başta olmak üzere ders ve grup temelli çalışan tüm sanat ve eğitim kurumları için tasarlandı. Tek şubeli küçük bir stüdyo da, çok şubeli bir akademi de aynı panelden yönetilir.</p></div></div>
-      <div class="qa reveal"><button>Verilerim güvende mi? <span class="q-ic">+</span></button><div class="a"><p>Her okulun verisi kendi hesabında, diğer kurumlardan tamamen yalıtılmış şekilde tutulur. Erişim rollere göre sınırlıdır; örneğin ön büro çalışanı finansal rakamları göremez.</p></div></div>
+      <div class="qa reveal"><button>Artademi hangi akademiler için uygun? <span class="q-ic">+</span></button><div class="a"><p>Dans, bale ve müzik başta olmak üzere ders ve grup temelli çalışan tüm sanat ve eğitim kurumları için tasarlandı. Tek şubeli küçük bir stüdyo da, çok şubeli bir akademi de aynı panelden yönetilir.</p></div></div>
+      <div class="qa reveal"><button>Verilerim güvende mi? <span class="q-ic">+</span></button><div class="a"><p>Her akademinin verisi kendi hesabında, diğer kurumlardan tamamen yalıtılmış şekilde tutulur. Erişim rollere göre sınırlıdır; örneğin ön büro çalışanı finansal rakamları göremez.</p></div></div>
       <div class="qa reveal"><button>Kurulum ne kadar sürer? <span class="q-ic">+</span></button><div class="a"><p>Aboneliğiniz başladığında paneliniz ve yönetici girişiniz hazırdır. Şube, öğretmen ve grup tanımlarını girdikten sonra aynı gün öğrenci kaydı ve yoklamaya başlayabilirsiniz.</p></div></div>
       <div class="qa reveal"><button>Mevcut öğrenci kayıtlarımı aktarabilir miyim? <span class="q-ic">+</span></button><div class="a"><p>Evet. Kurulum sürecinde mevcut öğrenci ve grup bilgilerinizin aktarımında size destek oluyoruz. Detaylar için bizimle iletişime geçin.</p></div></div>
       <div class="qa reveal"><button>Ödeme nasıl yapılır? <span class="q-ic">+</span></button><div class="a"><p>Abonelik aylıktır. Kredi kartı ile online ödeme yakında devreye girecek; o zamana kadar satın alma ve demo talepleriniz için bizimle doğrudan iletişime geçebilirsiniz.</p></div></div>
@@ -432,16 +437,16 @@
   </div>
 </section>
 
-<!-- ============ CTA / CONTACT ============ -->
-<section class="cta pad" id="contact">
+<!-- CTA -->
+<section class="pad" id="contact">
   <div class="wrap">
     <div class="cta-card reveal">
       <div class="blob"></div>
       <div class="cta-grid">
         <div>
-          <h2>Okulunuzu Artademi'ye taşıyın</h2>
+          <h2>Akademinizi Artademi'ye taşıyın</h2>
           <p>Satın almak ya da önce bir demo görmek isterseniz, formu doldurun; aynı gün size dönüş yapalım.</p>
-          <a href="mailto:info@artademi.com" class="mailto">✉ info@artademi.com</a>
+          <a href="mailto:info@artademi.com" class="mailto">✦ info@artademi.com</a>
         </div>
         <form id="leadForm" onsubmit="return submitLead(event)">
           <div class="row">
@@ -453,8 +458,8 @@
               </div>
             </div>
             <div class="field"><label for="ad">Ad Soyad</label><input id="ad" name="ad" placeholder="Adınız" required></div>
-            <div class="field"><label for="kurum">Kurum adı</label><input id="kurum" name="kurum" placeholder="Okulunuzun adı" required></div>
-            <div class="field"><label for="email">E-posta</label><input id="email" name="email" type="email" placeholder="ornek@okul.com" required></div>
+            <div class="field"><label for="kurum">Kurum adı</label><input id="kurum" name="kurum" placeholder="Akademinizin adı" required></div>
+            <div class="field"><label for="email">E-posta</label><input id="email" name="email" type="email" placeholder="ornek@akademi.com" required></div>
             <div class="field"><label for="tel">Telefon (opsiyonel)</label><input id="tel" name="tel" placeholder="05xx ..."></div>
             <button type="submit" class="btn btn-primary">Gönder <span class="arrow">→</span></button>
           </div>
@@ -464,97 +469,107 @@
   </div>
 </section>
 
-<!-- ============ FOOTER ============ -->
+<!-- LEGAL -->
+<section class="pad" id="legal">
+  <div class="wrap">
+    <div class="sec-head reveal" style="margin:0 auto 60px;text-align:center;"><div class="sec-eyebrow">// yasal bilgilendirme</div><h2>Şeffaflık ve veri güvenliği</h2><p>Kişisel verileriniz 6698 sayılı KVKK kapsamında işlenir ve korunur.</p></div>
+    <div class="legal-wrap">
+      <div class="qa reveal"><button>KVKK Aydınlatma Metni <span class="q-ic">+</span></button><div class="a"><p>Artademi olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu uyarınca veri sorumlusu sıfatıyla hareket ederiz. İletişim formu aracılığıyla paylaştığınız ad-soyad, kurum adı, e-posta ve telefon bilgileriniz; yalnızca talebinizi değerlendirmek, size dönüş yapmak ve hizmet sunmak amacıyla işlenir. Verileriniz, açık rızanız olmaksızın üçüncü kişilerle paylaşılmaz ve amaç dışında kullanılmaz. KVKK'nın 11. maddesi kapsamında verilerinize erişim, düzeltme, silme ve işlenmesine itiraz haklarına sahipsiniz. Taleplerinizi <a href="mailto:info@artademi.com">info@artademi.com</a> adresine iletebilirsiniz.</p></div></div>
+      <div class="qa reveal"><button>Gizlilik Politikası <span class="q-ic">+</span></button><div class="a"><p>Platformumuzda her kurumun verisi, diğer kurumlardan tamamen yalıtılmış şekilde saklanır. Verilere erişim, kullanıcıların rollerine göre sınırlandırılmıştır. Hizmet kapsamında topladığımız bilgileri yalnızca size hizmet sunmak için kullanır, yasal zorunluluklar dışında üçüncü taraflarla paylaşmayız.</p></div></div>
+      <div class="qa reveal"><button>Kullanım Koşulları <span class="q-ic">+</span></button><div class="a"><p>Artademi'yi kullanarak, hizmeti yürürlükteki mevzuata uygun şekilde kullanmayı kabul edersiniz. Abonelik aylık olarak yenilenir; kullanım, ödeme ve iptal koşullarına ilişkin ayrıntılar sözleşme aşamasında tarafınıza iletilir.</p></div></div>
+      <div class="qa reveal"><button>Çerez (Cookie) Politikası <span class="q-ic">+</span></button><div class="a"><p>Bu web sitesi, deneyiminizi iyileştirmek için yalnızca işlevsel çerezler kullanabilir. Sitemizde reklam veya üçüncü taraf takip çerezi bulunmaz. Tarayıcı ayarlarınızdan çerezleri her zaman yönetebilirsiniz.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
 <footer>
   <div class="wrap">
     <div class="foot">
-      <a href="#top" class="brand"><img src="assets/amblem.png" class="logo-img" alt="Artademi" /><span>artademi</span></a>
+      <a href="#top" class="brand"><img src="assets/amblem.png" class="logo-img" alt="Artademi" style="height:34px;width:auto"><span>artademi</span></a>
       <div class="foot-links">
         <a href="#features">Özellikler</a>
         <a href="#pricing">Fiyatlandırma</a>
         <a href="#faq">SSS</a>
+        <a href="#legal">KVKK</a>
         <a href="https://app.artademi.com">Giriş yap</a>
         <a href="mailto:info@artademi.com">İletişim</a>
       </div>
     </div>
     <div class="foot-bottom">
-      <span>© <span id="yr"></span> Artademi · Sanat okulları için yönetim platformu</span>
+      <span>© <span id="yr"></span> Artademi · Sanat akademileri için yönetim platformu</span>
       <span>info@artademi.com</span>
     </div>
   </div>
 </footer>
 
 <script>
-  // yıl
   document.getElementById('yr').textContent = new Date().getFullYear();
 
-  // nav scroll state
   const hdr = document.getElementById('hdr');
   const onScroll = () => hdr.classList.toggle('scrolled', window.scrollY > 30);
   onScroll(); window.addEventListener('scroll', onScroll, { passive: true });
 
-  // mobile menu
   const menuBtn = document.getElementById('menuBtn');
   const navlinks = document.getElementById('navlinks');
   menuBtn.addEventListener('click', () => navlinks.classList.toggle('open'));
   navlinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => navlinks.classList.remove('open')));
 
-  // reveal on scroll
   const io = new IntersectionObserver((entries) => {
     entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-  }, { threshold: 0.15 });
+  }, { threshold: 0.14 });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-  // FAQ accordion
   document.querySelectorAll('.qa button').forEach(btn => {
     btn.addEventListener('click', () => {
-      const qa = btn.parentElement;
-      const a = qa.querySelector('.a');
-      const open = qa.classList.contains('open');
-      document.querySelectorAll('.qa').forEach(x => { x.classList.remove('open'); x.querySelector('.a').style.maxHeight = null; });
+      const qa = btn.parentElement, a = qa.querySelector('.a'), open = qa.classList.contains('open');
+      const parent = qa.closest('.faq-wrap, .legal-wrap');
+      parent.querySelectorAll('.qa').forEach(x => { x.classList.remove('open'); x.querySelector('.a').style.maxHeight = null; });
       if (!open) { qa.classList.add('open'); a.style.maxHeight = a.scrollHeight + 'px'; }
     });
   });
 
-  // lead form -> mailto (PayTR gelene kadar)
   function submitLead(e){
     e.preventDefault();
     const f = e.target;
-    const amac = f.amac.value, ad = f.ad.value, kurum = f.kurum.value, email = f.email.value, tel = f.tel.value;
-    const subject = encodeURIComponent(`[${amac}] ${kurum}`);
-    const body = encodeURIComponent(`Amaç: ${amac}\nAd Soyad: ${ad}\nKurum: ${kurum}\nE-posta: ${email}\nTelefon: ${tel}`);
+    const subject = encodeURIComponent(`[${f.amac.value}] ${f.kurum.value}`);
+    const body = encodeURIComponent(`Amaç: ${f.amac.value}\nAd Soyad: ${f.ad.value}\nKurum: ${f.kurum.value}\nE-posta: ${f.email.value}\nTelefon: ${f.tel.value}`);
     window.location.href = `mailto:info@artademi.com?subject=${subject}&body=${body}`;
     return false;
   }
 
-  /* ---------- HERO: akan kurdele/perde animasyonu ---------- */
+  /* ambient starfield */
   (function(){
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const c = document.getElementById('ribbons');
-    if (!c || reduce) return;
-    const ctx = c.getContext('2d');
-    let w, h, t = 0;
-    const colors = ['rgba(192,57,107,0.55)','rgba(224,87,138,0.45)','rgba(107,46,84,0.6)','rgba(255,122,168,0.35)'];
-    function resize(){ w = c.width = c.offsetWidth * devicePixelRatio; h = c.height = c.offsetHeight * devicePixelRatio; }
-    window.addEventListener('resize', resize); resize();
-    const ribbons = colors.map((col,i)=>({ col, amp: (60+i*30)*devicePixelRatio, yoff:(0.45+i*0.13), speed:0.6+i*0.25, len:(0.6+i*0.18) }));
-    function draw(){
-      ctx.clearRect(0,0,w,h);
-      t += 0.005;
-      ribbons.forEach((r,idx)=>{
-        ctx.beginPath();
-        for(let x=0;x<=w;x+=14*devicePixelRatio){
-          const y = h*r.yoff
-            + Math.sin(x*0.0016 + t*r.speed + idx) * r.amp
-            + Math.sin(x*0.0007 - t*r.speed*0.7) * r.amp*0.5;
-          x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
-        }
-        ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath();
-        ctx.fillStyle = r.col; ctx.globalCompositeOperation='lighter'; ctx.fill();
-      });
-      ctx.globalCompositeOperation='source-over';
-      requestAnimationFrame(draw);
-    }
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const c = document.getElementById('stars'); if(!c||reduce) return;
+    const ctx = c.getContext('2d'); let w,h,stars;
+    function init(){ w=c.width=innerWidth*devicePixelRatio; h=c.height=innerHeight*devicePixelRatio;
+      stars=Array.from({length:90},()=>({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.4*devicePixelRatio+0.3,a:Math.random(),s:Math.random()*0.02+0.004})); }
+    addEventListener('resize',init); init();
+    function draw(){ ctx.clearRect(0,0,w,h);
+      stars.forEach(s=>{ s.a+=s.s; const o=0.3+Math.abs(Math.sin(s.a))*0.6;
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.fillStyle=`rgba(180,220,255,${o*0.5})`; ctx.fill(); });
+      requestAnimationFrame(draw); }
+    draw();
+  })();
+
+  /* hero particle network */
+  (function(){
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const c = document.getElementById('particles'); if(!c||reduce) return;
+    const ctx = c.getContext('2d'); let w,h,pts;
+    const N = innerWidth<700?34:60;
+    function init(){ w=c.width=c.offsetWidth*devicePixelRatio; h=c.height=c.offsetHeight*devicePixelRatio;
+      pts=Array.from({length:N},()=>({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-0.5)*0.25*devicePixelRatio,vy:(Math.random()-0.5)*0.25*devicePixelRatio})); }
+    addEventListener('resize',init); init();
+    function draw(){ ctx.clearRect(0,0,w,h);
+      for(let i=0;i<pts.length;i++){ const p=pts[i]; p.x+=p.vx; p.y+=p.vy;
+        if(p.x<0||p.x>w)p.vx*=-1; if(p.y<0||p.y>h)p.vy*=-1;
+        ctx.beginPath(); ctx.arc(p.x,p.y,1.4*devicePixelRatio,0,7); ctx.fillStyle='rgba(255,122,196,0.7)'; ctx.fill();
+        for(let j=i+1;j<pts.length;j++){ const q=pts[j], dx=p.x-q.x, dy=p.y-q.y, d=Math.hypot(dx,dy), max=140*devicePixelRatio;
+          if(d<max){ ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y);
+            ctx.strokeStyle=`rgba(69,232,212,${(1-d/max)*0.22})`; ctx.lineWidth=devicePixelRatio*0.7; ctx.stroke(); } } }
+      requestAnimationFrame(draw); }
     draw();
   })();
 </script>

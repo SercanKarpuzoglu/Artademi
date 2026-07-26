@@ -63,6 +63,13 @@
 
   #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 
+  /* section photo backdrops (Stitch görselleri) — scroll ile belirir/kaybolur */
+  .bg-photos { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .bg-photos img { position: absolute; left: 0; top: -6%; width: 100%; height: 112%; object-fit: cover; opacity: 0; filter: saturate(0.8) brightness(0.52) contrast(1.04); will-change: opacity, transform; }
+  .bg-photos::after { content: ''; position: absolute; inset: 0; opacity: var(--veil, 0); background:
+    linear-gradient(180deg, var(--erik-950) 0%, rgba(22,8,18,0.55) 24%, rgba(33,11,26,0.45) 55%, var(--erik-950) 100%),
+    radial-gradient(ellipse 90% 75% at 50% 50%, rgba(74,24,57,0.12) 30%, rgba(22,8,18,0.72) 100%); }
+
   /* ---------- NAV ---------- */
   header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; transition: background .4s var(--ease), backdrop-filter .4s, border-color .4s; border-bottom: 1px solid transparent; }
   header.scrolled { background: rgba(22,8,18,0.72); backdrop-filter: blur(16px); border-bottom: 1px solid var(--line); }
@@ -231,6 +238,11 @@
 <body>
 
 <div class="bg-field"><span class="orb c1"></span><span class="orb c2"></span><span class="orb c3"></span></div>
+<div class="bg-photos" aria-hidden="true">
+  <img src="assets/bg-gitar.jpg" data-section="features" alt="">
+  <img src="assets/bg-dans.jpg" data-section="disciplines" alt="">
+  <img src="assets/bg-keman.jpg" data-section="how" alt="">
+</div>
 <canvas id="stars"></canvas>
 
 <!-- NAV -->
@@ -537,6 +549,36 @@
     window.location.href = `mailto:info@artademi.com?subject=${subject}&body=${body}`;
     return false;
   }
+
+  /* section photo backdrops — scroll'a bağlı belirme/kaybolma + hafif parallax */
+  (function(){
+    const wrap = document.querySelector('.bg-photos'); if(!wrap) return;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const items = Array.from(wrap.querySelectorAll('img'))
+      .map(img => ({ img, sec: document.getElementById(img.dataset.section) }))
+      .filter(x => x.sec);
+    if(!items.length) return;
+    const MAX = 0.5; // fotoğrafın tepe opaklığı — arka plan hissi korunur
+    let ticking = false;
+    function update(){
+      ticking = false;
+      const vh = innerHeight; let peak = 0;
+      items.forEach(({img, sec}) => {
+        const r = sec.getBoundingClientRect();
+        const mid = r.top + r.height/2 - vh/2;      // bölüm merkezi ↔ ekran merkezi
+        const span = (r.height + vh) / 2;
+        let t = 1 - Math.abs(mid)/span;
+        t = Math.max(0, Math.min(1, t));
+        img.style.opacity = (Math.pow(t, 1.4) * MAX).toFixed(3);
+        if(!reduce) img.style.transform = `translateY(${(-mid/span*36).toFixed(1)}px) scale(1.06)`;
+        peak = Math.max(peak, t);
+      });
+      wrap.style.setProperty('--veil', peak.toFixed(3));
+    }
+    addEventListener('scroll', () => { if(!ticking){ ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    addEventListener('resize', update);
+    update();
+  })();
 
   /* ambient starfield */
   (function(){

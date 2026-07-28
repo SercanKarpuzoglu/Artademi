@@ -36,8 +36,9 @@ services:
     # PROD MODE: start-dev DEĞİL. HTTPS proxy arkasında çalışır.
     # NOT: "start --optimized" önceden ayrı bir "kc.sh build" ister; tema volume + runtime config ile
     # bu kurulumda kararsız olabiliyordu. "start" başlangıçta otomatik build eder → dev/prod'da sağlam.
-    # (Sunucudaki çalışan değer buysa repoyla eşleşir; farklıysa Sercan sunucudakine göre düzeltsin.)
-    command: ["start"]
+    # TLS'i Caddy sonlandırır → Keycloak iç ağda HTTP konuşur (http-enabled) ve hostname
+    # doğrulaması gevşek olmalı (auth.artademi.com'u Caddy set eder). Sunucudaki canlı değerle BİREBİR.
+    command: ["start", "--http-enabled=true", "--hostname-strict=false"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}

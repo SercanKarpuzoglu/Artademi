@@ -17,4 +17,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
 
     /** Birden cok tenant'in aboneligi (liste ozeti icin toplu yukleme — N+1 onler). */
     List<Subscription> findByTenantIdIn(List<UUID> tenantIds);
+
+    /** Webhook eslesmesi: iyzico subscriptionReferenceCode → abonelik. */
+    Optional<Subscription> findByProviderSubscriptionRef(String providerSubscriptionRef);
+
+    /** Checkout callback eslesmesi: iyzico checkout token → abonelik. */
+    Optional<Subscription> findByCheckoutToken(String checkoutToken);
 }

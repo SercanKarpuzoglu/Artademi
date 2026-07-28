@@ -52,6 +52,21 @@ public class Subscription {
     @Column(name = "payment_status", nullable = false, length = 20)
     private PaymentStatus paymentStatus;
 
+    /** Odeme saglayicisi (ör. "iyzico"); baglanmadiysa null. Kart verisi BIZDE TUTULMAZ. */
+    @Column(name = "provider", length = 20)
+    private String provider;
+
+    @Column(name = "provider_customer_ref", length = 80)
+    private String providerCustomerRef;
+
+    /** iyzico subscriptionReferenceCode — webhook eslesmesi bununla yapilir. */
+    @Column(name = "provider_subscription_ref", length = 80)
+    private String providerSubscriptionRef;
+
+    /** Devam eden checkout'un token'i; callback tamamlaninca temizlenir. */
+    @Column(name = "checkout_token", length = 80)
+    private String checkoutToken;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -135,6 +150,38 @@ public class Subscription {
 
     public void setPaymentStatus(PaymentStatus paymentStatus) {
         this.paymentStatus = paymentStatus;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public String getProviderCustomerRef() {
+        return providerCustomerRef;
+    }
+
+    public void setProviderCustomerRef(String providerCustomerRef) {
+        this.providerCustomerRef = providerCustomerRef;
+    }
+
+    public String getProviderSubscriptionRef() {
+        return providerSubscriptionRef;
+    }
+
+    public void setProviderSubscriptionRef(String providerSubscriptionRef) {
+        this.providerSubscriptionRef = providerSubscriptionRef;
+    }
+
+    public String getCheckoutToken() {
+        return checkoutToken;
+    }
+
+    public void setCheckoutToken(String checkoutToken) {
+        this.checkoutToken = checkoutToken;
     }
 
     public Instant getCreatedAt() {

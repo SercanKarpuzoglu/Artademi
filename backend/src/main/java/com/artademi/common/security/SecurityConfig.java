@@ -58,6 +58,11 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/ping", "/actuator/health").permitAll()
+                        // iyzico sunucudan cagirir (JWT yok): webhook HMAC imzayla, callback tek
+                        // kullanimlik token'la dogrulanir (bkz. billing paketi).
+                        .requestMatchers("/api/webhooks/iyzico", "/api/billing/callback").permitAll()
+                        // Landing iletisim formu (artademi.com) — honeypot + IP soguma korumali.
+                        .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

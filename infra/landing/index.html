@@ -473,7 +473,12 @@
             <div class="field"><label for="kurum">Kurum adı</label><input id="kurum" name="kurum" placeholder="Akademinizin adı" required></div>
             <div class="field"><label for="email">E-posta</label><input id="email" name="email" type="email" placeholder="ornek@akademi.com" required></div>
             <div class="field"><label for="tel">Telefon (opsiyonel)</label><input id="tel" name="tel" placeholder="05xx ..."></div>
-            <button type="submit" class="btn btn-primary">Gönder <span class="arrow">→</span></button>
+            <!-- honeypot: gercek kullanici gormez/doldurmaz; botlar doldurur -->
+            <div class="field" style="position:absolute;left:-9999px;opacity:0;" aria-hidden="true">
+              <label for="website">Web sitesi</label><input id="website" name="website" tabindex="-1" autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-primary" id="leadBtn">Gönder <span class="arrow">→</span></button>
+            <div id="leadMsg" style="display:none;padding:13px 16px;border-radius:12px;font-size:14.5px;font-weight:600;"></div>
           </div>
         </form>
       </div>
@@ -541,12 +546,51 @@
     });
   });
 
-  function submitLead(e){
+  /* Form -> backend lead ucu -> info@artademi.com maili (mailto DEGIL; sunucu gonderir). */
+  const LEAD_API = (location.hostname === 'artademi.com' || location.hostname === 'www.artademi.com')
+    ? 'https://app.artademi.com/api/public/leads'
+    : 'http://localhost:8081/api/public/leads'; // yerel gelistirme
+
+  async function submitLead(e){
     e.preventDefault();
     const f = e.target;
-    const subject = encodeURIComponent(`[${f.amac.value}] ${f.kurum.value}`);
-    const body = encodeURIComponent(`Amaç: ${f.amac.value}\nAd Soyad: ${f.ad.value}\nKurum: ${f.kurum.value}\nE-posta: ${f.email.value}\nTelefon: ${f.tel.value}`);
-    window.location.href = `mailto:info@artademi.com?subject=${subject}&body=${body}`;
+    const btn = document.getElementById('leadBtn');
+    const msg = document.getElementById('leadMsg');
+    const show = (ok, text) => {
+      msg.style.display = 'block';
+      msg.style.background = ok ? 'rgba(69,232,212,0.12)' : 'rgba(216,65,122,0.15)';
+      msg.style.border = '1px solid ' + (ok ? 'rgba(69,232,212,0.45)' : 'rgba(240,101,151,0.5)');
+      msg.style.color = ok ? '#45e8d4' : '#f06597';
+      msg.innerHTML = text;
+    };
+    btn.disabled = true;
+    const orig = btn.innerHTML;
+    btn.innerHTML = 'Gönderiliyor…';
+    try {
+      const res = await fetch(LEAD_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amac: f.amac.value, ad: f.ad.value, kurum: f.kurum.value,
+          email: f.email.value, telefon: f.tel.value, website: f.website.value
+        })
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data && data.success) {
+        show(true, '✓ Talebiniz alındı! Aynı gün içinde size dönüş yapacağız.');
+        f.reset();
+      } else {
+        const detail = data && data.error && data.error.message ? data.error.message : '';
+        show(false, (detail || 'Gönderilemedi.') +
+          ' Dilerseniz <a href="mailto:info@artademi.com" style="color:inherit;text-decoration:underline;">info@artademi.com</a> adresine yazabilirsiniz.');
+      }
+    } catch (err) {
+      show(false, 'Bağlantı hatası. Lütfen tekrar deneyin ya da ' +
+        '<a href="mailto:info@artademi.com" style="color:inherit;text-decoration:underline;">info@artademi.com</a> adresine yazın.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
     return false;
   }
 

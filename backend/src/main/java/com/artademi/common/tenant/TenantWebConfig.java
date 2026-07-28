@@ -30,11 +30,17 @@ public class TenantWebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(@NonNull InterceptorRegistry registry) {
+        // /api/webhooks/** + /api/billing/callback: iyzico sunucudan/browser'dan JWT'siz gelir
+        // (tenant claim yok); kimlik HMAC imza / tek-kullanimlik token ile dogrulanir.
         registry.addInterceptor(requireTenantInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/ping", "/api/platform/**");
+                .excludePathPatterns("/api/ping", "/api/platform/**",
+                        "/api/webhooks/**", "/api/billing/callback", "/api/public/**");
+        // /api/billing/**: ASKIDA tenant'in admin'i ODEME YAPIP erisimini geri acabilmelidir
+        // (subscription-billing skill: kesintide yalniz odeme akisi acik kalir).
         registry.addInterceptor(tenantStatusInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/ping", "/api/platform/**", "/api/me", "/api/me/**");
+                .excludePathPatterns("/api/ping", "/api/platform/**", "/api/me", "/api/me/**",
+                        "/api/webhooks/**", "/api/billing/**", "/api/public/**");
     }
 }

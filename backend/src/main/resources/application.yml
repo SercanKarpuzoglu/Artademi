@@ -6,6 +6,17 @@ spring:
   application:
     name: artademi-backend
 
+  # Gmail SMTP (Google Workspace, app password ile). Kimlik bilgisi YALNIZCA env'den;
+  # bos ise mail gonderimi devre disi (lead ucu 503 doner, uygulama ayaga kalkar).
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
   security:
     oauth2:
       resourceserver:
@@ -16,6 +27,11 @@ spring:
 # Keycloak Admin REST API (service account) — kullanici yonetimi modulu (com.artademi.user).
 # Sir KODA GOMULMEZ; admin-client-secret yalnizca ortam degiskeninden gelir (varsayilan YOK).
 artademi:
+  # Landing iletisim formu (lead) mail hedefi — info@ grubu (Google Workspace).
+  mail:
+    lead-to: ${LEAD_MAIL_TO:info@artademi.com}
+    from: ${LEAD_MAIL_FROM:info@artademi.com}
+
   keycloak:
     base-url: ${KEYCLOAK_BASE_URL:http://localhost:8080}
     realm: ${KEYCLOAK_REALM:Artademi}
@@ -23,6 +39,18 @@ artademi:
     admin-client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
     # Kullanici parolasini dogrulamak icin kullanilan public client (Direct Access Grants).
     app-client-id: ${KEYCLOAK_APP_CLIENT_ID:artademi-app}
+
+  # Odeme entegrasyonu (iyzico) — sirlar YALNIZCA ortam degiskeninden; bos ise checkout 409 doner
+  # (uygulama anahtarsiz ayaga kalkar; testlerde saglayici mock'lanir).
+  billing:
+    web-return-url: ${BILLING_WEB_RETURN_URL:http://localhost:5173/abonelik}
+    iyzico:
+      base-url: ${IYZICO_BASE_URL:https://sandbox-api.iyzipay.com}
+      api-key: ${IYZICO_API_KEY:}
+      secret-key: ${IYZICO_SECRET_KEY:}
+      merchant-id: ${IYZICO_MERCHANT_ID:}
+      pricing-plan-reference-code: ${IYZICO_PLAN_REF:}
+      callback-url: ${IYZICO_CALLBACK_URL:http://localhost:8081/api/billing/callback}
 
   datasource:
     # Baglanti bilgileri ortam degiskeninden gelir. Parola icin VARSAYILAN YOK.
@@ -45,6 +73,11 @@ artademi:
 
 # Actuator: yalnizca health endpoint acik.
 management:
+  # Mail SMTP kontrolu health'e DAHIL EDILMEZ: lead maili best-effort'tur; Gmail'e anlik
+  # erisilemezse uygulama "unhealthy" gorunmemeli (ayrica testte mock sender ile patlar).
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:

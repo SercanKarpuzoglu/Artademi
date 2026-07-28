@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import { Role } from './auth/roles';
 import AppShell from './components/AppShell';
+import AbonelikPage from './features/billing/AbonelikPage';
 import BranchForm from './features/branch/BranchForm';
 import BranchListPage from './features/branch/BranchListPage';
 import AttendancePage from './features/attendance/AttendancePage';
@@ -301,6 +302,17 @@ export default function App() {
           element={
             <RoleRoute requiredRoles={[Role.ADMIN]}>
               <UserForm />
+            </RoleRoute>
+          }
+        />
+
+        {/* Abonelik/ödeme — SADECE ADMIN. Backend /api/billing/** TenantStatus'tan muaf:
+            ASKIDA kurumun admin'i bu sayfadan ödeme yapıp erişimini geri açabilir. */}
+        <Route
+          path="abonelik"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <AbonelikPage />
             </RoleRoute>
           }
         />

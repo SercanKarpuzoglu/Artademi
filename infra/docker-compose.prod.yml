@@ -85,6 +85,15 @@ services:
       # CORS: tarayıcıdan gelen istekler app domaininden geldiği için prod origin'i açıkça izinli.
       # (setAllowCredentials=true → wildcard yok; origin'ler virgülle listelenir.)
       APP_CORS_ALLOWED_ORIGINS: https://app.artademi.com,https://artademi.com
+      # iyzico (bkz. docs/odeme-aracisi-arastirmasi-2026-07.md) — anahtarlar .env.prod'dan.
+      # Boşken ödeme uçları güvenli-kapalı (checkout 409, webhook 401).
+      BILLING_WEB_RETURN_URL: https://app.artademi.com/abonelik
+      IYZICO_BASE_URL: ${IYZICO_BASE_URL:-https://sandbox-api.iyzipay.com}
+      IYZICO_API_KEY: ${IYZICO_API_KEY:-}
+      IYZICO_SECRET_KEY: ${IYZICO_SECRET_KEY:-}
+      IYZICO_MERCHANT_ID: ${IYZICO_MERCHANT_ID:-}
+      IYZICO_PLAN_REF: ${IYZICO_PLAN_REF:-}
+      IYZICO_CALLBACK_URL: https://app.artademi.com/api/billing/callback
       # Landing form maili (Gmail SMTP, app password) — degerler .env.prod'da
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}

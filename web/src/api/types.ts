@@ -762,3 +762,48 @@ export interface GroupOccupancyRow {
   ogretmenAd: string;
   aktifOgrenciSayisi: number;
 }
+
+// ---------- Billing / Abonelik (backend com.artademi.billing) ----------
+
+/** Platform abonelik durumu — backend SubscriptionStatus. */
+export type SubscriptionStatus = 'DENEME' | 'AKTIF' | 'ODEME_BEKLIYOR' | 'ASKIDA' | 'IPTAL';
+
+/** Abonelik planı — backend Plan. */
+export type SubscriptionPlan = 'DENEME' | 'AYLIK';
+
+/** Platform ödeme durumu — backend PaymentStatus. */
+export type SubscriptionPaymentStatus = 'BEKLIYOR' | 'ODENDI' | 'BASARISIZ';
+
+/** Abonelik özeti — backend SubscriptionResponse (platform.dto). */
+export interface SubscriptionSummary {
+  status: SubscriptionStatus;
+  plan: SubscriptionPlan;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  graceEndsAt: string | null;
+  paymentStatus: SubscriptionPaymentStatus;
+}
+
+/** Ödeme sayfası yanıtı — backend BillingSubscriptionResponse. */
+export interface BillingSubscriptionResponse {
+  subscription: SubscriptionSummary;
+  otomatikOdemeAktif: boolean;
+  provider: string | null;
+}
+
+/** Checkout başlatma isteği — backend CheckoutStartRequest (kart bilgisi YOK; iyzico formda alınır). */
+export interface CheckoutStartInput {
+  ad: string;
+  soyad: string;
+  email: string;
+  telefon: string;
+  kimlikVergiNo: string;
+  adres: string;
+  sehir: string;
+}
+
+/** iyzico hosted checkout oturumu — checkoutFormContent sayfaya gömülür. */
+export interface CheckoutSession {
+  token: string;
+  checkoutFormContent: string;
+}

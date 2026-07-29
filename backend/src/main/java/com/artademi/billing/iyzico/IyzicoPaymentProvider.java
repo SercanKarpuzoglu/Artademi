@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -37,10 +38,17 @@ public class IyzicoPaymentProvider implements PaymentProvider {
     private final RestClient rest;
     private final ObjectMapper json;
 
+    // Iki constructor var (digeri test kancasi) → Spring'e hangisini kullanacagini acikca soyle.
+    @Autowired
     public IyzicoPaymentProvider(BillingProperties props, ObjectMapper json) {
+        this(props, json, RestClient.builder());
+    }
+
+    /** Test kancasi: MockRestServiceServer bagli builder ile ag'siz dogrulama. */
+    IyzicoPaymentProvider(BillingProperties props, ObjectMapper json, RestClient.Builder builder) {
         this.props = props;
         this.json = json;
-        this.rest = RestClient.builder().baseUrl(props.iyzico().baseUrl()).build();
+        this.rest = builder.baseUrl(props.iyzico().baseUrl()).build();
     }
 
     @Override
@@ -79,14 +87,23 @@ public class IyzicoPaymentProvider implements PaymentProvider {
     @Override
     public CheckoutResult fetchCheckoutResult(String token) {
         requireConfigured();
-        JsonNode response = get("/v2/subscription/checkoutform/" + token);
-        JsonNode data = response.path("data");
-        boolean success = "success".equalsIgnoreCase(response.path("status").asText())
-                && !data.path("referenceCode").asText().isBlank();
+        // Odeme tamamlanmamis/iptal edilmisse iyzico status=failure doner (or. 201601 "Ödeme formu
+        // tamamlanmamış") — bu bir HATA DEGIL, "basarisiz sonuc"tur: istisna firlatmayiz ki
+        // callback akisi deterministik kalsin ve kullanici hata ekranina duzgun yonlensin.
+        JsonNode response = getRaw("/v2/subscription/checkoutform/" + token);
+        if (response == null || !"success".equalsIgnoreCase(response.path("status").asText())) {
+            String message = response == null ? "yanıt yok" : response.path("errorMessage").asText("");
+            log.info("iyzico checkout sonucu başarısız (token={}): {}", token, message);
+            return new CheckoutResult(false, null, null);
+        }
+        // iyzico bu ailede alanlari bazen kokte, bazen data altinda doner (initialize kokte doner);
+        // ikisini de destekle.
+        JsonNode body = response.has("data") ? response.path("data") : response;
+        String subRef = body.path("referenceCode").asText(null);
         return new CheckoutResult(
-                success,
-                data.path("referenceCode").asText(null),
-                data.path("customerReferenceCode").asText(null));
+                subRef != null && !subRef.isBlank(),
+                subRef,
+                body.path("customerReferenceCode").asText(null));
     }
 
     private JsonNode post(String path, ObjectNode body) {
@@ -105,17 +122,17 @@ public class IyzicoPaymentProvider implements PaymentProvider {
         return requireSuccess(path, response);
     }
 
-    private JsonNode get(String path) {
+    /** GET — ham yanit (status kontrolu YAPILMAZ; cagiran failure'i is durumu olarak yorumlar). */
+    private JsonNode getRaw(String path) {
         String randomKey = randomKey();
         String auth = IyzicoAuth.authorizationHeader(props.iyzico().apiKey(),
                 props.iyzico().secretKey(), randomKey, path, "");
-        JsonNode response = rest.get()
+        return rest.get()
                 .uri(path)
                 .header("Authorization", auth)
                 .header("x-iyzi-rnd", randomKey)
                 .retrieve()
                 .body(JsonNode.class);
-        return requireSuccess(path, response);
     }
 
     /** iyzico hata zarfini ({@code status=failure} + errorMessage) is hatasina cevirir. */

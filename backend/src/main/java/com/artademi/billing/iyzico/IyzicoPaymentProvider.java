@@ -111,14 +111,17 @@ public class IyzicoPaymentProvider implements PaymentProvider {
         String randomKey = randomKey();
         String auth = IyzicoAuth.authorizationHeader(props.iyzico().apiKey(),
                 props.iyzico().secretKey(), randomKey, path, requestBody);
-        JsonNode response = rest.post()
+        JsonNode response = exchange(path, () -> rest.post()
                 .uri(path)
                 .header("Authorization", auth)
                 .header("x-iyzi-rnd", randomKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestBody)
                 .retrieve()
-                .body(JsonNode.class);
+                // 4xx/5xx'te varsayilan davranis istisna firlatmak: govdeyi GORMEDEN 500'e
+                // donusurdu. Durumu yut, govdeyi cagirana birak (asagida is hatasina cevrilir).
+                .onStatus(s -> true, (req, res) -> { })
+                .body(JsonNode.class));
         return requireSuccess(path, response);
     }
 
@@ -127,12 +130,27 @@ public class IyzicoPaymentProvider implements PaymentProvider {
         String randomKey = randomKey();
         String auth = IyzicoAuth.authorizationHeader(props.iyzico().apiKey(),
                 props.iyzico().secretKey(), randomKey, path, "");
-        return rest.get()
+        return exchange(path, () -> rest.get()
                 .uri(path)
                 .header("Authorization", auth)
                 .header("x-iyzi-rnd", randomKey)
                 .retrieve()
-                .body(JsonNode.class);
+                .onStatus(s -> true, (req, res) -> { })
+                .body(JsonNode.class));
+    }
+
+    /**
+     * Ag/protokol hatalarini opak 500 yerine ANLASILIR is hatasina cevirir ve tanilanabilir
+     * sekilde loglar (aksi halde "beklenmeyen hata" ile kor kaliniyordu).
+     */
+    private JsonNode exchange(String path, java.util.function.Supplier<JsonNode> call) {
+        try {
+            return call.get();
+        } catch (org.springframework.web.client.RestClientException e) {
+            log.error("iyzico çağrısı başarısız [{}]: {}", path, e.getMessage());
+            throw new ConflictException(
+                    "Ödeme sağlayıcısına ulaşılamadı. Lütfen tekrar deneyin.");
+        }
     }
 
     /** iyzico hata zarfini ({@code status=failure} + errorMessage) is hatasina cevirir. */
@@ -142,7 +160,9 @@ public class IyzicoPaymentProvider implements PaymentProvider {
         }
         if (!"success".equalsIgnoreCase(response.path("status").asText())) {
             String message = response.path("errorMessage").asText("bilinmeyen hata");
-            log.warn("iyzico hata [{}]: {}", path, message);
+            String code = response.path("errorCode").asText("");
+            // Tanilama icin HAM yanit da loglanir: iyzico hata kodlari mesajdan daha ayirt edici.
+            log.warn("iyzico hata [{}] kod={} mesaj={} | ham={}", path, code, message, response);
             throw new ConflictException("iyzico işlemi başarısız: " + message);
         }
         return response;

@@ -1,5 +1,6 @@
 package com.artademi.billing.dto;
 
+import com.artademi.billing.TurkishPhone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -21,7 +22,8 @@ public record CheckoutStartRequest(
         @NotBlank(message = "Şehir zorunludur") String sehir) {
 
     public CheckoutCustomer toCustomer() {
-        return new CheckoutCustomer(ad, soyad, email, telefon, kimlikVergiNo, adres, sehir,
-                "Türkiye");
+        // Telefon +90XXXXXXXXXX'e normallestirilir: iyzico baska hicbir bicimi kabul etmiyor.
+        return new CheckoutCustomer(ad, soyad, email, TurkishPhone.toE164(telefon), kimlikVergiNo,
+                adres, sehir, "Türkiye");
     }
 }

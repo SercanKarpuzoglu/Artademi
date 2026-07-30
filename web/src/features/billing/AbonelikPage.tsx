@@ -235,7 +235,7 @@ function CheckoutCard() {
           <input className={inputClass} type="email" {...register('email')} />
         </Field>
         <Field label="Telefon" error={errors.telefon?.message}>
-          <input className={inputClass} placeholder="+90 5xx xxx xx xx" {...register('telefon')} />
+          <input className={inputClass} placeholder="0555 111 22 33" {...register('telefon')} />
         </Field>
         <Field label="TCKN / VKN" error={errors.kimlikVergiNo?.message}>
           <input className={inputClass} inputMode="numeric" {...register('kimlikVergiNo')} />

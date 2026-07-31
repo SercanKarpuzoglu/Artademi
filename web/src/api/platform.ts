@@ -4,7 +4,10 @@ import type {
   CreateTenantInput,
   CreateTenantResult,
   CreateTenantUserInput,
+  BillingEventRow,
+  OdemeFiltre,
   PlatformDashboard,
+  PlatformSubscriptionRow,
   PlatformTenant,
   PlatformTenantUser,
   TenantStatus,
@@ -75,4 +78,31 @@ export async function deleteTenantUser(tenantId: string, userId: string): Promis
 export async function getPlatformDashboard(): Promise<PlatformDashboard> {
   const res = await api.get<ApiResponse<PlatformDashboard>>('/api/platform/dashboard');
   return res.data.data;
+}
+
+/** Kurum bazlı ödeme/abonelik durumu (SUPER_ADMIN). filtre/q opsiyonel. */
+export async function getPlatformSubscriptions(params: {
+  filtre?: OdemeFiltre;
+  q?: string;
+}): Promise<PlatformSubscriptionRow[]> {
+  const res = await api.get<ApiResponse<PlatformSubscriptionRow[]>>(
+    '/api/platform/billing/subscriptions',
+    { params },
+  );
+  return res.data.data;
+}
+
+/** Ödeme hareketleri (sayfalı). meta sayfalama bilgisini taşır. */
+export async function getPlatformBillingEvents(params: {
+  page?: number;
+  size?: number;
+}): Promise<{ rows: BillingEventRow[]; totalPages: number; totalElements: number }> {
+  const res = await api.get<ApiResponse<BillingEventRow[]>>('/api/platform/billing/events', {
+    params,
+  });
+  return {
+    rows: res.data.data,
+    totalPages: res.data.meta?.totalPages ?? 1,
+    totalElements: res.data.meta?.totalElements ?? res.data.data.length,
+  };
 }

@@ -15,6 +15,7 @@ import { useAuth } from '../../auth/AuthContext';
 const SEKMELER: ReadonlyArray<{ to: string; label: string; end?: boolean }> = [
   { to: '/platform', label: 'Genel Bakış', end: true },
   { to: '/platform/tenants', label: 'Kurumlar' },
+  { to: '/platform/odemeler', label: 'Ödemeler' },
 ];
 
 export default function PlatformShell() {

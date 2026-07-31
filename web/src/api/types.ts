@@ -845,3 +845,31 @@ export interface PlatformDashboard {
     tarih: string;
   }>;
 }
+
+/** Ödeme takibi filtreleri — backend PlatformBillingService.Filtre. */
+export type OdemeFiltre = 'ODEYEN' | 'DENEME' | 'GECIKMIS' | 'ASKIDA' | 'HEPSI';
+
+/** Kurum bazlı ödeme/abonelik durumu — backend PlatformSubscriptionRow. */
+export interface PlatformSubscriptionRow {
+  tenantId: string;
+  ad: string;
+  tenantStatus: TenantStatus;
+  plan: SubscriptionPlan;
+  abonelikStatus: SubscriptionStatus;
+  odemeStatus: SubscriptionPaymentStatus;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  graceEndsAt: string | null;
+  otomatikOdeme: boolean;
+}
+
+/** Ödeme hareketi (webhook/mutabakat izi) — backend BillingEventRow. */
+export interface BillingEventRow {
+  id: string;
+  provider: string;
+  eventType: string;
+  status: 'PROCESSED' | 'IGNORED';
+  tenantId: string | null;
+  kurumAdi: string | null;
+  createdAt: string;
+}

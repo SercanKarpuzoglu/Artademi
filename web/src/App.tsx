@@ -25,6 +25,7 @@ import TeacherForm from './features/teacher/TeacherForm';
 import TeacherListPage from './features/teacher/TeacherListPage';
 import UserForm from './features/usermgmt/UserForm';
 import UserListPage from './features/usermgmt/UserListPage';
+import PlatformDashboardPage from './features/platform/PlatformDashboardPage';
 import PlatformShell from './features/platform/PlatformShell';
 import TenantDetailPage from './features/platform/TenantDetailPage';
 import TenantForm from './features/platform/TenantForm';
@@ -64,7 +65,8 @@ function PlatformApp() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/platform/tenants" replace />} />
+        {/* Konsolun acilisi artik Genel Bakis (isletme durumu); kurum listesi ayri sekme. */}
+        <Route index element={<PlatformDashboardPage />} />
         <Route path="tenants" element={<TenantListPage />} />
         <Route path="tenants/yeni" element={<TenantForm />} />
         <Route path="tenants/:id" element={<TenantDetailPage />} />

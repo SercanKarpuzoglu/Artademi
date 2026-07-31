@@ -19,7 +19,7 @@ class IyzicoWebhookVerifierTest {
     private static final String MERCHANT = "merchant-1";
 
     private final IyzicoWebhookVerifier verifier = new IyzicoWebhookVerifier(
-            new BillingProperties("http://localhost:5173/abonelik",
+            new BillingProperties("http://localhost:5173/abonelik", null,
                     new BillingProperties.Iyzico("https://sandbox-api.iyzipay.com", "k", SECRET,
                             MERCHANT, "plan", "http://cb")));
 
@@ -49,7 +49,7 @@ class IyzicoWebhookVerifierTest {
     @Test
     void secretYapilandirilmamis_herImzaRed() throws Exception {
         IyzicoWebhookVerifier bosVerifier = new IyzicoWebhookVerifier(
-                new BillingProperties("http://x", new BillingProperties.Iyzico(
+                new BillingProperties("http://x", null, new BillingProperties.Iyzico(
                         "https://sandbox-api.iyzipay.com", "", "", "", "", "")));
         // Fail-closed: secret bosken hicbir imza (bos anahtarla hesaplanmis dogru HMAC bile) gecmez.
         assertThat(bosVerifier.verify("herhangi", "subscription.order.success", "S", "O", "C"))

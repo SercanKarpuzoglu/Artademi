@@ -4,6 +4,7 @@ import type {
   CreateTenantInput,
   CreateTenantResult,
   CreateTenantUserInput,
+  PlatformDashboard,
   PlatformTenant,
   PlatformTenantUser,
   TenantStatus,
@@ -68,4 +69,10 @@ export async function createTenantUser(
 /** Tenant'tan kullanici siler. */
 export async function deleteTenantUser(tenantId: string, userId: string): Promise<void> {
   await api.delete<ApiResponse<void>>(`/api/platform/tenants/${tenantId}/users/${userId}`);
+}
+
+/** Platform genel bakış (SUPER_ADMIN) — kurum/abonelik sayıları, MRR, dikkat listesi. */
+export async function getPlatformDashboard(): Promise<PlatformDashboard> {
+  const res = await api.get<ApiResponse<PlatformDashboard>>('/api/platform/dashboard');
+  return res.data.data;
 }

@@ -11,7 +11,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param iyzico iyzico'ya ozgu ayarlar
  */
 @ConfigurationProperties(prefix = "artademi.billing")
-public record BillingProperties(String webReturnUrl, Iyzico iyzico) {
+public record BillingProperties(String webReturnUrl, java.math.BigDecimal aylikPlanUcreti,
+        Iyzico iyzico) {
+
+    /**
+     * Aylik plan ucreti (KDV haric) — platform genel bakisinda MRR hesabinda kullanilir.
+     * Yapilandirilmamissa landing'de duyurulan tutar varsayilir.
+     */
+    public java.math.BigDecimal aylikPlanUcreti() {
+        return aylikPlanUcreti == null ? new java.math.BigDecimal("10000") : aylikPlanUcreti;
+    }
 
     /**
      * @param baseUrl sandbox: {@code https://sandbox-api.iyzipay.com}, prod: {@code https://api.iyzipay.com}

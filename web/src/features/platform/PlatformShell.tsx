@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import amblem from '../../assets/artademi-amblem.png';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -11,6 +11,12 @@ import { useAuth } from '../../auth/AuthContext';
  * DEGILDIR (super.admin tenant_id'siz -> /api/me 400 TENANT_REQUIRED doner). Topbar tenant adi
  * GOSTERMEZ (super.admin'in tenant'i yok).
  */
+/** Konsol sekmeleri — tek kaynak (yeni ops sayfalari buraya eklenir). */
+const SEKMELER: ReadonlyArray<{ to: string; label: string; end?: boolean }> = [
+  { to: '/platform', label: 'Genel Bakış', end: true },
+  { to: '/platform/tenants', label: 'Kurumlar' },
+];
+
 export default function PlatformShell() {
   const { username, name, logout } = useAuth();
 
@@ -23,7 +29,7 @@ export default function PlatformShell() {
             <div className="font-fraunces text-[15px] font-semibold text-ink">
               artademi · Platform Konsolu
             </div>
-            <div className="text-[11.5px] text-ink-soft">Kurum (tenant) yönetimi</div>
+            <div className="text-[11.5px] text-ink-soft">Platform yönetimi</div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -36,6 +42,28 @@ export default function PlatformShell() {
           </button>
         </div>
       </header>
+
+      {/* Konsol navigasyonu — is AppShell'inin sidebar'i BURADA YOK (ayri agac); sade sekme seridi. */}
+      <nav className="border-b border-line bg-card px-7">
+        <div className="mx-auto flex max-w-[1180px] gap-1">
+          {SEKMELER.map((s) => (
+            <NavLink
+              key={s.to}
+              to={s.to}
+              end={s.end}
+              className={({ isActive }) =>
+                `border-b-2 px-3 py-2.5 text-[13.5px] font-semibold transition-colors ${
+                  isActive
+                    ? 'border-rasp text-rasp'
+                    : 'border-transparent text-ink-soft hover:text-ink'
+                }`
+              }
+            >
+              {s.label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
 
       <main className="mx-auto w-full max-w-[1180px] px-7 py-7">
         <Outlet />

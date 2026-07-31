@@ -807,3 +807,41 @@ export interface CheckoutSession {
   token: string;
   checkoutFormContent: string;
 }
+
+// ---------- Platform genel bakış (SUPER_ADMIN) ----------
+
+/** Platform genel bakış — backend PlatformDashboardResponse. */
+export interface PlatformDashboard {
+  kurumlar: {
+    toplam: number;
+    buAyYeni: number;
+    statuBazinda: Record<TenantStatus, number>;
+  };
+  abonelikler: Record<SubscriptionStatus, number>;
+  gelir: {
+    odeyenKurum: number;
+    aylikTekrarlayan: string | number;
+    aylikPlanUcreti: string | number;
+  };
+  dikkatGerektirenler: Array<{
+    tenantId: string;
+    ad: string;
+    tenantStatus: TenantStatus;
+    abonelikStatus: SubscriptionStatus;
+    odemeStatus: SubscriptionPaymentStatus;
+    graceEndsAt: string | null;
+    sebep: string;
+  }>;
+  yaklasanYenilemeler: Array<{
+    tenantId: string;
+    ad: string;
+    donemBitisi: string;
+    otomatikOdeme: boolean;
+  }>;
+  sonHareketler: Array<{
+    eventType: string;
+    status: string;
+    kurumAdi: string;
+    tarih: string;
+  }>;
+}

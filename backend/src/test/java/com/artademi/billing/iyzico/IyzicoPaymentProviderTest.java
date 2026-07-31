@@ -42,7 +42,7 @@ class IyzicoPaymentProviderTest {
         builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
         provider = new IyzicoPaymentProvider(
-                new BillingProperties("http://web/abonelik", new BillingProperties.Iyzico(
+                new BillingProperties("http://web/abonelik", null, new BillingProperties.Iyzico(
                         "https://sandbox-api.iyzipay.com", "api-k", "secret-k", "merchant-1",
                         "plan-ref", "https://app.artademi.com/api/billing/callback")),
                 new ObjectMapper(), builder);

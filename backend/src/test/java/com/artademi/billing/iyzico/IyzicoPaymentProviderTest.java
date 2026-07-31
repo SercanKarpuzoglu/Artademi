@@ -95,6 +95,56 @@ class IyzicoPaymentProviderTest {
     }
 
     @Test
+    void fetchSubscriptionState_gercekYanit_enIleriBasariliDonemiOkur() {
+        // GERCEK sandbox govdesi (2026-07-31): iki siparis — biri SUCCESS (gecmis donem),
+        // biri WAITING (siradaki donem). "Odenmis donem sonu" SUCCESS olanin endPeriod'u.
+        server.expect(requestTo("https://sandbox-api.iyzipay.com/v2/subscription/subscriptions/SUB-9"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {"status":"success","data":{"subscriptionStatus":"ACTIVE","orders":[
+                          {"orderStatus":"WAITING","price":10000.0,"startPeriod":1788156888051,"endPeriod":1790748888051},
+                          {"orderStatus":"SUCCESS","price":10000.0,"startPeriod":1785478488051,"endPeriod":1788156888051}
+                        ]}}
+                        """, MediaType.APPLICATION_JSON));
+
+        var state = provider.fetchSubscriptionState("SUB-9").orElseThrow();
+
+        assertThat(state.aktif()).isTrue();
+        assertThat(state.sonOdemeBasarili()).isTrue();
+        // 1788156888051 ms → 2026-08-27 (WAITING'in ileri tarihi SEÇİLMEMELİ)
+        assertThat(state.odenmisDonemSonu())
+                .isEqualTo(java.time.Instant.ofEpochMilli(1788156888051L)
+                        .atZone(java.time.ZoneId.systemDefault()).toLocalDate());
+    }
+
+    @Test
+    void fetchSubscriptionState_basariliSiparisYok_odemeYokSayilir() {
+        server.expect(requestTo("https://sandbox-api.iyzipay.com/v2/subscription/subscriptions/SUB-8"))
+                .andRespond(withSuccess("""
+                        {"status":"success","data":{"subscriptionStatus":"CANCELED","orders":[
+                          {"orderStatus":"FAILED","startPeriod":1785478488051,"endPeriod":1788156888051}
+                        ]}}
+                        """, MediaType.APPLICATION_JSON));
+
+        var state = provider.fetchSubscriptionState("SUB-8").orElseThrow();
+
+        assertThat(state.aktif()).isFalse();
+        assertThat(state.sonOdemeBasarili()).isFalse();
+        assertThat(state.odenmisDonemSonu()).isNull();
+    }
+
+    @Test
+    void fetchSubscriptionState_saglayiciHatasi_bosDoner() {
+        // Mutabakat bu durumda kayda DOKUNMAMALI → Optional.empty sozlesmesi.
+        server.expect(requestTo("https://sandbox-api.iyzipay.com/v2/subscription/subscriptions/YOK"))
+                .andRespond(withSuccess("""
+                        {"status":"failure","errorCode":"200000","errorMessage":"Abonelik bulunamadı."}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThat(provider.fetchSubscriptionState("YOK")).isEmpty();
+    }
+
+    @Test
     void fetchCheckoutResult_kokSeviyeReferans_okunur() {
         // initialize kokte donuyordu; retrieve'in de kok donme ihtimaline karsi tolerans.
         server.expect(requestTo("https://sandbox-api.iyzipay.com/v2/subscription/checkoutform/tok-3"))

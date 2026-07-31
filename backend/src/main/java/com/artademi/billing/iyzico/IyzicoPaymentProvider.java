@@ -5,10 +5,15 @@ import com.artademi.billing.PaymentProvider;
 import com.artademi.billing.dto.CheckoutCustomer;
 import com.artademi.billing.dto.CheckoutResult;
 import com.artademi.billing.dto.CheckoutSession;
+import com.artademi.billing.dto.ProviderSubscriptionState;
 import com.artademi.common.exception.ConflictException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,6 +109,45 @@ public class IyzicoPaymentProvider implements PaymentProvider {
                 subRef != null && !subRef.isBlank(),
                 subRef,
                 body.path("customerReferenceCode").asText(null));
+    }
+
+    /**
+     * Abonelik durumunu iyzico'dan sorgular (mutabakat).
+     *
+     * <p>Canli sandbox yaniti (2026-07-31): {@code data.subscriptionStatus} = ACTIVE/CANCELED/…
+     * ve {@code data.orders[]} her donem icin {@code orderStatus} (SUCCESS/WAITING/FAILED) +
+     * {@code startPeriod}/{@code endPeriod} (epoch ms). "Odenmis donem sonu" = en ileri
+     * {@code endPeriod}'a sahip SUCCESS siparisin bitisi.
+     */
+    @Override
+    public Optional<ProviderSubscriptionState> fetchSubscriptionState(String subscriptionRef) {
+        if (!props.iyzico().configured() || subscriptionRef == null || subscriptionRef.isBlank()) {
+            return Optional.empty();
+        }
+        JsonNode response = getRaw("/v2/subscription/subscriptions/" + subscriptionRef);
+        if (response == null || !"success".equalsIgnoreCase(response.path("status").asText())) {
+            log.warn("iyzico abonelik sorgusu başarısız (ref={}): {}", subscriptionRef,
+                    response == null ? "yanıt yok" : response.path("errorMessage").asText(""));
+            return Optional.empty();
+        }
+        JsonNode data = response.has("data") ? response.path("data") : response;
+
+        boolean aktif = "ACTIVE".equalsIgnoreCase(data.path("subscriptionStatus").asText());
+        Long enIleriBasariliBitis = null;
+        for (JsonNode order : data.path("orders")) {
+            if (!"SUCCESS".equalsIgnoreCase(order.path("orderStatus").asText())) {
+                continue;
+            }
+            long bitis = order.path("endPeriod").asLong(0);
+            if (bitis > 0 && (enIleriBasariliBitis == null || bitis > enIleriBasariliBitis)) {
+                enIleriBasariliBitis = bitis;
+            }
+        }
+        LocalDate odenmisDonemSonu = enIleriBasariliBitis == null ? null
+                : Instant.ofEpochMilli(enIleriBasariliBitis).atZone(ZoneId.systemDefault())
+                        .toLocalDate();
+        return Optional.of(new ProviderSubscriptionState(
+                aktif, enIleriBasariliBitis != null, odenmisDonemSonu));
     }
 
     private JsonNode post(String path, ObjectNode body) {

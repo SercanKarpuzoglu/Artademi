@@ -23,4 +23,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
 
     /** Checkout callback eslesmesi: iyzico checkout token → abonelik. */
     Optional<Subscription> findByCheckoutToken(String checkoutToken);
+
+    /** Mutabakat: saglayiciya bagli (otomatik odemesi olan) tum abonelikler. */
+    List<Subscription> findByProviderSubscriptionRefIsNotNull();
 }

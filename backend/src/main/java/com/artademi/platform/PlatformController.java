@@ -1,6 +1,8 @@
 package com.artademi.platform;
 
 import com.artademi.common.ApiResponse;
+import com.artademi.platform.audit.AuditAction;
+import com.artademi.platform.audit.AuditService;
 import com.artademi.platform.dto.CreateTenantRequest;
 import com.artademi.platform.dto.CreateTenantResponse;
 import com.artademi.platform.dto.PlatformTenantResponse;
@@ -38,10 +40,13 @@ public class PlatformController {
 
     private final PlatformService service;
     private final SubscriptionService subscriptionService;
+    private final AuditService audit;
 
-    public PlatformController(PlatformService service, SubscriptionService subscriptionService) {
+    public PlatformController(PlatformService service, SubscriptionService subscriptionService,
+            AuditService audit) {
         this.service = service;
         this.subscriptionService = subscriptionService;
+        this.audit = audit;
     }
 
     /** Tum tenant'lar; ?status=AKTIF|ASKIDA & ?q= (ad arama) opsiyonel. */
@@ -94,7 +99,13 @@ public class PlatformController {
     public ApiResponse<SubscriptionResponse> updateSubscription(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateSubscriptionRequest request) {
-        return ApiResponse.ok(
-                subscriptionService.applyPayment(id, request.paymentStatus(), request.currentPeriodEnd()));
+        SubscriptionResponse sonuc = subscriptionService.applyPayment(
+                id, request.paymentStatus(), request.currentPeriodEnd());
+        // Elle odeme mudahalesi sorumluluk dogurur → denetim izine yazilir.
+        audit.kaydetBagimsiz(AuditAction.ABONELIK_GUNCELLENDI, id, service.kurumAdi(id),
+                "Ödeme: " + request.paymentStatus()
+                        + (request.currentPeriodEnd() == null ? ""
+                                : " · dönem sonu: " + request.currentPeriodEnd()));
+        return ApiResponse.ok(sonuc);
     }
 }

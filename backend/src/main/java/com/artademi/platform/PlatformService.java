@@ -2,6 +2,8 @@ package com.artademi.platform;
 
 import com.artademi.common.exception.ConflictException;
 import com.artademi.common.exception.NotFoundException;
+import com.artademi.platform.audit.AuditAction;
+import com.artademi.platform.audit.AuditService;
 import com.artademi.platform.dto.CreateTenantRequest;
 import com.artademi.platform.dto.CreateTenantResponse;
 import com.artademi.platform.dto.PlatformTenantResponse;
@@ -32,14 +34,17 @@ public class PlatformService {
     private final TenantRepository repository;
     private final TenantAdminProvisioner adminProvisioner;
     private final SubscriptionService subscriptionService;
+    private final AuditService audit;
     /** Kendi proxy'si: {@code saveTenant}'i AYRI bir transaction'da cagirip ONCE commit etmek icin. */
     private final PlatformService self;
 
     public PlatformService(TenantRepository repository, TenantAdminProvisioner adminProvisioner,
-            SubscriptionService subscriptionService, @Lazy PlatformService self) {
+            SubscriptionService subscriptionService, AuditService audit,
+            @Lazy PlatformService self) {
         this.repository = repository;
         this.adminProvisioner = adminProvisioner;
         this.subscriptionService = subscriptionService;
+        this.audit = audit;
         this.self = self;
     }
 
@@ -107,7 +112,10 @@ public class PlatformService {
         if (repository.existsByAdIgnoreCase(ad)) {
             throw new ConflictException("Bu ada sahip bir kurum zaten var: " + ad);
         }
-        return PlatformTenantResponse.from(repository.save(Tenant.create(ad)));
+        Tenant kaydedilen = repository.save(Tenant.create(ad));
+        audit.kaydet(AuditAction.KURUM_OLUSTURULDU, kaydedilen.getId(), kaydedilen.getAd(),
+                "Yeni kurum açıldı");
+        return PlatformTenantResponse.from(kaydedilen);
     }
 
     /** Tenant durumunu degistirir (idempotent: ayni status -> no-op, 200). Bilinmeyen id -> 404. */
@@ -116,7 +124,10 @@ public class PlatformService {
         Tenant tenant = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Tenant bulunamadı: " + id));
         if (tenant.getStatus() != status) {
+            TenantStatus eski = tenant.getStatus();
             tenant.setStatus(status);
+            audit.kaydet(AuditAction.KURUM_DURUMU_DEGISTI, tenant.getId(), tenant.getAd(),
+                    eski + " → " + status);
         }
         return PlatformTenantResponse.from(tenant);
     }
@@ -131,9 +142,18 @@ public class PlatformService {
         Tenant tenant = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Tenant bulunamadı: " + id));
         if (tenant.getStatus() != TenantStatus.SILINDI) {
+            TenantStatus eski = tenant.getStatus();
             tenant.setStatus(TenantStatus.SILINDI);
+            audit.kaydet(AuditAction.KURUM_SILINDI, tenant.getId(), tenant.getAd(),
+                    "Silindi (geri alınabilir; önceki durum: " + eski + ")");
         }
         return PlatformTenantResponse.from(tenant);
+    }
+
+    /** Denetim izinde kullanilacak kurum adi (yoksa null — iz yine de yazilir). */
+    @Transactional(readOnly = true)
+    public String kurumAdi(UUID id) {
+        return repository.findById(id).map(Tenant::getAd).orElse(null);
     }
 
     /** status verilirse o duruma esitlik; verilmezse SILINDI haricini getir (soft-delete gizli). */

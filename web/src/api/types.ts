@@ -873,3 +873,24 @@ export interface BillingEventRow {
   kurumAdi: string | null;
   createdAt: string;
 }
+
+/** Denetim işlemi tipi — backend AuditAction. */
+export type AuditAction =
+  | 'KURUM_OLUSTURULDU'
+  | 'KURUM_DURUMU_DEGISTI'
+  | 'KURUM_SILINDI'
+  | 'KULLANICI_EKLENDI'
+  | 'KULLANICI_SILINDI'
+  | 'ABONELIK_GUNCELLENDI';
+
+/** Denetim izi satırı — backend PlatformAuditController.AuditRow. */
+export interface AuditRow {
+  id: string;
+  actor: string;
+  action: AuditAction;
+  actionEtiketi: string;
+  targetTenantId: string | null;
+  targetAd: string | null;
+  detail: string | null;
+  createdAt: string;
+}

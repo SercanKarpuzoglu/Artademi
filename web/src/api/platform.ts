@@ -4,6 +4,7 @@ import type {
   CreateTenantInput,
   CreateTenantResult,
   CreateTenantUserInput,
+  AuditRow,
   BillingEventRow,
   OdemeFiltre,
   PlatformDashboard,
@@ -100,6 +101,19 @@ export async function getPlatformBillingEvents(params: {
   const res = await api.get<ApiResponse<BillingEventRow[]>>('/api/platform/billing/events', {
     params,
   });
+  return {
+    rows: res.data.data,
+    totalPages: res.data.meta?.totalPages ?? 1,
+    totalElements: res.data.meta?.totalElements ?? res.data.data.length,
+  };
+}
+
+/** Platform denetim izi (sayfalı) — kim, ne zaman, ne yaptı. */
+export async function getPlatformAudit(params: {
+  page?: number;
+  size?: number;
+}): Promise<{ rows: AuditRow[]; totalPages: number; totalElements: number }> {
+  const res = await api.get<ApiResponse<AuditRow[]>>('/api/platform/audit', { params });
   return {
     rows: res.data.data,
     totalPages: res.data.meta?.totalPages ?? 1,

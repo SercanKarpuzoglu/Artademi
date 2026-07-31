@@ -1,6 +1,8 @@
 package com.artademi.platform;
 
 import com.artademi.common.ApiResponse;
+import com.artademi.platform.audit.AuditAction;
+import com.artademi.platform.audit.AuditService;
 import com.artademi.platform.dto.CreateTenantUserRequest;
 import com.artademi.platform.dto.TenantUserView;
 import jakarta.validation.Valid;
@@ -28,9 +30,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlatformUserController {
 
     private final TenantUserAdmin tenantUserAdmin;
+    private final AuditService audit;
+    private final TenantRepository tenants;
 
-    public PlatformUserController(TenantUserAdmin tenantUserAdmin) {
+    public PlatformUserController(TenantUserAdmin tenantUserAdmin, AuditService audit,
+            TenantRepository tenants) {
         this.tenantUserAdmin = tenantUserAdmin;
+        this.audit = audit;
+        this.tenants = tenants;
+    }
+
+    /** Denetim izinde kurum adi (silinse bile okunur kalsin diye snapshot). */
+    private String kurumAdi(UUID tenantId) {
+        return tenants.findById(tenantId).map(Tenant::getAd).orElse(null);
     }
 
     /** Tenant'in kullanicilari (ad/soyad/email/rol/aktiflik). */
@@ -45,13 +57,19 @@ public class PlatformUserController {
     public ApiResponse<TenantUserView> create(
             @PathVariable UUID tenantId,
             @Valid @RequestBody CreateTenantUserRequest request) {
-        return ApiResponse.ok(tenantUserAdmin.create(tenantId, request));
+        TenantUserView olusan = tenantUserAdmin.create(tenantId, request);
+        // Kullanici Keycloak'ta yaratildiktan SONRA yazilir (basarisiz denemeler ize girmez).
+        audit.kaydetBagimsiz(AuditAction.KULLANICI_EKLENDI, tenantId, kurumAdi(tenantId),
+                "Kullanıcı: " + olusan.kullaniciAdi() + " (" + String.join(", ", olusan.roller()) + ")");
+        return ApiResponse.ok(olusan);
     }
 
     /** Kullaniciyi sil; hedef bu tenant'a ait degilse 404 (sizinti yok). */
     @DeleteMapping("/{userId}")
     public ApiResponse<Void> delete(@PathVariable UUID tenantId, @PathVariable String userId) {
         tenantUserAdmin.delete(tenantId, userId);
+        audit.kaydetBagimsiz(AuditAction.KULLANICI_SILINDI, tenantId, kurumAdi(tenantId),
+                "Kullanıcı silindi (id: " + userId + ")");
         return ApiResponse.ok(null);
     }
 }

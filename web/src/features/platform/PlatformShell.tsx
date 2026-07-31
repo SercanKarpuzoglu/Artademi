@@ -16,6 +16,7 @@ const SEKMELER: ReadonlyArray<{ to: string; label: string; end?: boolean }> = [
   { to: '/platform', label: 'Genel Bakış', end: true },
   { to: '/platform/tenants', label: 'Kurumlar' },
   { to: '/platform/odemeler', label: 'Ödemeler' },
+  { to: '/platform/denetim', label: 'Denetim' },
 ];
 
 export default function PlatformShell() {

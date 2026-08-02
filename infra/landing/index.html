@@ -215,6 +215,11 @@
   .foot a:hover { color: var(--neon-glow); }
   .foot-links { display:flex; gap: 26px; font-size: 14.5px; }
   .foot-bottom { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 13.5px; display:flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-family:'Space Grotesk'; }
+  /* Ödeme logoları bandı — beyaz varyant koyu zemine göre; opaklık hafif kısık ama okunur. */
+  .pay-band { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); display:flex; align-items:center; gap: 18px; flex-wrap: wrap; }
+  .pay-band .pay-note { font-family:'Space Grotesk'; font-size: 12px; letter-spacing:.1em; text-transform: uppercase; color: var(--muted); }
+  .pay-band img { height: 32px; width: auto; max-width: 100%; opacity: .92; }
+  @media (max-width: 560px) { .pay-band img { height: 26px; } }
 
   @media (max-width: 920px) {
     .hero-inner { grid-template-columns: 1fr; }
@@ -529,6 +534,12 @@
         <a href="https://app.artademi.com">Giriş yap</a>
         <a href="mailto:info@artademi.com">İletişim</a>
       </div>
+    </div>
+
+    <!-- Ödeme kuruluşu + kart şeması logoları (iyzico üye iş yeri şartı; resmî logo paketi). -->
+    <div class="pay-band">
+      <span class="pay-note">Güvenli ödeme altyapısı</span>
+      <img src="assets/odeme-logolari-beyaz.png" alt="iyzico ile Öde · Mastercard · Visa · American Express · troy" width="456" height="32" loading="lazy">
     </div>
     <div class="foot-bottom">
       <span>© <span id="yr"></span> Artademi · Sanat akademileri için yönetim platformu</span>

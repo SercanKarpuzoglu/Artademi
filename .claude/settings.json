@@ -1,5 +1,6 @@
 {
   "enabledPlugins": {
-    "parsius-spring@parsius": true
+    "parsius-spring@parsius": true,
+    "parsius-web@parsius": true
   }
 }

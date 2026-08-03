@@ -78,6 +78,9 @@ okur. Spec: `plugins/parsius-core/PROFILE-SPEC.md` (parsius-claude reposu).
 
 Tenant kimliği JWT'deki `tenant_id` claim'inden; istemciden asla.
 
+## Tasarım
+- token prefix: `--`
+
 ## i18n
 - var: false
 - dosyalar:

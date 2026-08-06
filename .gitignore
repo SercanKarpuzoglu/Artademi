@@ -62,3 +62,7 @@ ios/
 Thumbs.db
 infra/.env.prod
 !infra/.env.prod.example
+infra/artademi-realm.json
+
+# Parsius durum raporu (yerel, panel tarafından okunur)
+.parsius/

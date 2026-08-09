@@ -1,6 +1,7 @@
 package com.artademi.platform;
 
 import com.artademi.billing.BillingReconciliationService;
+import com.artademi.billing.notify.BillingNotificationService;
 import java.time.LocalDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +23,25 @@ public class SubscriptionScheduler {
 
     private final SubscriptionService subscriptionService;
     private final BillingReconciliationService reconciliation;
+    private final BillingNotificationService notifications;
 
     public SubscriptionScheduler(SubscriptionService subscriptionService,
-            BillingReconciliationService reconciliation) {
+            BillingReconciliationService reconciliation,
+            BillingNotificationService notifications) {
         this.subscriptionService = subscriptionService;
         this.reconciliation = reconciliation;
+        this.notifications = notifications;
     }
 
-    /** Her gun 03:00 — once saglayici mutabakati, sonra abonelik durum gecisleri. */
+    /**
+     * Her gun 03:00. SIRA KRITIK:
+     * <ol>
+     *   <li><b>Mutabakat</b> — saglayicidaki gercek tahsilatlari yakala (odemis kurum askiya alinmasin)</li>
+     *   <li><b>Degerlendirme</b> — donem/grace gecislerini uygula</li>
+     *   <li><b>Bildirim</b> — GECISLERDEN SONRA uyar; boylece kuruma GUNCEL durum yazilir
+     *       (or. bugun askiya alindiysa "askiya alindi" gider, "ek sureniz var" degil)</li>
+     * </ol>
+     */
     @Scheduled(cron = "0 0 3 * * *")
     public void runDaily() {
         LocalDate today = LocalDate.now();
@@ -41,5 +53,11 @@ public class SubscriptionScheduler {
             log.error("Mutabakat calistirilamadi: {}", e.getMessage());
         }
         subscriptionService.evaluate(today);
+        try {
+            notifications.bildirimleriGonder(today);
+        } catch (RuntimeException e) {
+            // Mail patlasa bile gunluk is basarili sayilir; abonelik durumlari zaten guncellendi.
+            log.error("Odeme uyarilari gonderilemedi: {}", e.getMessage());
+        }
     }
 }

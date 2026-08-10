@@ -286,6 +286,26 @@ class BillingEndpointTest {
     }
 
     @Test
+    void webhook_abonelikDisiOlay_200AmaISLENMEZ() throws Exception {
+        // GERCEK canli davranis (2026-08): iyzico ayni adrese odeme olaylarini da gonderir
+        // (CHECKOUT_FORM_AUTH) ve bunlarin IMZA FORMULU FARKLIDIR. Bu olaylari 401 ile reddetmek
+        // iyzico'ya 3 kez tekrar denetiyordu; artik 200 donup YOK SAYIYORUZ (durum degismiyor).
+        long before = eventRepo.count();
+
+        mockMvc.perform(post("/api/webhooks/iyzico")
+                        .header("X-IYZ-SIGNATURE-V3", "odeme-olayi-imzasi-bizim-formule-uymaz")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"iyziEventType":"CHECKOUT_FORM_AUTH","token":"tok-x",
+                                 "paymentConversationId":"conv-1","status":"SUCCESS"}
+                                """))
+                .andExpect(status().isOk());
+
+        // Hicbir kayit yazilmamali: yok sayilan olay iz birakmaz.
+        assertThat(eventRepo.count()).isEqualTo(before);
+    }
+
+    @Test
     void webhook_gecersizImza_401VeIslemYok() throws Exception {
         Tenant t = newTenant(TenantStatus.AKTIF);
         Subscription s = newSubscription(t.getId());

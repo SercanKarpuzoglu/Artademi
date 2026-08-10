@@ -51,11 +51,26 @@ public class IyzicoWebhookController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
-        boolean valid = verifier.verify(signature, payload.iyziEventType(),
+        // ⚠️ iyzico bu ADRESE birden fazla olay ailesi gonderir ve her ailenin IMZA FORMULU FARKLI:
+        // odeme olaylari (CHECKOUT_FORM_AUTH, THREE_DS_AUTH...) abonelik olaylarindan baska
+        // alanlarla imzalanir. Bizim dogrulayici yalnizca ABONELIK formulunu bilir.
+        //
+        // Ilgilenmedigimiz olaylari imza dogrulamadan GECIYORUZ ama HICBIR SEY YAPMIYORUZ:
+        // durum degistirmedigimiz icin guvenlik riski yok, buna karsilik 401 donup iyzico'nun
+        // 3 kez tekrar denemesine (gurultu) sebep olmuyoruz. Durum DEGISTIREN abonelik
+        // olaylarinda imza kontrolu ZORUNLU kalir.
+        String eventType = payload.iyziEventType();
+        if (eventType == null || !eventType.startsWith("subscription.")) {
+            log.info("iyzico webhook: ilgilenilmeyen olay tipi, yok sayıldı (eventType={})",
+                    eventType);
+            return ResponseEntity.ok().build();
+        }
+
+        boolean valid = verifier.verify(signature, eventType,
                 payload.subscriptionReferenceCode(), payload.orderReferenceCode(),
                 payload.customerReferenceCode());
         if (!valid) {
-            log.warn("iyzico webhook imzası GEÇERSİZ (eventType={})", payload.iyziEventType());
+            log.warn("iyzico webhook imzası GEÇERSİZ (eventType={})", eventType);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 

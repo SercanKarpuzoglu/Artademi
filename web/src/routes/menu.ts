@@ -7,6 +7,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   MessageSquare,
+  ScrollText,
   Package,
   ShieldCheck,
   Tags,
@@ -82,6 +83,14 @@ export const MENU: readonly MenuItem[] = [
     icon: BarChart3,
     section: 'İşletme',
     roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING, Role.FRONTDESK],
+    hazir: true,
+  },
+  {
+    label: 'İşlem Kaydı',
+    path: '/islem-kaydi',
+    icon: ScrollText,
+    section: 'Sistem',
+    roles: [Role.ADMIN],
     hazir: true,
   },
   {

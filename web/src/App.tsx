@@ -6,6 +6,7 @@ import AbonelikPage from './features/billing/AbonelikPage';
 import BranchForm from './features/branch/BranchForm';
 import BranchListPage from './features/branch/BranchListPage';
 import AttendancePage from './features/attendance/AttendancePage';
+import IslemKaydiPage from './features/audit/IslemKaydiPage';
 import ForbiddenPage from './features/common/ForbiddenPage';
 import GeriBildirimPage from './features/feedback/GeriBildirimPage';
 import DashboardPage from './features/dashboard/DashboardPage';
@@ -329,6 +330,16 @@ export default function App() {
 
         {/* Geri bildirim — her rol; askıdaki kurum da erişebilsin diye backend'de de muaf */}
         <Route path="geri-bildirim" element={<GeriBildirimPage />} />
+
+        {/* İşlem kaydı — kurum yöneticisi kendi ekibinin işlemlerini görür */}
+        <Route
+          path="islem-kaydi"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <IslemKaydiPage />
+            </RoleRoute>
+          }
+        />
 
         {/* Yetkisiz ekranı — çerçeve içinde kalır (kullanıcı menüyü görmeye devam eder) */}
         <Route path="403" element={<ForbiddenPage />} />

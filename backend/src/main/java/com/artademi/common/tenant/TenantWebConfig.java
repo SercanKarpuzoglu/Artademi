@@ -21,11 +21,14 @@ public class TenantWebConfig implements WebMvcConfigurer {
 
     private final RequireTenantInterceptor requireTenantInterceptor;
     private final TenantStatusInterceptor tenantStatusInterceptor;
+    private final com.artademi.audit.TenantAuditInterceptor tenantAuditInterceptor;
 
     public TenantWebConfig(RequireTenantInterceptor requireTenantInterceptor,
-            TenantStatusInterceptor tenantStatusInterceptor) {
+            TenantStatusInterceptor tenantStatusInterceptor,
+            com.artademi.audit.TenantAuditInterceptor tenantAuditInterceptor) {
         this.requireTenantInterceptor = requireTenantInterceptor;
         this.tenantStatusInterceptor = tenantStatusInterceptor;
+        this.tenantAuditInterceptor = tenantAuditInterceptor;
     }
 
     @Override
@@ -44,5 +47,12 @@ public class TenantWebConfig implements WebMvcConfigurer {
                 // kullanicinin bize ulasamamasi, sorunun cozumunu de imkansizlastirir.
                 .excludePathPatterns("/api/ping", "/api/platform/**", "/api/me", "/api/me/**",
                         "/api/webhooks/**", "/api/billing/**", "/api/public/**", "/api/feedback");
+
+        // Kurum ici islem kaydi: her basarili degistirici istegi yazar. Platform/webhook/public
+        // yollari HARIC — onlar kurum islemi degildir (platform izi V18'de ayrica tutulur).
+        registry.addInterceptor(tenantAuditInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/ping", "/api/platform/**", "/api/webhooks/**",
+                        "/api/public/**");
     }
 }

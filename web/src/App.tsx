@@ -7,6 +7,7 @@ import BranchForm from './features/branch/BranchForm';
 import BranchListPage from './features/branch/BranchListPage';
 import AttendancePage from './features/attendance/AttendancePage';
 import ForbiddenPage from './features/common/ForbiddenPage';
+import GeriBildirimPage from './features/feedback/GeriBildirimPage';
 import DashboardPage from './features/dashboard/DashboardPage';
 import FinancePage from './features/finance/FinancePage';
 import GroupDetailPage from './features/group/GroupDetailPage';
@@ -325,6 +326,9 @@ export default function App() {
 
         {/* Profil — her authenticated rol (AppShell + ProtectedRoute zaten sarmalıyor) */}
         <Route path="profil" element={<ProfilePage />} />
+
+        {/* Geri bildirim — her rol; askıdaki kurum da erişebilsin diye backend'de de muaf */}
+        <Route path="geri-bildirim" element={<GeriBildirimPage />} />
 
         {/* Yetkisiz ekranı — çerçeve içinde kalır (kullanıcı menüyü görmeye devam eder) */}
         <Route path="403" element={<ForbiddenPage />} />

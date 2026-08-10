@@ -40,7 +40,9 @@ public class TenantWebConfig implements WebMvcConfigurer {
         // (subscription-billing skill: kesintide yalniz odeme akisi acik kalir).
         registry.addInterceptor(tenantStatusInterceptor)
                 .addPathPatterns("/api/**")
+                // /api/feedback: ASKIDA kurum destek talebi gonderebilmeli — erisimi kesilmis
+                // kullanicinin bize ulasamamasi, sorunun cozumunu de imkansizlastirir.
                 .excludePathPatterns("/api/ping", "/api/platform/**", "/api/me", "/api/me/**",
-                        "/api/webhooks/**", "/api/billing/**", "/api/public/**");
+                        "/api/webhooks/**", "/api/billing/**", "/api/public/**", "/api/feedback");
     }
 }

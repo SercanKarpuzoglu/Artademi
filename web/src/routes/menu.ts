@@ -6,6 +6,7 @@ import {
   DoorOpen,
   GraduationCap,
   LayoutDashboard,
+  MessageSquare,
   Package,
   ShieldCheck,
   Tags,
@@ -81,6 +82,14 @@ export const MENU: readonly MenuItem[] = [
     icon: BarChart3,
     section: 'İşletme',
     roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING, Role.FRONTDESK],
+    hazir: true,
+  },
+  {
+    label: 'Geri Bildirim',
+    path: '/geri-bildirim',
+    icon: MessageSquare,
+    section: 'Sistem',
+    roles: HEPSI,
     hazir: true,
   },
   {

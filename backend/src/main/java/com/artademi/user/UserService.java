@@ -56,16 +56,19 @@ public class UserService {
 
     private final KeycloakAdminClient kc;
     private final CurrentUser currentUser;
+    private final HosGeldinMaili hosGeldin;
     private final com.artademi.platform.TenantService tenantService;
     private final com.artademi.platform.SubscriptionService subscriptionService;
 
     public UserService(KeycloakAdminClient kc, CurrentUser currentUser,
             com.artademi.platform.TenantService tenantService,
-            com.artademi.platform.SubscriptionService subscriptionService) {
+            com.artademi.platform.SubscriptionService subscriptionService,
+            HosGeldinMaili hosGeldin) {
         this.kc = kc;
         this.currentUser = currentUser;
         this.tenantService = tenantService;
         this.subscriptionService = subscriptionService;
+        this.hosGeldin = hosGeldin;
     }
 
     // =====================================================================
@@ -124,6 +127,11 @@ public class UserService {
         String newId = kc.createUser(rep); // KC 409 -> ConflictException
         kc.resetPassword(newId, FIRST_PASSWORD, false);
         assignRoles(newId, roller);
+
+        // Giris bilgilerini kullaniciya YOLLA (best-effort). Ekranda da gosterilmeye devam eder:
+        // mail gitmezse yonetici elle iletebilsin.
+        hosGeldin.gonder(req.email(), req.ad() + " " + req.soyad(), req.kullaniciAdi(),
+                FIRST_PASSWORD, tenantService.currentName());
 
         return loadResponse(newId);
     }

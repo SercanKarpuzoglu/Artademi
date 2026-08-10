@@ -45,7 +45,7 @@ artademi:
   billing:
     web-return-url: ${BILLING_WEB_RETURN_URL:http://localhost:5173/abonelik}
     # Platform genel bakisinda MRR hesabi icin (KDV haric, landing'deki tutar).
-    aylik-plan-ucreti: ${BILLING_AYLIK_UCRET:10000}
+    aylik-plan-ucreti: ${BILLING_AYLIK_UCRET:5000}
     iyzico:
       base-url: ${IYZICO_BASE_URL:https://sandbox-api.iyzipay.com}
       api-key: ${IYZICO_API_KEY:}

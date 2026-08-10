@@ -88,6 +88,8 @@ services:
       # iyzico (bkz. docs/odeme-aracisi-arastirmasi-2026-07.md) — anahtarlar .env.prod'dan.
       # Boşken ödeme uçları güvenli-kapalı (checkout 409, webhook 401).
       BILLING_WEB_RETURN_URL: https://app.artademi.com/abonelik
+      # Platform Genel Bakis'taki MRR hesabi (aylik plan ucreti, KDV haric).
+      BILLING_AYLIK_UCRET: ${BILLING_AYLIK_UCRET:-5000}
       IYZICO_BASE_URL: ${IYZICO_BASE_URL:-https://sandbox-api.iyzipay.com}
       IYZICO_API_KEY: ${IYZICO_API_KEY:-}
       IYZICO_SECRET_KEY: ${IYZICO_SECRET_KEY:-}

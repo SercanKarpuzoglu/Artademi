@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { useMe } from '../../auth/useMe';
 import { useDebounce } from '../../lib/useDebounce';
+import { sendPasswordReset } from '../../api/users';
 import { ASSIGNABLE_ROLES, roleBadgeClass, roleLabel } from './userDisplay';
 import { useDeleteUser, useSetUserActive, useUsers } from './useUsers';
 
@@ -42,6 +43,20 @@ export default function UserListPage() {
   const debouncedQ = useDebounce(q, 300);
 
   const [actionError, setActionError] = useState<string | null>(null);
+  /** Sifre sifirlama maili gonderilen kullanici (butonda "Gonderildi" gostermek icin). */
+  const [sifreGonderilen, setSifreGonderilen] = useState<string | null>(null);
+
+  async function handleSifreSifirla(id: string) {
+    setActionError(null);
+    try {
+      await sendPasswordReset(id);
+      setSifreGonderilen(id);
+      // Kalici "gonderildi" yaniltici olur; kisa sure sonra butonu geri al.
+      setTimeout(() => setSifreGonderilen((mevcut) => (mevcut === id ? null : mevcut)), 4000);
+    } catch (e) {
+      setActionError(e instanceof ApiException ? e.message : 'Şifre sıfırlama maili gönderilemedi');
+    }
+  }
 
   // Filtre değişince sayfa-state'i yok (liste sayfalanmıyor); yine de hata kutusunu temizle.
   useEffect(() => {
@@ -203,6 +218,15 @@ export default function UserListPage() {
                         <Link to={`/kullanicilar/${u.id}/duzenle`} className="btn btn-ghost">
                           Düzenle
                         </Link>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={sifreGonderilen === u.id}
+                          onClick={() => handleSifreSifirla(u.id)}
+                          title="Kullanıcıya parola belirleme bağlantısı e-postayla gönderilir"
+                        >
+                          {sifreGonderilen === u.id ? 'Gönderildi ✓' : 'Şifre sıfırla'}
+                        </button>
                         {!self && (
                           <>
                             <button

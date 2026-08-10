@@ -46,3 +46,8 @@ export async function setUserActive(id: string, aktif: boolean): Promise<UserRes
 export async function deleteUser(id: string): Promise<void> {
   await api.delete<ApiResponse<void>>(`/api/users/${id}`);
 }
+
+/** Kullanıcıya parola sıfırlama maili gönderir (ADMIN). Parolayı kullanıcı kendisi belirler. */
+export async function sendPasswordReset(id: string): Promise<void> {
+  await api.post<ApiResponse<void>>(`/api/users/${id}/sifre-sifirla`);
+}

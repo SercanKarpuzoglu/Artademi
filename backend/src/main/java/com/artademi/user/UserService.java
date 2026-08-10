@@ -52,6 +52,9 @@ public class UserService {
     /** Yeni kullanicilara verilen sabit ilk parola (gecici DEGIL; must_change_password ile zorlanir). */
     private static final String FIRST_PASSWORD = "Artademi2026!";
 
+    /** Parola sifirlama baglantisinin gecerlilik suresi: 24 saat. */
+    private static final int PAROLA_BAGLANTI_SURESI_SN = 24 * 60 * 60;
+
     private static final int MIN_PASSWORD_LENGTH = 8;
 
     private final KeycloakAdminClient kc;
@@ -165,6 +168,26 @@ public class UserService {
         }
         kc.setEnabled(id, aktif);
         return loadResponse(id);
+    }
+
+    /**
+     * Kullaniciya parola sifirlama maili gonderir (ADMIN, kendi kurumu).
+     *
+     * <p>E-postasi olmayan kullaniciya gonderilemez — 400 ile acikca soylenir; sessizce
+     * "gonderildi" demek, yoneticinin bosuna beklemesine yol acar.
+     */
+    public void sendPasswordReset(String id) {
+        requireSameTenant(id);
+        Map<String, Object> rep = kc.getUserById(id);
+        if (rep == null) {
+            throw new NotFoundException("Kullanıcı bulunamadı");
+        }
+        String email = stringValue(rep, "email");
+        if (email == null || email.isBlank()) {
+            throw new ValidationException(
+                    "Bu kullanıcının e-posta adresi yok; önce profiline e-posta ekleyin.");
+        }
+        kc.sendUpdatePasswordEmail(id, PAROLA_BAGLANTI_SURESI_SN);
     }
 
     /** Kullaniciyi siler; kendi hesabini silemez. */

@@ -214,6 +214,26 @@ public class KeycloakAdminClient {
                 .toBodilessEntity();
     }
 
+    /**
+     * Kullaniciya "parolani guncelle" maili yollar (Keycloak'in kendi akisi).
+     *
+     * <p>Parolayi BIZ belirlemeyiz: kullanici maildeki baglantiyla kendi parolasini kurar.
+     * Boylece yonetici bile yeni parolayi gormez — gecici parolayi WhatsApp'tan iletme
+     * aliskanligina gerek kalmaz.
+     *
+     * @param lifespanSeconds baglantinin gecerlilik suresi
+     */
+    void sendUpdatePasswordEmail(String id, int lifespanSeconds) {
+        rest.put()
+                .uri(props.adminBasePath() + "/users/" + id
+                        + "/execute-actions-email?lifespan=" + lifespanSeconds)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(List.of("UPDATE_PASSWORD"))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     /** Parola sifirlar; {@code temporary=false} -> KC required-action olusturmaz. */
     void resetPassword(String id, String newPassword, boolean temporary) {
         Map<String, Object> body = Map.of(

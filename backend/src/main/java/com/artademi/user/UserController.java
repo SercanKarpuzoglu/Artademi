@@ -84,4 +84,14 @@ public class UserController {
         service.delete(id);
         return ApiResponse.ok(null);
     }
+
+    /**
+     * Kullaniciya parola sifirlama maili gonderir. Parolayi biz belirlemeyiz; kullanici
+     * maildeki baglantiyla kendi parolasini kurar (yonetici bile yeni parolayi gormez).
+     */
+    @PostMapping("/{id}/sifre-sifirla")
+    public ApiResponse<Void> sifreSifirla(@PathVariable String id) {
+        service.sendPasswordReset(id);
+        return ApiResponse.ok(null);
+    }
 }

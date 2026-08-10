@@ -95,6 +95,26 @@ public class PlatformController {
      * Abonelik odeme/donem guncelle (manuel; iyzico gelene kadar). {@code ODENDI} -> telafi (abonelik
      * AKTIF + tenant ASKIDA ise AKTIF). Bilinmeyen tenant -> 404.
      */
+    /**
+     * SUPER_ADMIN muafiyeti ac/kapat: odeme alinmamis olsa bile kurum acik kalir.
+     * Muafiyet olmadan, elle acilan kurum gunluk is tarafindan ertesi gece tekrar askiya aliniyordu.
+     */
+    @PatchMapping("/{id}/muafiyet")
+    public ApiResponse<SubscriptionResponse> muafiyet(
+            @PathVariable UUID id,
+            @Valid @RequestBody MuafiyetRequest request) {
+        SubscriptionResponse sonuc = subscriptionService.setMuafiyet(id, request.muaf(), request.not());
+        audit.kaydetBagimsiz(AuditAction.ABONELIK_GUNCELLENDI, id, service.kurumAdi(id),
+                (request.muaf() ? "Muafiyet AÇILDI" : "Muafiyet KAPATILDI")
+                        + (request.not() == null || request.not().isBlank() ? ""
+                                : " — " + request.not()));
+        return ApiResponse.ok(sonuc);
+    }
+
+    /** Muafiyet istegi: {@code not} neden muaf tutuldugunu belgeler (denetim izine yazilir). */
+    public record MuafiyetRequest(boolean muaf, String not) {
+    }
+
     @PatchMapping("/{id}/subscription")
     public ApiResponse<SubscriptionResponse> updateSubscription(
             @PathVariable UUID id,

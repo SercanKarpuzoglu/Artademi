@@ -201,6 +201,10 @@ function HareketKarti({ satirlar }: { satirlar: PlatformDashboard['sonHareketler
 function olayEtiketi(eventType: string): string {
   if (eventType.endsWith('order.success')) return 'Tahsilat başarılı';
   if (eventType.endsWith('order.failure')) return 'Tahsilat başarısız';
+  // Webhook DIŞI kaynaklar: ödeme sayfasından tamamlanan checkout ve gecelik mutabakat.
+  if (eventType === 'odeme.checkout.basarili') return 'Ödeme alındı (form)';
+  if (eventType === 'odeme.mutabakat.yakalandi') return 'Tahsilat doğrulandı (mutabakat)';
+  if (eventType === 'abonelik.iptal.talep') return 'Abonelik iptal edildi';
   return eventType;
 }
 

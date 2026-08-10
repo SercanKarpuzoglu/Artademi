@@ -67,6 +67,23 @@ public class Subscription {
     @Column(name = "checkout_token", length = 80)
     private String checkoutToken;
 
+    /**
+     * Kurum kendi istegiyle iptal etti. ⚠️ Erisim ANINDA kesilmez: sozlesmemiz iptalin ODENMIS
+     * DONEMIN SONUNDA gecerli olacagini taahhut eder. Donem bitince evaluate() IPTAL'e cevirir.
+     */
+    @Column(name = "cancel_at_period_end", nullable = false)
+    private boolean cancelAtPeriodEnd;
+
+    @Column(name = "canceled_at")
+    private Instant canceledAt;
+
+    /** SUPER_ADMIN muafiyeti: odeme olmasa da gunluk degerlendirme bu abonelige DOKUNMAZ. */
+    @Column(name = "muaf_mi", nullable = false)
+    private boolean muafMi;
+
+    @Column(name = "muafiyet_notu", length = 300)
+    private String muafiyetNotu;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -182,6 +199,33 @@ public class Subscription {
 
     public void setCheckoutToken(String checkoutToken) {
         this.checkoutToken = checkoutToken;
+    }
+
+    public boolean isCancelAtPeriodEnd() {
+        return cancelAtPeriodEnd;
+    }
+
+    /** Iptal talebini isaretler/geri alir; geri alinirsa canceledAt temizlenir. */
+    public void setCancelAtPeriodEnd(boolean cancelAtPeriodEnd) {
+        this.cancelAtPeriodEnd = cancelAtPeriodEnd;
+        this.canceledAt = cancelAtPeriodEnd ? Instant.now() : null;
+    }
+
+    public Instant getCanceledAt() {
+        return canceledAt;
+    }
+
+    public boolean isMuafMi() {
+        return muafMi;
+    }
+
+    public void setMuafiyet(boolean muafMi, String not) {
+        this.muafMi = muafMi;
+        this.muafiyetNotu = muafMi ? not : null;
+    }
+
+    public String getMuafiyetNotu() {
+        return muafiyetNotu;
     }
 
     public Instant getCreatedAt() {

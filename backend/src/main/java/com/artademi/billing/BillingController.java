@@ -55,6 +55,16 @@ public class BillingController {
     }
 
     /**
+     * Kurumun kendi aboneligini iptal etmesi. Erisim odenmis donem sonuna kadar SURER.
+     * ⚠️ /api/billing/** TenantStatus'tan muaf oldugu icin askidaki kurum da iptal edebilir.
+     */
+    @PostMapping("/cancel")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<BillingSubscriptionResponse> cancel() {
+        return ApiResponse.ok(service.cancelOwnSubscription());
+    }
+
+    /**
      * iyzico callback'i (browser form POST, JWT'siz). Sonuc saglayicidan dogrulanir, kullanici
      * web'deki abonelik sayfasina yonlendirilir. Bilinmeyen/suresi gecmis token → hata sayfasi
      * (404 sizdirmayiz; kullaniciya redirect daha dogru UX).

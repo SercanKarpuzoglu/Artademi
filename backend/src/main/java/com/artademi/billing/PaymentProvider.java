@@ -31,4 +31,14 @@ public interface PaymentProvider {
      * @return abonelik bulunamazsa/sorgulanamazsa {@link Optional#empty()} (mutabakat o kaydi atlar)
      */
     Optional<ProviderSubscriptionState> fetchSubscriptionState(String subscriptionReferenceCode);
+
+    /**
+     * Saglayicidaki tekrarlayan tahsilati DURDURUR.
+     *
+     * <p>⚠️ Bu cagri yapilmazsa kurum bizim tarafta "iptal" gorunse bile saglayici her ay parayi
+     * cekmeye DEVAM eder — musteriden haksiz tahsilat. Iptal akisinin en kritik adimi budur.
+     *
+     * @return saglayici iptali kabul ettiyse true
+     */
+    boolean cancelSubscription(String subscriptionReferenceCode);
 }

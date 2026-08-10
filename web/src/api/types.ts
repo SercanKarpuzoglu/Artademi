@@ -782,6 +782,11 @@ export interface SubscriptionSummary {
   currentPeriodEnd: string | null;
   graceEndsAt: string | null;
   paymentStatus: SubscriptionPaymentStatus;
+  /** Kurum iptal etti; erişim dönem sonuna kadar sürer. */
+  cancelAtPeriodEnd: boolean;
+  /** SUPER_ADMIN muafiyeti: ödeme olmasa da askıya alınmaz. */
+  muafMi: boolean;
+  muafiyetNotu: string | null;
 }
 
 /** Ödeme sayfası yanıtı — backend BillingSubscriptionResponse. */

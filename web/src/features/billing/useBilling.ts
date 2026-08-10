@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getBillingSubscription, startCheckout } from '../../api/billing';
+import { cancelSubscription, getBillingSubscription, startCheckout } from '../../api/billing';
 
 /** Abonelik özeti sorgusu. Callback dönüşünde (?sonuc=) sayfa invalidate ile tazeler. */
 export function useBillingSubscription() {
@@ -18,4 +18,9 @@ export function useStartCheckout() {
 export function useInvalidateBilling() {
   const qc = useQueryClient();
   return () => qc.invalidateQueries({ queryKey: ['billing'] });
+}
+
+/** Abonelik iptali (dönem sonunda geçerli olur). */
+export function useCancelSubscription() {
+  return useMutation({ mutationFn: cancelSubscription });
 }

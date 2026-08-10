@@ -32,12 +32,15 @@ public class BillingReconciliationService {
     private final PaymentProvider provider;
     private final SubscriptionRepository subscriptions;
     private final SubscriptionService subscriptionService;
+    private final BillingService billingService;
 
     public BillingReconciliationService(PaymentProvider provider,
-            SubscriptionRepository subscriptions, SubscriptionService subscriptionService) {
+            SubscriptionRepository subscriptions, SubscriptionService subscriptionService,
+            BillingService billingService) {
         this.provider = provider;
         this.subscriptions = subscriptions;
         this.subscriptionService = subscriptionService;
+        this.billingService = billingService;
     }
 
     /**
@@ -83,6 +86,11 @@ public class BillingReconciliationService {
             log.info("Mutabakat: kaçan tahsilat yakalandı (tenant={}, dönem {} → {})",
                     s.getTenantId(), s.getCurrentPeriodEnd(), durum.odenmisDonemSonu());
             subscriptionService.markPaid(s.getTenantId(), durum.odenmisDonemSonu());
+            // Iz birak: bu tahsilat webhook'la gelmedi, mutabakatla yakalandi — ops ekraninda gorunsun.
+            billingService.kaydet(BillingService.EVENT_MUTABAKAT_ODENDI,
+                    s.getProviderSubscriptionRef(), s,
+                    "Tahsilat sağlayıcıda görüldü (bildirim ulaşmamıştı); dönem "
+                            + durum.odenmisDonemSonu() + " tarihine ilerletildi.");
             return true;
         }
 

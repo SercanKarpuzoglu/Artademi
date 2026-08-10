@@ -1,8 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
+import { getTenantSubscription, setMuafiyet } from '../../api/platform';
 import type { PlatformTenant, PlatformTenantUser } from '../../api/types';
 import { ASSIGNABLE_ROLES, roleBadgeClass, roleLabel } from '../usermgmt/userDisplay';
 import { toCreatePayload, userSchema, type UserFormValues } from '../usermgmt/userSchema';
@@ -108,6 +110,8 @@ export default function TenantDetailPage() {
           {actionError}
         </div>
       )}
+
+      <MuafiyetKarti tenantId={tenantId} />
 
       {showForm && (
         <AddUserForm
@@ -325,5 +329,75 @@ function Field({
       {children}
       {error && <span className="mt-1 block text-xs text-red">{error}</span>}
     </label>
+  );
+}
+
+/**
+ * SUPER_ADMIN muafiyeti: ödeme alınmasa da kurumu açık tut.
+ *
+ * ⚠️ Neden ayrı bir kavram: muafiyet olmadan, elle AKTİF yapılan kurum gecelik değerlendirme
+ * tarafından ertesi gece tekrar askıya alınıyordu — super admin'in kararı sessizce geri alınıyordu.
+ * Muafiyet açıkken gecelik iş bu aboneliğe hiç dokunmaz.
+ */
+function MuafiyetKarti({ tenantId }: { tenantId: string }) {
+  const qc = useQueryClient();
+  const [not, setNot] = useState('');
+  const [hata, setHata] = useState<string | null>(null);
+
+  const sub = useQuery({
+    queryKey: ['platform', 'tenant', tenantId, 'subscription'],
+    queryFn: () => getTenantSubscription(tenantId),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (muaf: boolean) => setMuafiyet(tenantId, { muaf, not: not.trim() || undefined }),
+    onSuccess: () => {
+      setHata(null);
+      setNot('');
+      qc.invalidateQueries({ queryKey: ['platform'] });
+    },
+    onError: (e) => setHata(e instanceof ApiException ? e.message : 'İşlem başarısız'),
+  });
+
+  if (sub.isLoading || !sub.data) return null;
+  const muaf = sub.data.muafMi;
+
+  return (
+    <div className="card mb-4">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-[15px] font-semibold">Ödeme Muafiyeti</h2>
+          <p className="text-[12.5px] text-ink-soft">
+            Açıkken kurum, ödeme alınmasa dahi askıya alınmaz (demo, sözleşmeli müşteri, telafi).
+          </p>
+        </div>
+        <span className={`badge shrink-0 ${muaf ? 'b-green' : 'b-gray'}`}>
+          {muaf ? 'Muaf' : 'Muaf değil'}
+        </span>
+      </div>
+
+      {hata && <div className="mb-2 text-[13px] text-red">{hata}</div>}
+      {muaf && sub.data.muafiyetNotu && (
+        <p className="mb-2 text-[13px] text-ink-soft">Not: {sub.data.muafiyetNotu}</p>
+      )}
+
+      {!muaf && (
+        <input
+          className="mb-2 w-full rounded-[10px] border border-line bg-card px-3 py-2 text-[13.5px] focus:border-rasp focus:outline-none"
+          placeholder="Muafiyet nedeni (denetim izine yazılır)"
+          value={not}
+          onChange={(e) => setNot(e.target.value)}
+        />
+      )}
+
+      <button
+        type="button"
+        className={muaf ? 'btn btn-ghost' : 'btn btn-primary'}
+        disabled={mutation.isPending}
+        onClick={() => mutation.mutate(!muaf)}
+      >
+        {mutation.isPending ? 'İşleniyor…' : muaf ? 'Muafiyeti kaldır' : 'Muafiyet ver'}
+      </button>
+    </div>
   );
 }

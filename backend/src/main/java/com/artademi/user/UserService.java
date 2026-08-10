@@ -38,6 +38,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserService {
 
+    /** Son-admin kontrolunde taranacak azami kullanici (kurum basina makul ust sinir). */
+    private static final int MAX_ADMIN_TARAMA = 200;
+
     /** Atanabilir realm rolleri; SUPER_ADMIN bu kumede DEGILDIR (asla atanmaz). */
     static final Set<String> MANAGEABLE_ROLES =
             Set.of("ADMIN", "FRONTDESK", "FRONTDESK_ACCOUNTING", "TEACHER");
@@ -194,6 +197,64 @@ public class UserService {
                 tenantId,
                 tenantService.currentName(),
                 subscriptionWarning);
+    }
+
+    /**
+     * Oturum sahibinin KENDI hesabini silmesi (KVKK/hesap kapatma hakki).
+     *
+     * <p>⚠️ Iki koruma:
+     * <ol>
+     *   <li><b>Son ADMIN silinemez</b> — kurum yoneticisiz kalirsa kimse kullanici ekleyemez,
+     *       odeme yapamaz, aboneligi yonetemez; kurum kendini kilitler.</li>
+     *   <li><b>Is verisi SILINMEZ</b> — yoklama, tahsilat, hakedis kayitlari kurumun defteridir
+     *       ve kullaniciya degil KURUMA aittir. Yalnizca kimlik (Keycloak kullanicisi) silinir.</li>
+     * </ol>
+     *
+     * @return kuruma bildirim gonderilebilmesi icin silinen kullanicinin ozeti
+     */
+    public SilinenKullanici deleteMe() {
+        String sub = currentUser.sub();
+        Map<String, Object> rep = kc.getUserById(sub);
+        if (rep == null) {
+            throw new NotFoundException("Kullanıcı bulunamadı");
+        }
+        String tenantId = tenantOf(rep);
+        if (tenantId == null) {
+            throw new ValidationException("Bu hesap bir kuruma bağlı değil; silme yapılamaz.");
+        }
+        if (currentUser.realmRoles().contains("ADMIN") && sonAdminMi(tenantId, sub)) {
+            throw new ValidationException(
+                    "Kurumun tek yöneticisi olduğunuz için hesabınızı silemezsiniz. "
+                            + "Önce başka bir yönetici ekleyin.");
+        }
+
+        SilinenKullanici ozet = new SilinenKullanici(
+                stringValue(rep, "username"),
+                stringValue(rep, "firstName") + " " + stringValue(rep, "lastName"),
+                stringValue(rep, "email"),
+                UUID.fromString(tenantId));
+        kc.deleteUser(sub);
+        return ozet;
+    }
+
+    /** Kurumda BASKA aktif ADMIN var mi? (kendisi haric) — yoksa bu kullanici son admindir. */
+    private boolean sonAdminMi(String tenantId, String kendiSub) {
+        for (Map<String, Object> u : kc.searchUsers(null, Boolean.TRUE, 0, MAX_ADMIN_TARAMA,
+                tenantId)) {
+            String id = String.valueOf(u.get("id"));
+            if (kendiSub.equals(id)) {
+                continue;
+            }
+            if (KeycloakAdminClient.roleNames(kc.getUserRealmRoles(id)).contains("ADMIN")) {
+                return false; // baska admin var
+            }
+        }
+        return true;
+    }
+
+    /** Silinen kullanicinin bildirim icin gereken ozeti. */
+    public record SilinenKullanici(String kullaniciAdi, String adSoyad, String email,
+            UUID tenantId) {
     }
 
     /** Kullanicinin tenant_id attribute'u (varsa). */

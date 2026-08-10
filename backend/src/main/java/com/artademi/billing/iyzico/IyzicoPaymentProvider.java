@@ -150,6 +150,17 @@ public class IyzicoPaymentProvider implements PaymentProvider {
                 aktif, enIleriBasariliBitis != null, odenmisDonemSonu));
     }
 
+    /** iyzico aboneligini iptal eder: bekleyen tahsilatlar SUBSCRIPTION_CANCELED'a duser. */
+    @Override
+    public boolean cancelSubscription(String subscriptionRef) {
+        if (!props.iyzico().configured() || subscriptionRef == null || subscriptionRef.isBlank()) {
+            return false;
+        }
+        JsonNode response = post("/v2/subscription/subscriptions/" + subscriptionRef + "/cancel",
+                json.createObjectNode().put("locale", "tr"));
+        return "success".equalsIgnoreCase(response.path("status").asText());
+    }
+
     private JsonNode post(String path, ObjectNode body) {
         String requestBody = body.toString();
         String randomKey = randomKey();

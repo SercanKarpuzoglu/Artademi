@@ -39,6 +39,16 @@ public class BillingService {
     static final String EVENT_ORDER_SUCCESS = "subscription.order.success";
     static final String EVENT_ORDER_FAILURE = "subscription.order.failure";
 
+    /**
+     * IC olay tipleri — webhook DISINDA gerceklesen odeme hareketleri.
+     *
+     * <p>⚠️ Bunlar olmadan "Son odeme hareketleri" ekrani KOR kaliyordu: basarili bir checkout
+     * odemesi callback yolundan gelir ve hicbir iz birakmazdi; ekranda yalnizca webhook'lar
+     * gorunurdu. Artik odemenin hangi yoldan geldigi farketmeksizin iz kalir.
+     */
+    static final String EVENT_CHECKOUT_ODENDI = "odeme.checkout.basarili";
+    static final String EVENT_MUTABAKAT_ODENDI = "odeme.mutabakat.yakalandi";
+
     private final PaymentProvider provider;
     private final SubscriptionRepository subscriptions;
     private final SubscriptionService subscriptionService;
@@ -77,6 +87,39 @@ public class BillingService {
     }
 
     /**
+     * Kurumun KENDI aboneligini iptal etmesi (ADMIN).
+     *
+     * <p>Iki adim ve SIRASI onemli:
+     * <ol>
+     *   <li><b>Saglayicida durdur</b> — yapilmazsa iptal ettigini sanan kurumdan her ay para
+     *       cekilmeye devam eder. Saglayici reddederse ISLEM DURUR (bizde iptal isaretlemeyiz;
+     *       aksi halde "iptal ettim" der ama para gitmeye devam eder).</li>
+     *   <li><b>Donem sonunda iptal isaretle</b> — sozlesme geregi odenmis donem sonuna kadar
+     *       erisim SURER. {@code evaluate} donem bitince IPTAL'e cevirir.</li>
+     * </ol>
+     */
+    @Transactional
+    public BillingSubscriptionResponse cancelOwnSubscription() {
+        Subscription s = requireOwnSubscription();
+        if (s.isCancelAtPeriodEnd()) {
+            throw new ConflictException("Aboneliğiniz zaten iptal edilmiş durumda.");
+        }
+        String ref = s.getProviderSubscriptionRef();
+        if (ref != null && !provider.cancelSubscription(ref)) {
+            throw new ConflictException(
+                    "Abonelik şu an iptal edilemedi. Lütfen tekrar deneyin ya da "
+                            + "info@artademi.com ile iletişime geçin.");
+        }
+        s.setCancelAtPeriodEnd(true);
+        kaydet("abonelik.iptal.talep", ref, s,
+                "Kurum aboneliği iptal etti; erişim " + s.getCurrentPeriodEnd()
+                        + " tarihine kadar sürecek.");
+        log.info("Abonelik iptal edildi (tenant={}, donem sonu={})",
+                s.getTenantId(), s.getCurrentPeriodEnd());
+        return BillingSubscriptionResponse.from(s);
+    }
+
+    /**
      * iyzico callback'i: token'in sonucunu SAGLAYICIDAN dogrular (client verisine guvenilmez).
      * Basarili ise abonelik referanslarini baglar, plani AYLIK'a cevirir ve ilk donemi bugunden
      * 1 ay ileri kurar (ODENDI → tenant ASKIDA idiyse telafi ile acilir).
@@ -100,6 +143,8 @@ public class BillingService {
         s.setPlan(Plan.AYLIK);
         s.setCurrentPeriodStart(LocalDate.now());
         subscriptionService.markPaid(s.getTenantId(), LocalDate.now().plusMonths(1));
+        kaydet(EVENT_CHECKOUT_ODENDI, result.subscriptionReferenceCode(), s,
+                "Kurum ödeme formunu tamamladı; abonelik başlatıldı.");
         log.info("iyzico aboneliği bağlandı: tenant={}, subRef={}",
                 s.getTenantId(), result.subscriptionReferenceCode());
         return true;
@@ -148,6 +193,21 @@ public class BillingService {
         }
         events.save(BillingEvent.of(provider.name(), payload.iyziEventType(), dedupKey,
                 s.getId(), tenantId, rawBody, BillingEvent.Status.PROCESSED));
+    }
+
+    /**
+     * Webhook DISI bir odeme hareketini kaydeder (checkout/mutabakat). dedupKey saglayici
+     * referansi + donem: ayni donem icin ayni hareket iki kez yazilmaz.
+     */
+    @Transactional
+    public void kaydet(String eventType, String subscriptionRef, Subscription s, String aciklama) {
+        String dedupKey = eventType + ":" + subscriptionRef + ":"
+                + (s.getCurrentPeriodEnd() == null ? "-" : s.getCurrentPeriodEnd());
+        if (events.existsByProviderAndDedupKey(provider.name(), dedupKey)) {
+            return;
+        }
+        events.save(BillingEvent.of(provider.name(), eventType, dedupKey, s.getId(),
+                s.getTenantId(), aciklama, BillingEvent.Status.PROCESSED));
     }
 
     private Subscription requireOwnSubscription() {

@@ -20,3 +20,9 @@ export async function startCheckout(payload: CheckoutStartInput): Promise<Checko
   const res = await api.post<ApiResponse<CheckoutSession>>('/api/billing/checkout', payload);
   return res.data.data;
 }
+
+/** Kurumun kendi aboneliğini iptal etmesi. Erişim ödenmiş dönem sonuna kadar sürer. */
+export async function cancelSubscription(): Promise<BillingSubscriptionResponse> {
+  const res = await api.post<ApiResponse<BillingSubscriptionResponse>>('/api/billing/cancel');
+  return res.data.data;
+}

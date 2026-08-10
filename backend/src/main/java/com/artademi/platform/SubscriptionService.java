@@ -65,7 +65,22 @@ public class SubscriptionService {
     @Transactional
     public void evaluate(LocalDate now) {
         for (Subscription s : subscriptions.findAll()) {
+            // MUAFIYET: SUPER_ADMIN acikca muaf tuttuysa bu abonelige HIC dokunma. Aksi halde
+            // super admin'in elle actigi kurum ertesi gece sessizce tekrar askiya aliniyordu.
+            if (s.isMuafMi()) {
+                continue;
+            }
             boolean paid = s.getPaymentStatus() == PaymentStatus.ODENDI;
+
+            // IPTAL TALEBI: kurum iptal etti; odenmis donem BITTIGINDE sonlandir.
+            // Sozlesme geregi donem sonuna kadar erisim surer (erken kesinti YOK).
+            if (s.isCancelAtPeriodEnd() && s.getCurrentPeriodEnd() != null
+                    && s.getCurrentPeriodEnd().isBefore(now)
+                    && s.getStatus() != SubscriptionStatus.IPTAL) {
+                s.setStatus(SubscriptionStatus.IPTAL);
+                suspendTenant(s.getTenantId());
+                continue;
+            }
 
             // 1) Telafi: odeme gelmis ama abonelik hala bekliyor/askida ise AKTIF'e al + tenant'i ac.
             if (paid && (s.getStatus() == SubscriptionStatus.ODEME_BEKLIYOR
@@ -121,6 +136,41 @@ public class SubscriptionService {
     @Transactional
     public SubscriptionResponse markPaid(UUID tenantId, LocalDate newPeriodEnd) {
         return applyPayment(tenantId, PaymentStatus.ODENDI, newPeriodEnd);
+    }
+
+    /**
+     * SUPER_ADMIN muafiyeti ac/kapat. Muaf abonelige gunluk degerlendirme HIC dokunmaz —
+     * odeme alinmamis olsa bile kurum acik kalir (demo, sozlesmeli musteri, telafi).
+     *
+     * <p>Muafiyet ACILIRKEN tenant da AKTIF'e alinir: amac zaten erisimi acik tutmaktir,
+     * super admin'in ayrica bir de durum degistirmesi gerekmesin.
+     */
+    @Transactional
+    public SubscriptionResponse setMuafiyet(UUID tenantId, boolean muaf, String not) {
+        Subscription s = subscriptions.findByTenantId(tenantId)
+                .orElseThrow(() -> new NotFoundException("Abonelik bulunamadı: " + tenantId));
+        s.setMuafiyet(muaf, not);
+        if (muaf) {
+            if (s.getStatus() == SubscriptionStatus.ASKIDA
+                    || s.getStatus() == SubscriptionStatus.ODEME_BEKLIYOR) {
+                s.setStatus(SubscriptionStatus.AKTIF);
+                s.setGraceEndsAt(null);
+            }
+            reactivateTenant(tenantId);
+        }
+        return SubscriptionResponse.from(s);
+    }
+
+    /**
+     * Kurumun kendi iptal talebi (veya geri alinmasi). Erisim ODENMIS DONEM SONUNA kadar surer;
+     * bu metot durumu ANINDA degistirmez — {@link #evaluate} donem bitince IPTAL'e cevirir.
+     */
+    @Transactional
+    public SubscriptionResponse setCancelAtPeriodEnd(UUID tenantId, boolean iptalEt) {
+        Subscription s = subscriptions.findByTenantId(tenantId)
+                .orElseThrow(() -> new NotFoundException("Abonelik bulunamadı: " + tenantId));
+        s.setCancelAtPeriodEnd(iptalEt);
+        return SubscriptionResponse.from(s);
     }
 
     /** Bir tenant'in abonelik detayi; yoksa 404. */

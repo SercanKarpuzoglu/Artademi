@@ -11,6 +11,7 @@ import type {
   PlatformSubscriptionRow,
   PlatformTenant,
   PlatformTenantUser,
+  SubscriptionSummary,
   TenantStatus,
 } from './types';
 
@@ -119,4 +120,24 @@ export async function getPlatformAudit(params: {
     totalPages: res.data.meta?.totalPages ?? 1,
     totalElements: res.data.meta?.totalElements ?? res.data.data.length,
   };
+}
+
+/** SUPER_ADMIN muafiyeti aç/kapat: ödeme alınmasa da kurum açık kalır. */
+export async function setMuafiyet(
+  tenantId: string,
+  payload: { muaf: boolean; not?: string },
+): Promise<SubscriptionSummary> {
+  const res = await api.patch<ApiResponse<SubscriptionSummary>>(
+    `/api/platform/tenants/${tenantId}/muafiyet`,
+    payload,
+  );
+  return res.data.data;
+}
+
+/** Bir kurumun abonelik özeti (SUPER_ADMIN). */
+export async function getTenantSubscription(tenantId: string): Promise<SubscriptionSummary> {
+  const res = await api.get<ApiResponse<SubscriptionSummary>>(
+    `/api/platform/tenants/${tenantId}/subscription`,
+  );
+  return res.data.data;
 }

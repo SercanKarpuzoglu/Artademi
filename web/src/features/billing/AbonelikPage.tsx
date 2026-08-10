@@ -14,7 +14,12 @@ import {
   toCheckoutPayload,
   type BillingFormValues,
 } from './billingSchema';
-import { useBillingSubscription, useInvalidateBilling, useStartCheckout } from './useBilling';
+import {
+  useBillingSubscription,
+  useCancelSubscription,
+  useInvalidateBilling,
+  useStartCheckout,
+} from './useBilling';
 
 const inputClass =
   'w-full rounded-[10px] border border-line bg-card px-3 py-2 text-[13.5px] focus:border-rasp focus:outline-none focus:ring-1 focus:ring-rasp';
@@ -113,7 +118,9 @@ export default function AbonelikPage() {
 
         <SubscriptionCard data={data} />
 
-        {!data.otomatikOdemeAktif && <CheckoutCard />}
+        {!data.otomatikOdemeAktif && !data.subscription.cancelAtPeriodEnd && <CheckoutCard />}
+
+        {data.otomatikOdemeAktif && !data.subscription.cancelAtPeriodEnd && <IptalKarti />}
       </div>
     </div>
   );
@@ -169,6 +176,84 @@ function SubscriptionCard({ data }: { data: BillingSubscriptionResponse }) {
         <div className="mt-4 rounded-[10px] border border-red/40 bg-red/10 px-3 py-2 text-[13px] text-red">
           Hesabınız askıda — ekipleriniz uygulamaya erişemiyor. Aşağıdan ödemeyi tamamladığınızda
           erişim otomatik olarak açılır.
+        </div>
+      )}
+      {s.cancelAtPeriodEnd && (
+        <div className="mt-4 rounded-[10px] border border-amber/40 bg-amber/10 px-3 py-2 text-[13px] text-amber">
+          Aboneliğiniz iptal edildi. <b>{tarih(s.currentPeriodEnd)}</b> tarihine kadar
+          erişiminiz açık kalır; bu tarihten sonra yenileme yapılmaz ve kartınızdan çekim olmaz.
+          Devam etmek isterseniz info@artademi.com ile iletişime geçin.
+        </div>
+      )}
+      {s.muafMi && (
+        <div className="mt-4 rounded-[10px] border border-line px-3 py-2 text-[13px] text-ink-soft">
+          Bu hesap Artademi tarafından ödemeden muaf tutulmuştur.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Abonelik iptali. İki aşamalı onay: yıkıcı ve parayla ilgili bir işlem olduğu için
+ * tek tıkla gerçekleşmez. İptalin ANINDA kesinti YAPMADIĞI açıkça yazılır — kullanıcı
+ * "şimdi mi kapanacak?" endişesiyle vazgeçmesin.
+ */
+function IptalKarti() {
+  const [onayAcik, setOnayAcik] = useState(false);
+  const [hata, setHata] = useState<string | null>(null);
+  const iptal = useCancelSubscription();
+  const invalidate = useInvalidateBilling();
+
+  const onIptal = async () => {
+    setHata(null);
+    try {
+      await iptal.mutateAsync();
+      invalidate();
+      setOnayAcik(false);
+    } catch (e) {
+      setHata(e instanceof ApiException ? e.message : 'İptal işlemi tamamlanamadı');
+    }
+  };
+
+  return (
+    <div className="card">
+      <h2 className="mb-1 text-[15px] font-semibold">Aboneliği İptal Et</h2>
+      <p className="mb-3 text-[13px] text-ink-soft">
+        Aboneliğinizi dilediğiniz zaman iptal edebilirsiniz. İptal ettiğinizde{' '}
+        <b>ödediğiniz dönemin sonuna kadar</b> erişiminiz sürer; sonrasında yenileme yapılmaz ve
+        kartınızdan çekim olmaz. <b>Verileriniz silinmez.</b>
+      </p>
+
+      {hata && (
+        <div className="mb-3 rounded-[10px] border border-red/40 bg-red/10 px-3 py-2 text-[13px] text-red">
+          {hata}
+        </div>
+      )}
+
+      {!onayAcik ? (
+        <button type="button" className="btn btn-ghost" onClick={() => setOnayAcik(true)}>
+          Aboneliği iptal et
+        </button>
+      ) : (
+        <div className="rounded-[10px] border border-amber/40 bg-amber/10 p-3">
+          <p className="mb-3 text-[13px]">
+            Aboneliğinizi iptal etmek istediğinize emin misiniz? Bu işlem otomatik yenilemeyi
+            durdurur.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={iptal.isPending}
+              onClick={onIptal}
+            >
+              {iptal.isPending ? 'İptal ediliyor…' : 'Evet, iptal et'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setOnayAcik(false)}>
+              Vazgeç
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -44,13 +44,17 @@ class BillingReconciliationServiceTest {
     @Mock
     SubscriptionService subscriptionService;
 
+    @Mock
+    BillingService billingService;
+
     BillingReconciliationService service;
     UUID tenantId;
     Subscription sub;
 
     @BeforeEach
     void setUp() {
-        service = new BillingReconciliationService(provider, subscriptions, subscriptionService);
+        service = new BillingReconciliationService(provider, subscriptions, subscriptionService,
+                billingService);
         tenantId = UUID.randomUUID();
         sub = Subscription.createTrial(tenantId, LocalDate.of(2026, 7, 1), 14);
         sub.setProviderSubscriptionRef("SUB-1");

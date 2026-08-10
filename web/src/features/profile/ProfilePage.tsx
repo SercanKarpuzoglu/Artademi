@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { ApiException } from '../../api/client';
+import { deleteMe } from '../../api/me';
 import { updateTenant } from '../../api/tenant';
 import type { MeResponse } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
@@ -50,6 +51,7 @@ export default function ProfilePage() {
         <ProfileInfoCard me={meQuery.data} />
         {hasRole(Role.ADMIN) && <KurumAdiCard me={meQuery.data} />}
         <ChangePasswordCard />
+        <HesabimiSilCard />
       </div>
     </div>
   );
@@ -321,5 +323,92 @@ function KurumAdiCard({ me }: { me: MeResponse }) {
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Hesabımı sil (KVKK / hesap kapatma hakkı).
+ *
+ * İki bilinçli tasarım kararı:
+ * 1) Kullanıcının kurum adını yazması istenir — yanlışlıkla silme neredeyse imkânsız hale gelir.
+ * 2) "Verileriniz silinmez" mesajı öne çıkarılır; kullanıcı kurumun kayıtlarını sildiğini sanmasın.
+ */
+function HesabimiSilCard() {
+  const { logout } = useAuth();
+  const meQuery = useMe();
+  const [acik, setAcik] = useState(false);
+  const [onayMetni, setOnayMetni] = useState('');
+  const [hata, setHata] = useState<string | null>(null);
+  const [siliniyor, setSiliniyor] = useState(false);
+
+  const kurumAdi = meQuery.data?.tenantAdi ?? '';
+  const onayVerildi = onayMetni.trim().toLowerCase() === kurumAdi.trim().toLowerCase();
+
+  const sil = async () => {
+    setHata(null);
+    setSiliniyor(true);
+    try {
+      await deleteMe();
+      logout(); // hesap yok artık; oturumu kapat
+    } catch (e) {
+      setHata(e instanceof ApiException ? e.message : 'Hesap silinemedi');
+      setSiliniyor(false);
+    }
+  };
+
+  return (
+    <div className="card border-red/30">
+      <h2 className="mb-1 text-[15px] font-semibold text-red">Hesabımı Sil</h2>
+      <p className="mb-3 text-[13px] text-ink-soft">
+        Giriş hesabınız kalıcı olarak silinir ve uygulamaya erişiminiz sona erer.{' '}
+        <b>Kurumun iş verileri (öğrenciler, yoklamalar, tahsilatlar) SİLİNMEZ</b> — bunlar kuruma
+        aittir. Kurum yöneticileri bilgilendirilir.
+      </p>
+
+      {hata && (
+        <div className="mb-3 rounded-[10px] border border-red/40 bg-red/10 px-3 py-2 text-[13px] text-red">
+          {hata}
+        </div>
+      )}
+
+      {!acik ? (
+        <button type="button" className="btn btn-ghost" onClick={() => setAcik(true)}>
+          Hesabımı silmek istiyorum
+        </button>
+      ) : (
+        <div className="rounded-[10px] border border-red/40 bg-red/10 p-3">
+          <p className="mb-2 text-[13px]">
+            Onaylamak için kurum adını yazın: <b>{kurumAdi || '—'}</b>
+          </p>
+          <input
+            className={`${inputClass} mb-3`}
+            value={onayMetni}
+            onChange={(e) => setOnayMetni(e.target.value)}
+            placeholder={kurumAdi}
+            autoComplete="off"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!onayVerildi || siliniyor}
+              onClick={sil}
+            >
+              {siliniyor ? 'Siliniyor…' : 'Hesabımı kalıcı olarak sil'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setAcik(false);
+                setOnayMetni('');
+              }}
+            >
+              Vazgeç
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -17,3 +17,8 @@ export async function updateMe(payload: UpdateMeInput): Promise<MeResponse> {
 export async function changePassword(payload: ChangePasswordInput): Promise<void> {
   await api.post<ApiResponse<void>>('/api/me/change-password', payload);
 }
+
+/** Oturum sahibinin KENDİ hesabını silmesi. Kurumun iş verileri silinmez. */
+export async function deleteMe(): Promise<void> {
+  await api.delete<ApiResponse<void>>('/api/me');
+}

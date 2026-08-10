@@ -5,6 +5,8 @@ import com.artademi.user.dto.ChangePasswordRequest;
 import com.artademi.user.dto.MeResponse;
 import com.artademi.user.dto.UpdateMeRequest;
 import jakarta.validation.Valid;
+import com.artademi.platform.TenantService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -21,9 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
     private final UserService service;
+    private final HesapSilmeBildirimi silmeBildirimi;
+    private final TenantService tenantService;
 
-    public MeController(UserService service) {
+    public MeController(UserService service, HesapSilmeBildirimi silmeBildirimi,
+            TenantService tenantService) {
         this.service = service;
+        this.silmeBildirimi = silmeBildirimi;
+        this.tenantService = tenantService;
     }
 
     /** Kendi profilim ({@code mustChangePassword} dahil). */
@@ -42,6 +49,20 @@ public class MeController {
     @PostMapping("/change-password")
     public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         service.changePassword(request);
+        return ApiResponse.ok(null);
+    }
+
+    /**
+     * Oturum sahibi KENDI hesabini siler (her rol).
+     *
+     * <p>Kurumun IS VERISI SILINMEZ — yalnizca giris hesabi kaldirilir. Kurum yoneticilerine ve
+     * platforma bilgilendirme maili gider. Son ADMIN kendini silemez (kurum kilitlenmesin).
+     */
+    @DeleteMapping
+    public ApiResponse<Void> deleteMe() {
+        String kurumAdi = tenantService.currentName();
+        UserService.SilinenKullanici silinen = service.deleteMe();
+        silmeBildirimi.gonder(silinen, kurumAdi == null ? "-" : kurumAdi);
         return ApiResponse.ok(null);
     }
 }

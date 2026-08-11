@@ -385,6 +385,59 @@ Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşi
 
 ## 14. Bilinen Eksikler / Teknik Borç
 
+### 🔴 14.0 İLK-PAROLA ZİNCİRİNDE İKİ AÇIK (2026-08-10, Otovers oturumundan çapraz tespit)
+
+> Otovers'ta aynı konu (yönetici alt kullanıcı açtığında parola nasıl belirlenir) çözülürken
+> Artademi'nin yaklaşımı karşılaştırma için incelendi. İki bulgu çıktı. **Henüz düzeltilmedi.**
+
+**(a) Sabit ORTAK ilk parola — `Artademi2026!`**
+
+`UserService.java:53`, `KeycloakTenantAdminProvisioner.java:31`, `KeycloakTenantUserAdmin.java:33`
+— üçünde de aynı sabit. Her yeni kullanıcı **aynı** parolayla açılıyor (`temporary=false`).
+
+Sonuç: bu parolayı bilen herkes, **açılmış ama henüz ilk girişini yapmamış herhangi bir
+hesaba** girebilir. Kullanıcı adları tahmin edilebilir olduğu için pratikte istismar edilebilir.
+Parola ayrıca depoda yazılı ve hoş geldin mailinde düz metin gidiyor (`HosGeldinMaili`) —
+gelen kutusunda, yedeklerde ve iletilmiş maillerde kalıcı olarak durur.
+
+Bu, Otovers'ta 2026-08-09'da kapatılan açığın aynı sınıfı: orada sabit `operas123` vardı ve
+ayrıcalık yükseltme zincirinin parçasıydı. Artademi'de rol ataması daha dar olduğu için etki
+daha küçük, ama mekanizma aynı.
+
+**Çözüm (Otovers'ta uygulanan):** parola **her kullanıcı için ayrı** üretilir, istemcide
+(`crypto.getRandomValues`) — böylece hiçbir sunucu cevabında ve log satırında düz metin parola
+bulunmaz — ve yöneticiye kayıttan sonra **bir kez** gösterilir. Üreteç realm parola politikasını
+garanti etmeli: düz rastgele çekim, en az bir rakam/özel karakter garantisi vermediği için
+Otovers'ta üretimlerin **%29,1'i** politikayı ihlal ediyordu.
+
+**(b) `must_change_password` yalnızca İSTEMCİDE zorlanıyor**
+
+Bayrak Keycloak özniteliğinde tutuluyor (doğru tercih — Keycloak'ın `UPDATE_PASSWORD` zorunlu
+eylemi Direct Access Grant'i kırar, ileride mobil eklenirse bu önemli). **Ama yaptırım yok:**
+`web/src/components/AppShell.tsx:33` bayrağı görünce yalnız kilit ekranını render ediyor;
+backend'de kontrol eden hiçbir filtre/interceptor yok (`TenantFilter`,
+`TenantStatusInterceptor`, `RequireTenantInterceptor`, `TenantAuditInterceptor` — dördünde de
+geçmiyor).
+
+Yani bu bir güvenlik kontrolü değil, **UX dürtmesi**. İsteği doğrudan API'ye atan biri
+parolasını hiç değiştirmeden her şeye erişir — ki (a) yüzünden o parola zaten herkesin bildiği
+sabit parola.
+
+**Çözüm (Otovers'ta uygulanan):** sunucu tarafı tek kapı. `PasswordChangeRequiredFilter`
+bayrak duruyorsa `403 {"code":"PASSWORD_CHANGE_REQUIRED"}` döner; muaf uçlar yalnızca
+kullanıcının bu durumdan çıkabilmesi için gerekenler (profil oku, parola değiştir, menü,
+çıkış). Öznitelik Keycloak admin API'sinden okunduğu için 30 saniyelik TTL'li cache +
+parola değişiminde açık invalidasyon kullanıldı.
+
+**(c) Not — dil tuzağı Artademi'de YOK, sebebi kayda değer**
+
+Otovers'ta Keycloak'ın şifre sıfırlama maili İngilizce gitti: Keycloak dili tarayıcının
+`Accept-Language` başlığından seçiyor ve kullanıcıda `locale` özniteliği yoksa realm varsayılanı
+(`tr`) devreye girmiyor. Artademi bu tuzağa düşmüyor çünkü **maillerini Keycloak'a bırakmıyor**,
+`HosGeldinMaili` gibi kendi Türkçe şablonlarını `JavaMailSender` ile gönderiyor. İleride
+Keycloak'ın kendi maillerine (örn. `execute-actions-email`) geçilirse bu tuzak Artademi'de de
+doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'den `en` kaldırılmalı.
+
 - ✅ **ÇÖZÜLDÜLER (artık açık iş değil):** TEACHER `/api/groups/mine`; platform 403 zinciri (Security eski-imaj + provisioning SA-rolleri + CORS prod origin); landing canlı; tenant izolasyonu kanıtlı; platform konsolu kullanıcı CRUD + soft-delete; Model C çoklu hakediş; grup transferi.
 - **Gerçek ödeme entegrasyonu YOK** (PayTR/iyzico) — paymentStatus elle/`markPaid` ile set ediliyor (subscription temeli hazır).
 - **Mail YOK (info@artademi.com / Zoho bekliyor):** provisioning'de yeni admin'e parola maili gitmez (username + `Artademi2026!` konsolda gösterilir, super.admin elle iletir); grace/ödeme bildirimi yok; Keycloak SMTP yok → forgot-password sayfası temalı ama mail göndermez.

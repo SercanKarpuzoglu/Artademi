@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { ApiException } from '../../api/client';
+import { veriDisaAktar } from '../../api/export';
 import { deleteMe } from '../../api/me';
 import { updateTenant } from '../../api/tenant';
 import type { MeResponse } from '../../api/types';
@@ -50,6 +51,7 @@ export default function ProfilePage() {
       <div className="space-y-4">
         <ProfileInfoCard me={meQuery.data} />
         {hasRole(Role.ADMIN) && <KurumAdiCard me={meQuery.data} />}
+        {hasRole(Role.ADMIN) && <VeriDisaAktarmaCard />}
         <ChangePasswordCard />
         <HesabimiSilCard />
       </div>
@@ -409,6 +411,62 @@ function HesabimiSilCard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Kurum verisinin dışa aktarımı (KVKK veri taşınabilirliği, SADECE ADMIN).
+ *
+ * Sözleşmemizde "verileriniz talebiniz hâlinde dışa aktarılabilir" taahhüdü var; bu ekran onun
+ * karşılığı. İndirme tarayıcıda blob üzerinden yapılır — dosya sunucuda saklanmaz.
+ */
+function VeriDisaAktarmaCard() {
+  const [indiriliyor, setIndiriliyor] = useState(false);
+  const [hata, setHata] = useState<string | null>(null);
+
+  const indir = async () => {
+    setHata(null);
+    setIndiriliyor(true);
+    try {
+      const { blob, dosyaAdi } = await veriDisaAktar();
+      // Geçici bir bağlantı ile indir; ardından URL'i serbest bırak (bellek sızıntısı olmasın).
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = dosyaAdi;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setHata('Veri dışa aktarılamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setIndiriliyor(false);
+    }
+  };
+
+  return (
+    <div className="card">
+      <h2 className="mb-1 text-[15px] font-semibold">Verilerimi İndir</h2>
+      <p className="mb-3 text-[13px] text-ink-soft">
+        Kurumunuza ait tüm kayıtları (öğrenciler, gruplar, yoklamalar, tahsilatlar, hakedişler,
+        stok) tek bir ZIP dosyası olarak indirebilirsiniz. Dosyalar Excel ile açılabilir.
+        <br />
+        <span className="text-[12px]">
+          İndirilen dosya kişisel veri içerir; güvenli saklamak kurumunuzun sorumluluğundadır.
+        </span>
+      </p>
+
+      {hata && (
+        <div className="mb-3 rounded-[10px] border border-red/40 bg-red/10 px-3 py-2 text-[13px] text-red">
+          {hata}
+        </div>
+      )}
+
+      <button type="button" className="btn btn-ghost" disabled={indiriliyor} onClick={indir}>
+        {indiriliyor ? 'Hazırlanıyor…' : 'Verilerimi indir (.zip)'}
+      </button>
     </div>
   );
 }

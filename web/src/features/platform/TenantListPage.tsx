@@ -232,7 +232,8 @@ function ProvisioningBanner({
         </div>
         {ok ? (
           <div>
-            Admin kullanıcı: <b>{result.admin.username}</b> · İlk parola: <b>Artademi2026!</b>{' '}
+            Admin kullanıcı: <b>{result.admin.username}</b> · Parolasını belirlemesi için
+            e-posta gönderildi.{' '}
             (kullanıcıya iletin; ilk girişte değiştirilecek).
           </div>
         ) : (

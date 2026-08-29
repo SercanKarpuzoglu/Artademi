@@ -66,6 +66,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(new ApiError("TENANT_SUSPENDED", ex.getMessage())));
     }
 
+    /** 403 — ilk parola henuz degistirilmemis; once parola degistirilmeli. */
+    @ExceptionHandler(com.artademi.user.ParolaDegisikligiGerekliException.class)
+    public ResponseEntity<ApiResponse<Void>> handleParolaDegisikligi(
+            com.artademi.user.ParolaDegisikligiGerekliException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.fail(new ApiError("PASSWORD_CHANGE_REQUIRED", ex.getMessage())));
+    }
+
     /** 400 — servis katmani is kurali dogrulama hatasi (Bean Validation disi). */
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessValidation(ValidationException ex) {

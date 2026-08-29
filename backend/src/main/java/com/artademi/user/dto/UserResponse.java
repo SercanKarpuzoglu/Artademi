@@ -14,5 +14,18 @@ public record UserResponse(
         String email,
         String telefon,
         List<String> roller,
-        boolean enabled) {
+        boolean enabled,
+        /**
+         * YALNIZCA olusturma yanitinda ve YALNIZCA e-postasi olmayan kullanicida dolu.
+         * E-postasi olan kullaniciya parola belirleme baglantisi mail ile gider; o durumda
+         * hicbir yerde duz metin parola bulunmaz ve bu alan {@code null} kalir.
+         * Liste/detay uclarinda HER ZAMAN {@code null}.
+         */
+        String ilkParola) {
+
+    /** Olusturma yanitinda tek seferlik parolayi ekler. */
+    public UserResponse withIlkParola(String parola) {
+        return new UserResponse(id, kullaniciAdi, ad, soyad, email, telefon, roller, enabled,
+                parola);
+    }
 }

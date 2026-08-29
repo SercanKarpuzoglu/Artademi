@@ -31,7 +31,11 @@ export interface UserResponse {
   email: string | null;
   telefon: string | null;
   roller: string[];
-  enabled: boolean;
+  enabled: boolean;  /**
+   * YALNIZCA oluşturma yanıtında ve YALNIZCA e-postasız kullanıcıda dolu.
+   * E-postalı kullanıcı parolasını kendi belirler (bağlantı mail ile gider) → null.
+   */
+  ilkParola?: string | null;
 }
 
 /** Kullanıcı olusturma govdesi — backend CreateUserRequest. kullaniciAdi + en az bir rol zorunlu. */

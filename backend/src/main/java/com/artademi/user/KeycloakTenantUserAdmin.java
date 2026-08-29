@@ -23,14 +23,16 @@ import org.springframework.stereotype.Service;
  *
  * <p>Izolasyon fail-closed: liste yalnizca {@code tenant_id} attribute'u eslesen kullanicilari verir;
  * silmede hedefin tenant'i path tenant'iyla eslesmezse 404 (sizinti yok). Yeni kullanici: sabit ilk
- * parola {@code Artademi2026!} + {@code must_change_password=true}; roller atanabilir kumeyle sinirli.
+ * parola kullanicinin kendisi tarafindan kurulur (sabit ortak parola KALDIRILDI); roller
+ * atanabilir kumeyle sinirli.
  */
 @Service
 public class KeycloakTenantUserAdmin implements TenantUserAdmin {
 
     private static final Logger log = LoggerFactory.getLogger(KeycloakTenantUserAdmin.class);
 
-    private static final String FIRST_PASSWORD = "Artademi2026!";
+    /** Parola belirleme baglantisinin gecerlilik suresi: 24 saat. */
+    private static final int PAROLA_BAGLANTI_SURESI_SN = 24 * 60 * 60;
     private static final String ATTR_TENANT = "tenant_id";
     private static final String ATTR_TELEFON = "telefon";
     private static final String ATTR_MUST_CHANGE = "must_change_password";
@@ -66,7 +68,7 @@ public class KeycloakTenantUserAdmin implements TenantUserAdmin {
         if (hasText(req.telefon())) {
             attrs.put(ATTR_TELEFON, List.of(req.telefon()));
         }
-        attrs.put(ATTR_MUST_CHANGE, List.of("true"));
+        attrs.put(ATTR_MUST_CHANGE, List.of(hasText(req.email()) ? "false" : "true"));
 
         Map<String, Object> rep = new LinkedHashMap<>();
         rep.put("username", req.kullaniciAdi());
@@ -80,7 +82,13 @@ public class KeycloakTenantUserAdmin implements TenantUserAdmin {
 
         String newId = kc.createUser(rep); // 409 (yinelenen) -> ConflictException
         try {
-            kc.resetPassword(newId, FIRST_PASSWORD, false);
+            // E-postasi varsa parola BELIRLENMEZ (kullanici kendi kurar); yoksa kullaniciya
+            // ulasmanin baska yolu olmadigi icin KULLANICIYA OZEL rastgele parola uretilir.
+            if (hasText(req.email())) {
+                kc.sendUpdatePasswordEmail(newId, PAROLA_BAGLANTI_SURESI_SN);
+            } else {
+                kc.resetPassword(newId, IlkParola.uret(), false);
+            }
             assignRoles(newId, roller);
         } catch (RuntimeException e) {
             // Oksuz kullanici birakma: olusan kullaniciyi geri al.

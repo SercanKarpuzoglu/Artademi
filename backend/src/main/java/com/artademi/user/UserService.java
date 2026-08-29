@@ -38,6 +38,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserService {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(UserService.class);
+
     /** Son-admin kontrolunde taranacak azami kullanici (kurum basina makul ust sinir). */
     private static final int MAX_ADMIN_TARAMA = 200;
 
@@ -50,7 +53,11 @@ public class UserService {
     private static final String ATTR_MUST_CHANGE = "must_change_password";
 
     /** Yeni kullanicilara verilen sabit ilk parola (gecici DEGIL; must_change_password ile zorlanir). */
-    private static final String FIRST_PASSWORD = "Artademi2026!";
+    /**
+     * ⚠️ ARTIK YALNIZCA "e-postasi olmayan kullanici" yolunda kullanilir ve HER KULLANICI ICIN
+     * AYRI uretilir ({@link IlkParola}). Onceki sabit ortak parola bir guvenlik acigiydi:
+     * bilen herkes, henuz ilk girisini yapmamis her hesaba girebiliyordu.
+     */
 
     /** Parola sifirlama baglantisinin gecerlilik suresi: 24 saat. */
     private static final int PAROLA_BAGLANTI_SURESI_SN = 24 * 60 * 60;
@@ -60,18 +67,20 @@ public class UserService {
     private final KeycloakAdminClient kc;
     private final CurrentUser currentUser;
     private final HosGeldinMaili hosGeldin;
+    private final ParolaDegisikligiInterceptor parolaInterceptor;
     private final com.artademi.platform.TenantService tenantService;
     private final com.artademi.platform.SubscriptionService subscriptionService;
 
     public UserService(KeycloakAdminClient kc, CurrentUser currentUser,
             com.artademi.platform.TenantService tenantService,
             com.artademi.platform.SubscriptionService subscriptionService,
-            HosGeldinMaili hosGeldin) {
+            HosGeldinMaili hosGeldin, ParolaDegisikligiInterceptor parolaInterceptor) {
         this.kc = kc;
         this.currentUser = currentUser;
         this.tenantService = tenantService;
         this.subscriptionService = subscriptionService;
         this.hosGeldin = hosGeldin;
+        this.parolaInterceptor = parolaInterceptor;
     }
 
     // =====================================================================
@@ -115,7 +124,9 @@ public class UserService {
         if (hasText(req.telefon())) {
             attrs.put(ATTR_TELEFON, List.of(req.telefon()));
         }
-        attrs.put(ATTR_MUST_CHANGE, List.of("true"));
+        // E-postali kullanici parolasini ZATEN kendisi kuracak (Keycloak baglantisi) → kilit
+        // gereksiz. E-postasiz kullaniciya yonetici parola verdigi icin degistirmesi ZORUNLU.
+        attrs.put(ATTR_MUST_CHANGE, List.of(hasText(req.email()) ? "false" : "true"));
 
         Map<String, Object> rep = new LinkedHashMap<>();
         rep.put("username", req.kullaniciAdi());
@@ -128,15 +139,12 @@ public class UserService {
         rep.put("attributes", attrs);
 
         String newId = kc.createUser(rep); // KC 409 -> ConflictException
-        kc.resetPassword(newId, FIRST_PASSWORD, false);
         assignRoles(newId, roller);
+        String gosterilecekParola = parolayiKur(newId, req.email(), req.ad() + " " + req.soyad(),
+                req.kullaniciAdi());
 
-        // Giris bilgilerini kullaniciya YOLLA (best-effort). Ekranda da gosterilmeye devam eder:
-        // mail gitmezse yonetici elle iletebilsin.
-        hosGeldin.gonder(req.email(), req.ad() + " " + req.soyad(), req.kullaniciAdi(),
-                FIRST_PASSWORD, tenantService.currentName());
-
-        return loadResponse(newId);
+        // ilkParola YALNIZCA e-postasiz kullanicida dolu doner; ekranda BIR KEZ gosterilir.
+        return loadResponse(newId).withIlkParola(gosterilecekParola);
     }
 
     /** Kullaniciyi gunceller (tenant-eslesme zorunlu; rol uzlastirmasi). */
@@ -288,6 +296,35 @@ public class UserService {
             UUID tenantId) {
     }
 
+    /**
+     * Yeni kullanicinin parolasini kurar ve gerekiyorsa bilgilendirme yollar.
+     *
+     * <p><b>E-postasi VARSA:</b> parola HIC belirlenmez — Keycloak'in "parolani belirle" maili
+     * gonderilir, kullanici kendi parolasini kurar. Boylece hicbir yerde (mail, log, yanit,
+     * yedek) duz metin parola bulunmaz. Bizim hos geldin mailimiz de parola ICERMEZ.
+     *
+     * <p><b>E-postasi YOKSA:</b> kullaniciya ulasmanin baska yolu olmadigi icin rastgele parola
+     * uretilir ve cagirana BIR KEZ dondurulur (yonetici elden iletir).
+     *
+     * @return yalnizca e-postasiz yolda uretilen parola; aksi halde {@code null}
+     */
+    private String parolayiKur(String userId, String email, String adSoyad, String kullaniciAdi) {
+        if (hasText(email)) {
+            try {
+                kc.sendUpdatePasswordEmail(userId, PAROLA_BAGLANTI_SURESI_SN);
+            } catch (RuntimeException e) {
+                // Kullanici zaten olustu; mail hatasi olusturmayi geri almaz. Yonetici
+                // "Sifre sifirla" ile tekrar deneyebilir.
+                log.error("Parola belirleme maili gönderilemedi ({}): {}", email, e.getMessage());
+            }
+            hosGeldin.gonder(email, adSoyad, kullaniciAdi, tenantService.currentName());
+            return null;
+        }
+        String parola = IlkParola.uret();
+        kc.resetPassword(userId, parola, false);
+        return parola;
+    }
+
     /** Kullanicinin tenant_id attribute'u (varsa). */
     private static String tenantOf(Map<String, Object> rep) {
         return KeycloakAdminClient.firstAttribute(rep, ATTR_TENANT);
@@ -330,6 +367,8 @@ public class UserService {
         Map<String, Object> existing = kc.getUserById(sub);
         Map<String, Object> attrs = KeycloakAdminClient.copyAttributes(existing);
         attrs.put(ATTR_MUST_CHANGE, List.of("false"));
+        // Onbellegi HEMEN temizle: kullanici TTL beklemeden calismaya devam edebilsin.
+        parolaInterceptor.temizle(currentUser.sub());
         kc.updateUser(sub, Map.of("attributes", attrs));
     }
 
@@ -442,7 +481,8 @@ public class UserService {
                 stringValue(rep, "email"),
                 KeycloakAdminClient.firstAttribute(rep, ATTR_TELEFON),
                 roller,
-                boolValue(rep, "enabled"));
+                boolValue(rep, "enabled"),
+                null); // ilkParola yalnizca olusturma yanitinda doldurulur (withIlkParola)
     }
 
     private static void putAttr(Map<String, Object> attrs, String key, String value) {

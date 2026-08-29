@@ -81,8 +81,8 @@ export default function TenantForm() {
         )}
 
         <div className="rounded-[14px] border border-rasp/30 bg-rasp-soft px-4 py-3 text-[13px] text-ink">
-          İlk yönetici, sabit parola <b>Artademi2026!</b> ile oluşturulur ve ilk girişte değiştirmek
-          zorundadır. Oluşturulan kullanıcı adı sonraki ekranda gösterilecektir.
+          İlk yöneticiye, parolasını belirlemesi için bir e-posta gönderilir; parolayı kendisi
+          oluşturur. Kullanıcı adı sonraki ekranda gösterilecektir.
         </div>
 
         <section className="card space-y-4">

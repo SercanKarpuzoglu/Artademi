@@ -385,10 +385,25 @@ Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşi
 
 ## 14. Bilinen Eksikler / Teknik Borç
 
-### 🔴 14.0 İLK-PAROLA ZİNCİRİNDE İKİ AÇIK (2026-08-10, Otovers oturumundan çapraz tespit)
+### ✅ 14.0 İLK-PAROLA ZİNCİRİ — KAPATILDI (tespit 2026-08-10, düzeltme 2026-08-29)
 
-> Otovers'ta aynı konu (yönetici alt kullanıcı açtığında parola nasıl belirlenir) çözülürken
-> Artademi'nin yaklaşımı karşılaştırma için incelendi. İki bulgu çıktı. **Henüz düzeltilmedi.**
+> Otovers'ta aynı konu çözülürken çapraz tespit edilmişti; iki açık da kapatıldı. 622 test yeşil.
+>
+> **(a) Sabit ortak parola KALDIRILDI.** Artık: e-postası olan kullanıcıya parola HİÇ atanmaz —
+> Keycloak'ın "parolanı belirle" bağlantısı gönderilir, kullanıcı kendi parolasını kurar. Böylece
+> mailde, logda, yanıtta, yedekte hiçbir yerde düz metin parola bulunmaz. E-postası olmayan
+> kullanıcıda `IlkParola.uret()` ile KULLANICIYA ÖZEL rastgele parola üretilir (14 hane, her
+> sınıftan en az bir karakter garantili — düz rastgele çekim politikayı ihlal edebiliyordu) ve
+> yönetici ekranında BİR KEZ gösterilir. Hoş geldin maili artık parola içermez.
+>
+> **(b) Sunucu tarafı yaptırım EKLENDİ.** `ParolaDegisikligiInterceptor` bayrak duruyorsa
+> 403 `PASSWORD_CHANGE_REQUIRED` döner. Muaf uçlar yalnızca çıkış yolu (`/api/me`,
+> `/api/me/change-password`) + kimliksiz uçlar + `/api/platform/**` (super.admin'in kilit ekranı
+> yok, kilitlenirse çıkış yolu kalmaz). 30 sn TTL önbellek + parola değişiminde açık invalidasyon.
+> ⚠️ Keycloak'a ulaşılamazsa **fail-open**: altyapı hatası çalışan kurumu durdurmamalı.
+>
+> **⚠️ KALAN İŞ:** düzeltmeden ÖNCE açılmış kullanıcılar hâlâ eski sabit parolada olabilir
+> (prod'da: ezgi, sercan, super.admin). Konsoldan "Şifre sıfırla" ile yenilenmeli.
 
 **(a) Sabit ORTAK ilk parola — `Artademi2026!`**
 

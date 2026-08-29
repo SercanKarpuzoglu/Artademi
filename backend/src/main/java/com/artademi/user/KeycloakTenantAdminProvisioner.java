@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
  * konusulur, is kurali degil).
  *
  * <p>Yeni admin kalibi (mevcut kullanici-yaratma kaliginin aynisi): sabit ilk parola
- * {@code Artademi2026!} + {@code must_change_password=true}, realm rolu {@code ADMIN}, attribute
+ * Parola ATANMAZ (kullanici kendi kurar), realm rolu {@code ADMIN}, attribute
  * {@code tenant_id} = yeni tenant id'si. Keycloak temsili TAM gonderilir (createUser zaten boyle).
  *
  * <p><b>Sahipsiz kullanici garantisi:</b> {@code createUser} 409 (yinelenen username/email) atarsa
@@ -28,7 +28,8 @@ public class KeycloakTenantAdminProvisioner implements TenantAdminProvisioner {
     private static final Logger log = LoggerFactory.getLogger(KeycloakTenantAdminProvisioner.class);
 
     /** Yeni kullanicilara verilen sabit ilk parola (gecici DEGIL; must_change_password ile zorlanir). */
-    private static final String FIRST_PASSWORD = "Artademi2026!";
+    /** Parola belirleme baglantisinin gecerlilik suresi: 24 saat. */
+    private static final int PAROLA_BAGLANTI_SURESI_SN = 24 * 60 * 60;
 
     private static final String ROLE_ADMIN = "ADMIN";
     private static final String ATTR_TENANT = "tenant_id";
@@ -47,7 +48,8 @@ public class KeycloakTenantAdminProvisioner implements TenantAdminProvisioner {
 
         Map<String, Object> attrs = new LinkedHashMap<>();
         attrs.put(ATTR_TENANT, List.of(tenant));
-        attrs.put(ATTR_MUST_CHANGE, List.of("true"));
+        // Yonetici parolasini KENDISI kuracak (Keycloak baglantisi) → ilk-parola kilidi gereksiz.
+        attrs.put(ATTR_MUST_CHANGE, List.of("false"));
 
         Map<String, Object> rep = new LinkedHashMap<>();
         rep.put("username", username);
@@ -60,8 +62,11 @@ public class KeycloakTenantAdminProvisioner implements TenantAdminProvisioner {
         // 409 (yinelenen username/email) -> ConflictException; bu noktada kullanici OLUSMAZ.
         String newId = kc.createUser(rep);
         try {
-            kc.resetPassword(newId, FIRST_PASSWORD, false);
+            // ⚠️ PAROLA BELIRLENMEZ. Onceden sabit ortak parola atanip mailde duz metin
+            // gonderiliyordu; artik yonetici, Keycloak'in gonderdigi baglantiyla kendi
+            // parolasini kurar — hicbir yerde duz metin parola bulunmaz.
             assignAdminRole(newId);
+            kc.sendUpdatePasswordEmail(newId, PAROLA_BAGLANTI_SURESI_SN);
         } catch (RuntimeException e) {
             // Kullanici olustu ama sonraki adim patladi -> oksuz birakma, geri al.
             try {

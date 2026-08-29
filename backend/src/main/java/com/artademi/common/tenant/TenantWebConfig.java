@@ -22,13 +22,16 @@ public class TenantWebConfig implements WebMvcConfigurer {
     private final RequireTenantInterceptor requireTenantInterceptor;
     private final TenantStatusInterceptor tenantStatusInterceptor;
     private final com.artademi.audit.TenantAuditInterceptor tenantAuditInterceptor;
+    private final com.artademi.user.ParolaDegisikligiInterceptor parolaInterceptor;
 
     public TenantWebConfig(RequireTenantInterceptor requireTenantInterceptor,
             TenantStatusInterceptor tenantStatusInterceptor,
-            com.artademi.audit.TenantAuditInterceptor tenantAuditInterceptor) {
+            com.artademi.audit.TenantAuditInterceptor tenantAuditInterceptor,
+            com.artademi.user.ParolaDegisikligiInterceptor parolaInterceptor) {
         this.requireTenantInterceptor = requireTenantInterceptor;
         this.tenantStatusInterceptor = tenantStatusInterceptor;
         this.tenantAuditInterceptor = tenantAuditInterceptor;
+        this.parolaInterceptor = parolaInterceptor;
     }
 
     @Override
@@ -47,6 +50,16 @@ public class TenantWebConfig implements WebMvcConfigurer {
                 // kullanicinin bize ulasamamasi, sorunun cozumunu de imkansizlastirir.
                 .excludePathPatterns("/api/ping", "/api/platform/**", "/api/me", "/api/me/**",
                         "/api/webhooks/**", "/api/billing/**", "/api/public/**", "/api/feedback");
+
+        // ILK-PAROLA YAPTIRIMI (sunucu tarafi). Muaf uclar YALNIZCA kullanicinin bu durumdan
+        // cikabilmesi icin gerekli olanlar: profil oku + parola degistir. Ayrica kimliksiz
+        // uclar (ping/webhook/public/callback) ve platform konsolu — super.admin'in kilit
+        // ekrani YOK, kilitlenirse cikis yolu kalmaz.
+        registry.addInterceptor(parolaInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/ping", "/api/me", "/api/me/change-password",
+                        "/api/platform/**", "/api/webhooks/**", "/api/public/**",
+                        "/api/billing/callback");
 
         // Kurum ici islem kaydi: her basarili degistirici istegi yazar. Platform/webhook/public
         // yollari HARIC — onlar kurum islemi degildir (platform izi V18'de ayrica tutulur).

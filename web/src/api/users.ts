@@ -24,7 +24,8 @@ export async function getUser(id: string): Promise<UserResponse> {
   return res.data.data;
 }
 
-/** Yeni kullanıcı oluşturur (201). İlk parola backend tarafında sabit: Artademi2026!. */
+/** Yeni kullanıcı oluşturur (201). E-postalıysa parola belirleme bağlantısı mail ile gider;
+ * e-postasızsa yanıtta tek seferlik `ilkParola` döner. */
 export async function createUser(payload: CreateUserInput): Promise<UserResponse> {
   const res = await api.post<ApiResponse<UserResponse>>('/api/users', payload);
   return res.data.data;

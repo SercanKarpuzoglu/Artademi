@@ -177,9 +177,39 @@ class UserControllerTest {
         Map<String, Object> attrs = (Map<String, Object>) rep.get("attributes");
         org.junit.jupiter.api.Assertions.assertEquals(
                 List.of(TENANT_A), attrs.get("tenant_id"));
+        // E-POSTALI kullanici: parolasini KENDISI kurar (Keycloak baglantisi) → ilk-parola
+        // kilidi gereksiz, sunucu parola ATAMAZ. Eskiden sabit "Artademi2026!" atanip
+        // must_change_password=true yaziliyordu; bu bir guvenlik acigiydi (bkz. IlkParola).
         org.junit.jupiter.api.Assertions.assertEquals(
-                List.of("true"), attrs.get("must_change_password"));
-        verify(kc).resetPassword(eq(TARGET_ID), eq("Artademi2026!"), eq(false));
+                List.of("false"), attrs.get("must_change_password"));
+        verify(kc, org.mockito.Mockito.never())
+                .resetPassword(eq(TARGET_ID), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyBoolean());
+        verify(kc).sendUpdatePasswordEmail(eq(TARGET_ID), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    void create_epostasizKullanici_TEKSEFERLIK_parolaUretilirVeYANITTA_doner() throws Exception {
+        when(kc.getRealmRole("ADMIN")).thenReturn(Map.of("id", "role-admin", "name", "ADMIN"));
+        when(kc.createUser(org.mockito.ArgumentMatchers.anyMap())).thenReturn(TARGET_ID);
+        when(kc.getUserById(TARGET_ID)).thenReturn(userRep(TARGET_ID, TENANT_A));
+        when(kc.getUserRealmRoles(TARGET_ID)).thenReturn(List.of(Map.of("name", "ADMIN")));
+
+        // E-posta YOK → kullaniciya ulasmanin baska yolu yok; parola uretilip BIR KEZ doner.
+        mockMvc.perform(post("/api/users")
+                        .with(admin(TENANT_A))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kullaniciAdi\":\"yeni2\",\"ad\":\"Yeni\",\"soyad\":\"Kisi\","
+                                + "\"roller\":[\"ADMIN\"]}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.ilkParola").isNotEmpty());
+
+        // Mail YOLLANMAZ (alici yok), parola ATANIR.
+        verify(kc, org.mockito.Mockito.never())
+                .sendUpdatePasswordEmail(org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyInt());
+        verify(kc).resetPassword(eq(TARGET_ID), org.mockito.ArgumentMatchers.anyString(),
+                eq(false));
     }
 
     // ---------------------------------------------------------------------

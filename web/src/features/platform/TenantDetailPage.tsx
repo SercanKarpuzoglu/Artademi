@@ -14,7 +14,6 @@ import {
   useTenantUsers,
 } from './usePlatformTenants';
 
-const ILK_PAROLA = 'Artademi2026!';
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   AKTIF: { cls: 'b-green', label: 'Aktif' },
@@ -119,7 +118,7 @@ export default function TenantDetailPage() {
           onDone={(username) => {
             setShowForm(false);
             setCreatedNotice(
-              `Kullanıcı oluşturuldu: ${username} / parola: ${ILK_PAROLA} (ilk girişte değiştirilecek).`,
+              `Kullanıcı oluşturuldu: ${username}. Parolasını belirlemesi için e-posta gönderildi.`,
             );
           }}
         />
@@ -240,7 +239,7 @@ function AddUserForm({
     <form onSubmit={handleSubmit(onSubmit)} className="card mb-5 space-y-4" noValidate>
       <h3>Yeni Kullanıcı</h3>
       <div className="rounded-[12px] border border-rasp/30 bg-rasp-soft px-4 py-2.5 text-[13px] text-ink">
-        İlk parola <b>{ILK_PAROLA}</b> olur; kullanıcı ilk girişte değiştirir.
+        Kullanıcıya parolasını belirlemesi için e-posta gönderilir.
       </div>
       {formError && (
         <div className="rounded-[12px] border border-red/30 bg-red-soft px-4 py-2.5 text-[13px] font-semibold text-red">

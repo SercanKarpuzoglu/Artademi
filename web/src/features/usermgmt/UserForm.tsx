@@ -8,9 +8,6 @@ import { ASSIGNABLE_ROLES, roleLabel } from './userDisplay';
 import { toCreatePayload, toUpdatePayload, userSchema, type UserFormValues } from './userSchema';
 import { useCreateUser, useUpdateUser, useUser } from './useUsers';
 
-/** Yeni kullanıcının alacağı sabit ilk parola (backend tarafında atanır). */
-const ILK_PAROLA = 'Artademi2026!';
-
 const EMPTY: UserFormValues = {
   kullaniciAdi: '',
   ad: '',
@@ -89,11 +86,15 @@ export default function UserForm() {
         await updateMut.mutateAsync(toUpdatePayload(values));
         navigate('/kullanicilar');
       } else {
-        await createMut.mutateAsync(toCreatePayload(values));
+        const olusan = await createMut.mutateAsync(toCreatePayload(values));
         // İlk parola admine açıkça gösterilmeli — banner ile bilgilendirip listeye dön.
         navigate('/kullanicilar', {
           state: {
-            createdNotice: `Kullanıcı oluşturuldu. İlk parola: ${ILK_PAROLA} — kullanıcıya iletin, ilk girişte değiştirecek.`,
+            // Backend yalnızca E-POSTASIZ kullanıcıda parola döner; e-postalı kullanıcı
+            // parolasını kendi belirler (bağlantı mail ile gider), ekranda parola GÖSTERİLMEZ.
+            createdNotice: olusan.ilkParola
+              ? `Kullanıcı oluşturuldu. Tek seferlik parola: ${olusan.ilkParola} — bu parola bir daha gösterilmeyecek, kullanıcıya iletin.`
+              : 'Kullanıcı oluşturuldu. Parolasını belirlemesi için e-posta gönderildi.',
           },
         });
       }
@@ -131,7 +132,8 @@ export default function UserForm() {
 
         {!isEdit && (
           <div className="rounded-[14px] border border-rasp/30 bg-rasp-soft px-4 py-3 text-[13px] text-ink">
-            Kullanıcı oluşturulduğunda ilk parolası <b>{ILK_PAROLA}</b> olur. Bu parolayı kullanıcıya
+            E-posta girerseniz kullanıcıya parolasını belirlemesi için bağlantı gönderilir.
+            E-posta girmezseniz tek seferlik bir parola üretilir ve size <b>bir kez</b>
             iletin; ilk girişte değiştirmek zorundadır.
           </div>
         )}

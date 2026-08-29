@@ -59,7 +59,7 @@ export async function getTenantUsers(tenantId: string): Promise<PlatformTenantUs
   return res.data.data;
 }
 
-/** Tenant'a kullanici ekler (tenant_id path'ten; ilk parola Artademi2026!). */
+/** Tenant'a kullanıcı ekler (tenant_id path'ten). Parolasını kullanıcı kendi belirler. */
 export async function createTenantUser(
   tenantId: string,
   payload: CreateTenantUserInput,

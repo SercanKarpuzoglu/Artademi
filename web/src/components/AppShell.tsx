@@ -183,8 +183,8 @@ function FirstPasswordLock({ onLogout }: { onLogout: () => void }) {
           <div>
             <h1 className="font-fraunces text-[20px] font-semibold text-ink">İlk Şifre Belirleme</h1>
             <p className="mt-1 text-[13px] text-ink-soft">
-              Devam etmeden önce parolanızı değiştirmelisiniz. İlk parolanız:{' '}
-              <b>Artademi2026!</b>
+              Devam etmeden önce parolanızı değiştirmelisiniz. Mevcut parolanız, hesabınız
+              açılırken size iletilen tek seferlik paroladır.
             </p>
           </div>
 

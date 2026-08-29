@@ -402,8 +402,10 @@ Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşi
 > yok, kilitlenirse çıkış yolu kalmaz). 30 sn TTL önbellek + parola değişiminde açık invalidasyon.
 > ⚠️ Keycloak'a ulaşılamazsa **fail-open**: altyapı hatası çalışan kurumu durdurmamalı.
 >
-> **⚠️ KALAN İŞ:** düzeltmeden ÖNCE açılmış kullanıcılar hâlâ eski sabit parolada olabilir
-> (prod'da: ezgi, sercan, super.admin). Konsoldan "Şifre sıfırla" ile yenilenmeli.
+> **Mevcut hesaplar:** prod'daki üç hesap (ezgi, sercan, super.admin) DEMO/TEST hesabıdır;
+> eski sabit parolada kalmaları risk oluşturmaz. İlk gerçek müşteri zaten yeni akıştan geçecek
+> (parolasını kendisi belirleyecek). Yine de canlıya gerçek kullanıcı alınırken bu üç hesabın
+> parolası yenilenmeli ya da hesaplar kapatılmalı.
 
 **(a) Sabit ORTAK ilk parola — `Artademi2026!`**
 

@@ -13,6 +13,9 @@ import java.util.List;
 /**
  * TURK EXCEL'de sorunsuz acilan CSV uretir.
  *
+ * <p>Hem veri disa aktarma (ZIP) hem rapor indirmeleri bunu kullanir — CSV kacislama ve Excel
+ * uyumu TEK YERDE tanimlidir, her modulde tekrar edilmez.
+ *
  * <p>Iki detay onemli, ikisi de gercek kullanimda cikar:
  * <ul>
  *   <li><b>UTF-8 BOM</b> — olmadan Excel Turkce karakterleri bozar (ç, ğ, ş, ı → mojibake).</li>
@@ -20,14 +23,14 @@ import java.util.List;
  *       Excel'de tek sutuna yapisir. {@code ;} ile sutunlar dogru ayrilir.</li>
  * </ul>
  */
-final class CsvYazici {
+public final class CsvYazici {
 
     private static final char AYRAC = ';';
     private static final String SATIR_SONU = "\r\n"; // Excel uyumu
 
     private final StringBuilder sb = new StringBuilder();
 
-    void satir(Object... hucreler) {
+    public void satir(Object... hucreler) {
         for (int i = 0; i < hucreler.length; i++) {
             if (i > 0) {
                 sb.append(AYRAC);
@@ -38,7 +41,7 @@ final class CsvYazici {
     }
 
     /** BOM + icerik; dogrudan ZIP girisine yazilabilir. */
-    byte[] baytlar() throws IOException {
+    public byte[] baytlar() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(0xEF);
         out.write(0xBB);

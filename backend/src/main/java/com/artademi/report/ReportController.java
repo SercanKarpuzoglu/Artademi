@@ -11,6 +11,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.artademi.report.dto.AttendanceReportResponse;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -80,5 +86,42 @@ public class ReportController {
     public ApiResponse<List<GroupOccupancyRow>> groupOccupancy(
             @RequestParam(required = false) Boolean aktifMi) {
         return ApiResponse.ok(service.groupOccupancy(aktifMi));
+    }
+
+    /**
+     * DEVAMSIZLIK RAPORU. Tarih araligi zorunlu; {@code grupId} verilirse tek gruba daralir.
+     * Yetki: ADMIN + FRONTDESK + ACCOUNTING — devamsizlik parasal bir bilgi degildir, on buro
+     * da veliyi arayabilmek icin gormeli.
+     */
+    @GetMapping("/attendance")
+    @PreAuthorize("hasAnyRole('ADMIN','FRONTDESK','FRONTDESK_ACCOUNTING')")
+    public ApiResponse<AttendanceReportResponse> attendance(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baslangic,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate bitis,
+            @RequestParam(required = false) Long grupId) {
+        return ApiResponse.ok(service.attendanceReport(baslangic, bitis, grupId));
+    }
+
+    /**
+     * Devamsizlik raporunun CSV hali (Excel icin). Muhasebe/yonetim raporlari cogu zaman
+     * Excel'de islenir; ekrandan elle kopyalamak hataya acik.
+     */
+    @GetMapping("/attendance.csv")
+    @PreAuthorize("hasAnyRole('ADMIN','FRONTDESK','FRONTDESK_ACCOUNTING')")
+    public ResponseEntity<byte[]> attendanceCsv(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baslangic,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate bitis,
+            @RequestParam(required = false) Long grupId) throws java.io.IOException {
+        AttendanceReportResponse rapor = service.attendanceReport(baslangic, bitis, grupId);
+        com.artademi.export.CsvYazici c = new com.artademi.export.CsvYazici();
+        c.satir("Öğrenci", "Toplam Ders", "Geldi", "Gelmedi", "İzinli", "Katılım Oranı (%)");
+        rapor.satirlar().forEach(r -> c.satir(r.ogrenciAdSoyad(), r.toplamDers(), r.geldi(),
+                r.gelmedi(), r.izinli(), r.katilimOrani()));
+
+        String dosya = "devamsizlik_" + baslangic + "_" + bitis + ".csv";
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + dosya + "\"")
+                .body(c.baytlar());
     }
 }

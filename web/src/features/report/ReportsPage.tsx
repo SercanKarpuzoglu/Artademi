@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
+import AttendanceReportTab from './AttendanceReportTab';
 import FinancialSummaryTab from './FinancialSummaryTab';
 import GroupOccupancyTab from './GroupOccupancyTab';
 import StudentBalancesTab from './StudentBalancesTab';
 import TeacherPayoutsTab from './TeacherPayoutsTab';
 
-type TabKey = 'financial' | 'balances' | 'payouts' | 'occupancy';
+type TabKey = 'financial' | 'balances' | 'payouts' | 'occupancy' | 'attendance';
 
 interface TabDef {
   key: TabKey;
@@ -26,6 +27,11 @@ const TAB_DEFS: readonly TabDef[] = [
   {
     key: 'occupancy',
     label: 'Grup Doluluk',
+    roles: [Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING],
+  },
+  {
+    key: 'attendance',
+    label: 'Devamsızlık',
     roles: [Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING],
   },
 ];
@@ -64,6 +70,7 @@ export default function ReportsPage() {
       {active === 'balances' && <StudentBalancesTab />}
       {active === 'payouts' && <TeacherPayoutsTab />}
       {active === 'occupancy' && <GroupOccupancyTab />}
+      {active === 'attendance' && <AttendanceReportTab />}
     </>
   );
 }

@@ -26,6 +26,10 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import com.artademi.attendance.YoklamaDurumu;
+import com.artademi.report.dto.AttendanceReportResponse;
+import com.artademi.report.dto.AttendanceReportRow;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
@@ -58,11 +62,13 @@ public class ReportService {
     private final StudentRepository studentRepository;
     private final GroupRepository groupRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final com.artademi.attendance.AttendanceEntryRepository attendanceEntryRepository;
 
     public ReportService(PaymentRepository paymentRepository, SaleRepository saleRepository,
             ExpenseRepository expenseRepository, PayoutRepository payoutRepository,
             AccrualRepository accrualRepository, StudentRepository studentRepository,
-            GroupRepository groupRepository, EnrollmentRepository enrollmentRepository) {
+            GroupRepository groupRepository, EnrollmentRepository enrollmentRepository,
+            com.artademi.attendance.AttendanceEntryRepository attendanceEntryRepository) {
         this.paymentRepository = paymentRepository;
         this.saleRepository = saleRepository;
         this.expenseRepository = expenseRepository;
@@ -71,6 +77,7 @@ public class ReportService {
         this.studentRepository = studentRepository;
         this.groupRepository = groupRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.attendanceEntryRepository = attendanceEntryRepository;
     }
 
     /**
@@ -202,5 +209,60 @@ public class ReportService {
         } catch (DateTimeParseException | NullPointerException e) {
             throw new ValidationException("Geçersiz dönem formatı (YYYY-MM)");
         }
+    }
+
+    /**
+     * DEVAMSIZLIK RAPORU — bir tarih araliginda ogrenci bazinda katilim ozeti.
+     *
+     * <p>Satirlar KATILIM ORANI ARTAN sirada doner: yoneticinin gormek istedigi once "en cok
+     * devamsizlik yapan" ogrencidir. Alfabetik siralama bu raporu ise yaramaz hale getirirdi.
+     *
+     * <p>Payda olarak ogrencinin GERCEKTEN yoklamasi alinan ders sayisi kullanilir (kendi
+     * satirlarinin toplami) — donemin ortasinda kaydolan ogrenci, katilmadigi eski derslerden
+     * dolayi haksiz yere dusuk oranli gorunmesin.
+     */
+    public AttendanceReportResponse attendanceReport(LocalDate baslangic, LocalDate bitis,
+            Long grupId) {
+        if (bitis.isBefore(baslangic)) {
+            throw new ValidationException("Bitiş tarihi başlangıçtan önce olamaz");
+        }
+        record Sayim(String adSoyad, long geldi, long gelmedi, long izinli) {
+            long toplam() {
+                return geldi + gelmedi + izinli;
+            }
+        }
+        Map<Long, Sayim> ogrenciler = new LinkedHashMap<>();
+        for (Object[] r : attendanceEntryRepository.katilimSayimlari(baslangic, bitis, grupId)) {
+            Long id = (Long) r[0];
+            String adSoyad = (r[1] + " " + r[2]).trim();
+            YoklamaDurumu durum = (YoklamaDurumu) r[3];
+            long adet = ((Number) r[4]).longValue();
+
+            Sayim mevcut = ogrenciler.getOrDefault(id, new Sayim(adSoyad, 0, 0, 0));
+            ogrenciler.put(id, switch (durum) {
+                case GELDI -> new Sayim(adSoyad, mevcut.geldi() + adet, mevcut.gelmedi(),
+                        mevcut.izinli());
+                case GELMEDI -> new Sayim(adSoyad, mevcut.geldi(), mevcut.gelmedi() + adet,
+                        mevcut.izinli());
+                case IZINLI -> new Sayim(adSoyad, mevcut.geldi(), mevcut.gelmedi(),
+                        mevcut.izinli() + adet);
+            });
+        }
+
+        List<AttendanceReportRow> satirlar = ogrenciler.entrySet().stream()
+                .map(e -> {
+                    Sayim s = e.getValue();
+                    BigDecimal oran = s.toplam() == 0 ? BigDecimal.ZERO
+                            : BigDecimal.valueOf(s.geldi() * 100.0 / s.toplam())
+                                    .setScale(2, RoundingMode.HALF_UP);
+                    return new AttendanceReportRow(e.getKey(), s.adSoyad(), s.toplam(),
+                            s.geldi(), s.gelmedi(), s.izinli(), oran);
+                })
+                .sorted(Comparator.comparing(AttendanceReportRow::katilimOrani)
+                        .thenComparing(AttendanceReportRow::ogrenciAdSoyad))
+                .toList();
+
+        return new AttendanceReportResponse(baslangic, bitis,
+                attendanceEntryRepository.oturumSayisi(baslangic, bitis, grupId), satirlar);
     }
 }

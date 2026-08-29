@@ -55,3 +55,46 @@ export async function getGroupOccupancy(
   });
   return res.data;
 }
+
+/** Devamsızlık raporu satırı — backend AttendanceReportRow. */
+export interface AttendanceReportRow {
+  ogrenciId: number;
+  ogrenciAdSoyad: string;
+  toplamDers: number;
+  geldi: number;
+  gelmedi: number;
+  izinli: number;
+  katilimOrani: string | number;
+}
+
+/** Devamsızlık raporu — backend AttendanceReportResponse. Satırlar katılım oranı ARTAN sırada. */
+export interface AttendanceReportResponse {
+  baslangic: string;
+  bitis: string;
+  toplamOturum: number;
+  satirlar: AttendanceReportRow[];
+}
+
+/** Tarih aralığında öğrenci bazlı katılım özeti. grupId verilirse tek gruba daralır. */
+export async function getAttendanceReport(params: {
+  baslangic: string;
+  bitis: string;
+  grupId?: number;
+}): Promise<AttendanceReportResponse> {
+  const res = await api.get<ApiResponse<AttendanceReportResponse>>('/api/reports/attendance', {
+    params,
+  });
+  return res.data.data;
+}
+
+/** Aynı raporun CSV hali; tarayıcıda indirilir (Excel uyumlu). */
+export async function indirDevamsizlikCsv(params: {
+  baslangic: string;
+  bitis: string;
+  grupId?: number;
+}): Promise<{ blob: Blob; dosyaAdi: string }> {
+  const res = await api.get('/api/reports/attendance.csv', { params, responseType: 'blob' });
+  const disposition = String(res.headers['content-disposition'] ?? '');
+  const eslesme = disposition.match(/filename="?([^"]+)"?/);
+  return { blob: res.data as Blob, dosyaAdi: eslesme?.[1] ?? 'devamsizlik.csv' };
+}

@@ -32,4 +32,33 @@ public interface AttendanceEntryRepository extends JpaRepository<AttendanceEntry
     Optional<AttendanceEntry> findBySessionIdAndOgrenciId(
             @Param("sessionId") Long sessionId,
             @Param("ogrenciId") Long ogrenciId);
+
+    /**
+     * Devamsizlik raporu ham verisi: tarih araligindaki her ogrenci icin durum bazinda sayim.
+     *
+     * <p>Tenant filtresi JPQL'e OTOMATIK uygulanir (AttendanceEntry ve Student TenantAware) —
+     * bu yuzden sorguda tenant kosulu YAZILMAZ ve baska kurumun verisi gelemez.
+     *
+     * @return satirlar: [ogrenciId, ad, soyad, durum, adet]
+     */
+    @Query("""
+            SELECT e.ogrenci.id, e.ogrenci.ad, e.ogrenci.soyad, e.durum, COUNT(e)
+            FROM AttendanceEntry e
+            WHERE e.session.tarih BETWEEN :baslangic AND :bitis
+              AND (:grupId IS NULL OR e.session.grup.id = :grupId)
+            GROUP BY e.ogrenci.id, e.ogrenci.ad, e.ogrenci.soyad, e.durum
+            """)
+    List<Object[]> katilimSayimlari(@Param("baslangic") java.time.LocalDate baslangic,
+            @Param("bitis") java.time.LocalDate bitis,
+            @Param("grupId") Long grupId);
+
+    /** Tarih araligindaki oturum sayisi (rapor basligindaki "toplam ders"). */
+    @Query("""
+            SELECT COUNT(s) FROM AttendanceSession s
+            WHERE s.tarih BETWEEN :baslangic AND :bitis
+              AND (:grupId IS NULL OR s.grup.id = :grupId)
+            """)
+    long oturumSayisi(@Param("baslangic") java.time.LocalDate baslangic,
+            @Param("bitis") java.time.LocalDate bitis,
+            @Param("grupId") Long grupId);
 }

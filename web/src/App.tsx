@@ -16,6 +16,7 @@ import GroupForm from './features/group/GroupForm';
 import GroupListPage from './features/group/GroupListPage';
 import InventoryPage from './features/inventory/InventoryPage';
 import PayoutPage from './features/payout/PayoutPage';
+import BorcHatirlatmaPage from './features/reminder/BorcHatirlatmaPage';
 import ProfilePage from './features/profile/ProfilePage';
 import ReportsPage from './features/report/ReportsPage';
 import RoomForm from './features/room/RoomForm';
@@ -330,6 +331,16 @@ export default function App() {
 
         {/* Geri bildirim — her rol; askıdaki kurum da erişebilsin diye backend'de de muaf */}
         <Route path="geri-bildirim" element={<GeriBildirimPage />} />
+
+        {/* Borç hatırlatma — parasal veri: ADMIN + muhasebe (ön büro parayı görmez) */}
+        <Route
+          path="borc-hatirlatma"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN, Role.FRONTDESK_ACCOUNTING]}>
+              <BorcHatirlatmaPage />
+            </RoleRoute>
+          }
+        />
 
         {/* İşlem kaydı — kurum yöneticisi kendi ekibinin işlemlerini görür */}
         <Route

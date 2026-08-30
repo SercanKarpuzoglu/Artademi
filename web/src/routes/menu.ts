@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  BellRing,
   ClipboardCheck,
   Coins,
   CreditCard,
@@ -64,6 +65,14 @@ export const MENU: readonly MenuItem[] = [
     label: 'Finans',
     path: '/finans',
     icon: Wallet,
+    section: 'İşletme',
+    roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING],
+    hazir: true,
+  },
+  {
+    label: 'Borç Hatırlatma',
+    path: '/borc-hatirlatma',
+    icon: BellRing,
     section: 'İşletme',
     roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING],
     hazir: true,

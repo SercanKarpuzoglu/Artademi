@@ -97,3 +97,6 @@ Tenant kimliği JWT'deki `tenant_id` claim'inden; istemciden asla.
 
 ## Test
 - ek kurallar: `.claude/test-rules.md`
+
+## Sunucular
+- app (Hetzner): `ssh artademi` (root) — 37.27.241.117 · Ubuntu 24.04 · artademi-prod

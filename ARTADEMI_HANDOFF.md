@@ -377,6 +377,35 @@ Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşi
 - **Şifremi unuttum:** Keycloak forgot-password akışı + tema HAZIR; gerçek çalışması SMTP'ye bağlı (yukarıdaki mail işi).
 - **Grace uyarı banner:** dashboard ADMIN'de `subscriptionWarning` gösteriliyor (kısmi); diğer rol/sayfalara yaygınlaştırma opsiyonel.
 
+### 13.2b SMS ENTEGRASYONU (planlandı, 2026-08-30 — henüz YAPILMADI)
+
+> Karar: SMS **kurum kendi sağlayıcı hesabını bağlar**, platform hesabından gönderilmez.
+
+**Neden bu model** (e-posta itibar dersinin doğrudan sonucu):
+- **İtibar paylaşılmaz** — ortak gönderici başlığında bir okulun kötü kullanımı diğerlerinin
+  mesajlarını da riske atar. E-postada alan adımız zaten ortak; SMS'te aynı hatayı yapmayalım.
+- **Veli göndereni tanır** — başlık `TAB SANAT` olur, `ARTADEMI` değil. Tanınmayan başlıktan
+  gelen "borcunuz var" mesajı hem işe yaramaz hem şikâyet toplar.
+- **Maliyet ve hukuki sorumluluk doğru yerde** — veliyle sözleşme ilişkisi okulundur.
+
+**⚠️ Türkiye'ye özgü iki engel (planı etkiler, baştan bilinmeli):**
+1. **Gönderici başlığı tescili** — Türkiye'de rastgele isimle SMS atılamaz; başlık operatörde
+   tescillenir, şirket evrakı ister, birkaç gün sürer. Okul "bugün bağlayıp bugün gönderemez";
+   onboarding metninde bu söylenmeli.
+2. **İYS (İleti Yönetim Sistemi)** — ticari elektronik iletide alıcı onayının İYS'ye kaydı
+   zorunlu. Mevcut sözleşme ilişkisi kapsamındaki bilgilendirme için istisna var ama
+   "okul → veliye borç hatırlatma" bu sınırın neresine düşer, **hukukçuya sorulmalı**.
+   Uygulamaya geçmeden önce güncel mevzuat araştırılacak.
+
+**Teknik plan (iyzico kalıbının aynısı):**
+- `SmsSaglayici` portu + somut uygulamalar (Netgsm / İletimerkezi / Verimor vb.)
+- ⚠️ **ÖN KOŞUL — kurum bazlı şifreli sır saklama:** iyzico'da tek anahtar var ve `.env`'de
+  duruyor; SMS'te HER KURUMUN kendi API bilgisi olacak ve DB'ye yazılacak. Düz metin OLAMAZ.
+  Bu altyapı parçası SMS'ten ÖNCE yapılmalı.
+
+**Önerilen sıra:** (1) sağlayıcı araştırması + İYS netleştirmesi → (2) şifreli kurum-bazlı
+yapılandırma → (3) SMS gönderimi.
+
 ### 13.3 Küçük açık işler / opsiyonel
 - Finans inline formlarını RHF+Zod'a hizalama (opsiyonel; kabul edilmiş istisna).
 - Demo modülü (V2 `demo_note`) temizliği (opsiyonel).

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
+import { indirMakbuz } from '../../api/payments';
 import type { OdemeYontemi, PaymentInput, StudentResponse } from '../../api/types';
 import { formatDate, formatMoney } from '../../lib/format';
 import StudentPicker from './StudentPicker';
@@ -28,6 +29,25 @@ export default function OdemeTab() {
   const [to, setTo] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [page, setPage] = useState(0);
+  // Hangi satirin makbuzu hazirlaniyor — yalniz o satirin dugmesi kilitlenir.
+  const [makbuzId, setMakbuzId] = useState<number | null>(null);
+
+  const makbuzIndir = async (id: number) => {
+    setMakbuzId(id);
+    try {
+      const { blob, dosyaAdi } = await indirMakbuz(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = dosyaAdi;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setMakbuzId(null);
+    }
+  };
 
   const query = usePayments({
     yontem,
@@ -110,6 +130,7 @@ export default function OdemeTab() {
                   <th>Yöntem</th>
                   <th className="t-right">Tutar</th>
                   <th>Açıklama</th>
+                  <th className="t-right">Makbuz</th>
                 </tr>
               </thead>
               <tbody>
@@ -130,6 +151,16 @@ export default function OdemeTab() {
                       <span className="amount">{formatMoney(p.tutar)} ₺</span>
                     </td>
                     <td className="text-ink-soft">{p.aciklama ?? '—'}</td>
+                    <td className="t-right">
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={makbuzId === p.id}
+                        onClick={() => makbuzIndir(p.id)}
+                      >
+                        {makbuzId === p.id ? 'Hazırlanıyor…' : 'Makbuz (PDF)'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
+import { indirKayitFormu } from '../../api/students';
 import type { StudentResponse } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
@@ -15,6 +16,26 @@ export default function StudentDetailPage() {
   const navigate = useNavigate();
   const { hasAnyRole } = useAuth();
   const canSeeFinance = hasAnyRole([Role.ADMIN, Role.FRONTDESK_ACCOUNTING]);
+
+  // ⚠️ Hook'lar kosullu return'lerden ONCE tanimlanmali (React hook kurali).
+  const [formIndiriliyor, setFormIndiriliyor] = useState(false);
+  const kayitFormuIndir = async (id: number) => {
+    setFormIndiriliyor(true);
+    try {
+      const { blob, dosyaAdi } = await indirKayitFormu(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = dosyaAdi;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setFormIndiriliyor(false);
+    }
+  };
+
 
   const studentQuery = useStudent(id);
   const siblingsQuery = useSiblings(id);
@@ -44,6 +65,14 @@ export default function StudentDetailPage() {
           <StatusBadge status={s.status} />
         </div>
         <div className="top-actions">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={formIndiriliyor}
+            onClick={() => kayitFormuIndir(s.id)}
+          >
+            {formIndiriliyor ? 'Hazırlanıyor…' : 'Kayıt Formu (PDF)'}
+          </button>
           <Link to={`/ogrenciler/${s.id}/duzenle`} className="btn btn-primary">
             Düzenle
           </Link>

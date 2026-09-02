@@ -259,6 +259,18 @@ Migration sırası **V1→V16** (V13=tenant, V14=subscription, **V15=teacher_hak
 - Grubun şubesi salondan TÜRETİLMEZ, ayrı tutulur: salonu olmayan (ÖZEL) grubun da şubesi olabilir.
 - Web: `/subeler` liste + form (menü "Tanımlar → Şubeler", branşın üstünde). Salon ve grup formlarında şube seçici; düzenlemede pasif şube seçiliyse listeye sentezlenip görünür kalır.
 
+### 7.19 Belgeler (PDF) — `com.artademi.belge` (✅ YENİ, migration YOK)
+- **`GET /api/payments/{id}/makbuz.pdf`** — tahsilat makbuzu. Yetki: **ADMIN + FRONTDESK_ACCOUNTING** (parasal belge; ön büro erişemez).
+- **`GET /api/students/{id}/kayit-formu.pdf`** — öğrenci kayıt formu. Yetki: ADMIN + FRONTDESK + FRONTDESK_ACCOUNTING (formda para YOK, ön büro basabilir).
+- İkisi de `findScopedById` ile yüklenir → başka kurumun kaydı 404.
+- ⚠️ **TÜRKÇE PDF TUZAĞI (en kritik nokta):** PDF'in yerleşik (base-14) fontları WinAnsi/Latin-1 kodlar, bu kümede **ş, ğ, İ, ı YOKTUR**. Gömülü font kullanılmazsa bu harfler bozuk basılır ve **hata SESSİZDİR** — PDF yine üretilir, sadece yanlış görünür. Bu yüzden `PdfFontlari` DejaVu Sans'ı `IDENTITY_H` ile **gömülü** yükler. `src/main/resources/fonts/` (lisans: DEJAVU-LICENSE.txt, gömmeye izinli). Testler fontun gömüldüğünü bayt düzeyinde doğrular.
+- ⚠️ `PageSize.A5.rotate()` KULLANMAYIN: sayfaya 90° rotasyon bayrağı koyar, okuyucular içeriği yan çevirir (ilk denemede böyle oldu, görsel kontrolde yakalandı).
+- ⚠️ `TenantService.currentName()` sözleşmesi gereği **null dönebilir**; belgeye "null" basmamak için kurum adı yoksa başlık/dipnot tamamen atlanır.
+- Makbuz numarası ayrı sayaç DEĞİL, tahsilat id'sidir (ayrı sayaç boşluk/mükerrer numara riski doğurur).
+- `TutarYaziya` — makbuzun "YALNIZ …" satırı. Türkçe'ye özgü iki kural test altında: **"bir bin" DENMEZ** (1.000 = "bin") ve **"bir yüz" DENMEZ** (100 = "yüz"); ama 1.000.000 = "bir milyon" (orada "bir" korunur). Kuruş HALF_UP yuvarlanır ki rakam ile yazı birbirini tutsun.
+- Kütüphane: **OpenPDF 3.0.5** (LGPL — Maven bağımlılığı olarak SaaS'ta uygun; uygulama son kullanıcıya dağıtılmıyor). ⚠️ 3.x'te paket adı `com.lowagie.text` DEĞİL, **`org.openpdf.text`**.
+- Web: tahsilat listesinde satır başına "Makbuz (PDF)", öğrenci detayında "Kayıt Formu (PDF)".
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
@@ -390,7 +402,7 @@ Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşi
 #### ⏳ SONRAKİ İŞLER (rakip paritesi — öncelik sırasıyla)
 | # | Modül | Durum / not |
 |---|---|---|
-| 1 | **Makbuz / PDF çıktısı** | Projede **hiç** PDF kütüphanesi yok. Tahsilat makbuzu + kayıt formu. Demoda hemen fark edilir. |
+| 1 | ~~**Makbuz / PDF çıktısı**~~ | ✅ **TAMAM** (2026-09-02) — tahsilat makbuzu + öğrenci kayıt formu, gömülü Türkçe font. Bkz. §7.19. |
 | 2 | **SMS** | §13.2b'de planlı. Önkoşul: **şifreli tenant-bazlı ayar saklama** (iyzico tek anahtarla `.env`'de; SMS her kurumun kendi kimlik bilgisini ister). |
 | 3 | **Otomatik bildirim** | Borç hatırlatma bugün ELLE (`BorcHatirlatmaPage`). Eklenecek: zamanlanmış gönderim (kurum opt-in), devamsızlık bildirimi, haftalık finansal özet. |
 | 4 | **Online ön kayıt formu** | **Altyapı hazır:** `lead` modülü `/api/public/leads` + honeypot + IP soğuma. Eklenecek: tenant'a özel slug, başvuru listesi, başvuru→öğrenci dönüşümü. Düşük maliyet / yüksek görünürlük. |

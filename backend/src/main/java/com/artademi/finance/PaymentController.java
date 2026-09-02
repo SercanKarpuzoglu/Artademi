@@ -13,6 +13,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import com.artademi.belge.MakbuzService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,9 +42,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController {
 
     private final PaymentService service;
+    private final MakbuzService makbuzService;
 
-    public PaymentController(PaymentService service) {
+    public PaymentController(PaymentService service, MakbuzService makbuzService) {
         this.service = service;
+        this.makbuzService = makbuzService;
     }
 
     /** Yeni tahsilat olustur, 201. */
@@ -51,6 +57,20 @@ public class PaymentController {
     }
 
     /** Tek tahsilat (yoksa 404). */
+    /**
+     * Tahsilat makbuzu (PDF). Sinif duzeyindeki yetki gecerlidir: makbuz PARASAL belgedir,
+     * on buro (FRONTDESK) erisemez.
+     */
+    @GetMapping("/api/payments/{id}/makbuz.pdf")
+    public ResponseEntity<byte[]> makbuz(@PathVariable Long id) {
+        byte[] pdf = makbuzService.uret(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + makbuzService.dosyaAdi(id) + "\"")
+                .body(pdf);
+    }
+
     @GetMapping("/api/payments/{id}")
     public ApiResponse<PaymentResponse> get(@PathVariable Long id) {
         return ApiResponse.ok(service.get(id));

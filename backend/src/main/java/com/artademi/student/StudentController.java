@@ -13,6 +13,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import com.artademi.belge.KayitFormuService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -41,9 +45,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class StudentController {
 
     private final StudentService service;
+    private final KayitFormuService kayitFormuService;
 
-    public StudentController(StudentService service) {
+    public StudentController(StudentService service, KayitFormuService kayitFormuService) {
         this.service = service;
+        this.kayitFormuService = kayitFormuService;
     }
 
     /** Yeni ogrenci olustur (statu DENEME), 201. */
@@ -51,6 +57,21 @@ public class StudentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<StudentResponse> create(@Valid @RequestBody CreateStudentRequest request) {
         return ApiResponse.ok(service.create(request));
+    }
+
+    /**
+     * Ogrenci kayit formu (PDF) — kurumun veliye imzalattigi belge.
+     *
+     * <p>Sinif duzeyindeki yetki gecerli: formda PARASAL bilgi YOKTUR, on buro da basabilir.
+     */
+    @GetMapping("/{id}/kayit-formu.pdf")
+    public ResponseEntity<byte[]> kayitFormu(@PathVariable Long id) {
+        byte[] pdf = kayitFormuService.uret(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + kayitFormuService.dosyaAdi(id) + "\"")
+                .body(pdf);
     }
 
     /** Tek ogrenci (yoksa 404). */

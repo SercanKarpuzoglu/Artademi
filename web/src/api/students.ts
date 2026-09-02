@@ -32,6 +32,17 @@ export async function getSiblings(id: number): Promise<StudentResponse[]> {
 }
 
 /** Yeni ogrenci olusturur (backend statuyu DENEME yapar). */
+/**
+ * Öğrenci kayıt formunu PDF olarak indirir. Dosya adı backend'in Content-Disposition
+ * başlığından okunur — ad üretimi TEK YERDE (backend) kalsın.
+ */
+export async function indirKayitFormu(id: number): Promise<{ blob: Blob; dosyaAdi: string }> {
+  const res = await api.get(`/api/students/${id}/kayit-formu.pdf`, { responseType: 'blob' });
+  const disposition = String(res.headers['content-disposition'] ?? '');
+  const eslesme = disposition.match(/filename="?([^"]+)"?/);
+  return { blob: res.data as Blob, dosyaAdi: eslesme?.[1] ?? `kayit_formu_${id}.pdf` };
+}
+
 export async function createStudent(payload: StudentInput): Promise<StudentResponse> {
   const res = await api.post<ApiResponse<StudentResponse>>('/api/students', payload);
   return res.data.data;

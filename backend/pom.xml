@@ -59,6 +59,14 @@
         </dependency>
 
         <!-- Veritabani + sema yonetimi -->
+        <!-- PDF uretimi (makbuz/form). LGPL: Maven bagimliligi olarak kullanmak SaaS icin
+             uygundur (uygulama son kullaniciya DAGITILMIYOR, sunucuda calisiyor). -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>3.0.5</version>
+        </dependency>
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>

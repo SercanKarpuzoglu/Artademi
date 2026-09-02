@@ -5,6 +5,8 @@ import com.artademi.room.dto.CreateRoomRequest;
 import com.artademi.room.dto.RoomMapper;
 import com.artademi.room.dto.RoomResponse;
 import com.artademi.room.dto.UpdateRoomRequest;
+import com.artademi.sube.Sube;
+import com.artademi.sube.SubeRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -22,15 +24,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoomService {
 
     private final RoomRepository repository;
+    private final SubeRepository subeRepository;
 
-    public RoomService(RoomRepository repository) {
+    public RoomService(RoomRepository repository, SubeRepository subeRepository) {
         this.repository = repository;
+        this.subeRepository = subeRepository;
     }
 
     /** Yeni salon olusturur; aktif true ile baslar. */
     @Transactional
     public RoomResponse create(CreateRoomRequest req) {
-        Room saved = repository.save(RoomMapper.toNewEntity(req));
+        Room saved = repository.save(RoomMapper.toNewEntity(req, resolveSube(req.subeId())));
         return RoomResponse.from(saved);
     }
 
@@ -42,7 +46,7 @@ public class RoomService {
     @Transactional
     public RoomResponse update(Long id, UpdateRoomRequest req) {
         Room room = findOrThrow(id);
-        RoomMapper.applyUpdate(room, req);
+        RoomMapper.applyUpdate(room, req, resolveSube(req.subeId()));
         return RoomResponse.from(room);
     }
 
@@ -62,6 +66,20 @@ public class RoomService {
                 .and(RoomSpecifications.matchesText(q));
         return repository.findAll(spec, pageable)
                 .map(RoomResponse::from);
+    }
+
+    /**
+     * subeId'yi tenant-guvenli ({@code findScopedById}) cozer. Bulunamazsa (baska tenant'a
+     * ait VEYA yok) 404 — FK tek basina capraz-tenant referansi engellemez.
+     *
+     * @return id null ise null (sube opsiyoneldir)
+     */
+    private Sube resolveSube(Long subeId) {
+        if (subeId == null) {
+            return null;
+        }
+        return subeRepository.findScopedById(subeId)
+                .orElseThrow(() -> new NotFoundException("Şube bulunamadı: " + subeId));
     }
 
     private Room findOrThrow(Long id) {

@@ -11,6 +11,8 @@ public record RoomResponse(
         String ad,
         Integer kapasite,
         String aciklama,
+        Long subeId,
+        String subeAd,
         boolean aktif,
         Instant olusturulmaTarihi,
         Instant guncellenmeTarihi) {
@@ -21,6 +23,8 @@ public record RoomResponse(
                 r.getAd(),
                 r.getKapasite(),
                 r.getAciklama(),
+                r.getSube() == null ? null : r.getSube().getId(),
+                r.getSube() == null ? null : r.getSube().getAd(),
                 r.isAktif(),
                 r.getOlusturulmaTarihi(),
                 r.getGuncellenmeTarihi());

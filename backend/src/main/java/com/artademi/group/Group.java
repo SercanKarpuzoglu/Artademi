@@ -3,6 +3,7 @@ package com.artademi.group;
 import com.artademi.branch.Branch;
 import com.artademi.common.tenant.TenantAware;
 import com.artademi.room.Room;
+import com.artademi.sube.Sube;
 import com.artademi.teacher.HakedisTipi;
 import com.artademi.teacher.Teacher;
 import jakarta.persistence.Column;
@@ -71,6 +72,14 @@ public class Group extends TenantAware {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "salon_id")
     private Room salon;
+
+    /**
+     * Grubun calistigi sube. OPSIYONEL: tek subeli kurumlar sube tanimlamadan calisir.
+     * Salondan TUREYLMEZ, ayri tutulur — salonu olmayan (or. OZEL) gruplarin da subesi olabilir.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sube_id")
+    private Sube sube;
 
     @Column(name = "seviye", length = 100)
     private String seviye;
@@ -151,6 +160,14 @@ public class Group extends TenantAware {
 
     public void setSalon(Room salon) {
         this.salon = salon;
+    }
+
+    public Sube getSube() {
+        return sube;
+    }
+
+    public void setSube(Sube sube) {
+        this.sube = sube;
     }
 
     public String getSeviye() {

@@ -21,6 +21,7 @@ public record GroupResponse(
         BranchRef brans,
         TeacherRef ogretmen,
         RoomRef salon,
+        SubeRef sube,
         String seviye,
         BigDecimal aylikAidat,
         BigDecimal dersBasiUcret,
@@ -34,6 +35,10 @@ public record GroupResponse(
 
     /** Salon ozeti (id + ad). */
     public record RoomRef(Long id, String ad) {
+    }
+
+    /** Sube ozeti (id + ad). Sube tanimlanmamissa null. */
+    public record SubeRef(Long id, String ad) {
     }
 
     /** Ogretmen ozeti (id + ad + soyad). */
@@ -50,6 +55,9 @@ public record GroupResponse(
         RoomRef salon = g.getSalon() == null
                 ? null
                 : new RoomRef(g.getSalon().getId(), g.getSalon().getAd());
+        SubeRef sube = g.getSube() == null
+                ? null
+                : new SubeRef(g.getSube().getId(), g.getSube().getAd());
         return new GroupResponse(
                 g.getId(),
                 g.getAd(),
@@ -58,6 +66,7 @@ public record GroupResponse(
                 brans,
                 ogretmen,
                 salon,
+                sube,
                 g.getSeviye(),
                 g.getAylikAidat(),
                 g.getDersBasiUcret(),

@@ -36,6 +36,9 @@ public record CreateGroupRequest(
         Long ogretmenId,
 
         Long salonId,
+
+        /** Grubun calistigi sube — OPSIYONEL (tek subeli kurum bos birakir). */
+        Long subeId,
         String seviye,
         BigDecimal aylikAidat,
         BigDecimal dersBasiUcret) implements GrupBilgisi {

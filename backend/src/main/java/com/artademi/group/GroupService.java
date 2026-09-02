@@ -9,6 +9,8 @@ import com.artademi.group.dto.GroupResponse;
 import com.artademi.group.dto.UpdateGroupRequest;
 import com.artademi.room.Room;
 import com.artademi.room.RoomRepository;
+import com.artademi.sube.Sube;
+import com.artademi.sube.SubeRepository;
 import com.artademi.teacher.Teacher;
 import com.artademi.teacher.TeacherRepository;
 import java.util.List;
@@ -38,13 +40,16 @@ public class GroupService {
     private final BranchRepository branchRepository;
     private final TeacherRepository teacherRepository;
     private final RoomRepository roomRepository;
+    private final SubeRepository subeRepository;
 
     public GroupService(GroupRepository repository, BranchRepository branchRepository,
-            TeacherRepository teacherRepository, RoomRepository roomRepository) {
+            TeacherRepository teacherRepository, RoomRepository roomRepository,
+            SubeRepository subeRepository) {
         this.repository = repository;
         this.branchRepository = branchRepository;
         this.teacherRepository = teacherRepository;
         this.roomRepository = roomRepository;
+        this.subeRepository = subeRepository;
     }
 
     /** Yeni grup olusturur; aktif true ile baslar. */
@@ -53,7 +58,8 @@ public class GroupService {
         Branch brans = resolveBranch(req.bransId());
         Teacher ogretmen = resolveTeacher(req.ogretmenId());
         Room salon = resolveRoom(req.salonId());
-        Group saved = repository.save(GroupMapper.toNewEntity(req, brans, ogretmen, salon));
+        Sube sube = resolveSube(req.subeId());
+        Group saved = repository.save(GroupMapper.toNewEntity(req, brans, ogretmen, salon, sube));
         return GroupResponse.from(saved);
     }
 
@@ -68,7 +74,8 @@ public class GroupService {
         Branch brans = resolveBranch(req.bransId());
         Teacher ogretmen = resolveTeacher(req.ogretmenId());
         Room salon = resolveRoom(req.salonId());
-        GroupMapper.applyUpdate(group, req, brans, ogretmen, salon);
+        Sube sube = resolveSube(req.subeId());
+        GroupMapper.applyUpdate(group, req, brans, ogretmen, salon, sube);
         return GroupResponse.from(group);
     }
 
@@ -117,6 +124,18 @@ public class GroupService {
      * bransId'yi tenant-guvenli ({@code findScopedById}) cozer. Bulunamazsa (baska tenant'a ait
      * veya yok) -> 404, sizinti yok.
      */
+    /**
+     * subeId'yi tenant-guvenli cozer; null ise null doner (sube opsiyoneldir).
+     * FK tek basina capraz-tenant referansi engellemez.
+     */
+    private Sube resolveSube(Long subeId) {
+        if (subeId == null) {
+            return null;
+        }
+        return subeRepository.findScopedById(subeId)
+                .orElseThrow(() -> new NotFoundException("Şube bulunamadı: " + subeId));
+    }
+
     private Branch resolveBranch(Long bransId) {
         return branchRepository.findScopedById(bransId)
                 .orElseThrow(() -> new NotFoundException("Branş bulunamadı: " + bransId));

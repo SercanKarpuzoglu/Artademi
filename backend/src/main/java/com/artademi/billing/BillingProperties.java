@@ -19,7 +19,7 @@ public record BillingProperties(String webReturnUrl, java.math.BigDecimal aylikP
      * Yapilandirilmamissa landing'de duyurulan tutar varsayilir.
      */
     public java.math.BigDecimal aylikPlanUcreti() {
-        return aylikPlanUcreti == null ? new java.math.BigDecimal("10000") : aylikPlanUcreti;
+        return aylikPlanUcreti == null ? new java.math.BigDecimal("2000") : aylikPlanUcreti;
     }
 
     /**

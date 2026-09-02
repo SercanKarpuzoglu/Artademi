@@ -15,8 +15,13 @@ import javax.crypto.spec.SecretKeySpec;
  *   <li>{@code Authorization: IYZWSv2 " + base64(authString)}; ayrica {@code x-iyzi-rnd: randomKey}</li>
  * </ol>
  *
- * <p>GET isteklerinde requestBody bos string'dir. uriPath, query string DAHIL path'tir
- * (ör. {@code /v2/subscription/checkoutform/{token}}).
+ * <p>GET isteklerinde requestBody bos string'dir.
+ *
+ * <p>⚠️ <b>uriPath QUERY STRING ICERMEZ</b> (canli API'de olculdu, 2026-09-01): imzaya
+ * {@code ?page=1&count=100} gibi bir query eklenirse iyzico "Authentication token is not
+ * verified" (errorCode 8) doner. Query'li bir uca cagri eklenirse imza
+ * {@code path.split("?")[0]} ile hesaplanmalidir. Bugunku cagrilarin hicbirinde query
+ * yoktur, o yuzden hata gorunmuyor.
  */
 final class IyzicoAuth {
 

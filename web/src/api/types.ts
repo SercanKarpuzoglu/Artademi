@@ -197,6 +197,29 @@ export interface StudentResponse {
 
 // --- Tanımlar modülü (Branş / Salon / Öğretmen) — backend DTO'lari ile birebir aynalanir ---
 
+/**
+ * Şube yaniti — backend SubeResponse.
+ *
+ * ⚠️ BranchResponse ile karistirilmamalidir: Branch = BRANŞ (Bale, Piyano),
+ * Sube = fiziksel LOKASYON (Kadıköy Şubesi).
+ */
+export interface SubeResponse {
+  id: number;
+  ad: string;
+  adres: string | null;
+  telefon: string | null;
+  aktif: boolean;
+  olusturulmaTarihi: string;
+  guncellenmeTarihi: string;
+}
+
+/** Şube olusturma/guncelleme govdesi. Bos opsiyonel alanlar gonderilmez. */
+export interface SubeInput {
+  ad: string;
+  adres?: string;
+  telefon?: string;
+}
+
 /** Branş yaniti — backend BranchResponse. */
 export interface BranchResponse {
   id: number;
@@ -219,6 +242,9 @@ export interface RoomResponse {
   ad: string;
   kapasite: number | null;
   aciklama: string | null;
+  /** Bagli sube — tanimlanmamissa null (sube opsiyoneldir). */
+  subeId: number | null;
+  subeAd: string | null;
   aktif: boolean;
   olusturulmaTarihi: string;
   guncellenmeTarihi: string;
@@ -228,6 +254,7 @@ export interface RoomResponse {
 export interface RoomInput {
   ad: string;
   kapasite?: number;
+  subeId?: number;
   aciklama?: string;
 }
 
@@ -318,6 +345,8 @@ export interface GroupResponse {
   brans: GroupRef | null;
   ogretmen: GroupTeacherRef | null;
   salon: GroupRef | null;
+  /** Grubun calistigi sube — tanimlanmamissa null. */
+  sube: GroupRef | null;
   seviye: string | null;
   aylikAidat: string | number | null;
   dersBasiUcret: string | number | null;
@@ -338,6 +367,7 @@ export interface GroupInput {
   bransId: number;
   ogretmenId: number;
   salonId?: number;
+  subeId?: number;
   seviye?: string;
   aylikAidat?: string;
   dersBasiUcret?: string;

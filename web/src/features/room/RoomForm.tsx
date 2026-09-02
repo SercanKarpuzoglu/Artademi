@@ -4,15 +4,17 @@ import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { RoomResponse } from '../../api/types';
+import { useAktifSubeler } from '../sube/useSubeler';
 import { RoomFormValues, roomSchema, toPayload } from './roomSchema';
 import { useCreateRoom, useRoom, useUpdateRoom } from './useRooms';
 
-const EMPTY: RoomFormValues = { ad: '', kapasite: '', aciklama: '' };
+const EMPTY: RoomFormValues = { ad: '', kapasite: '', subeId: undefined, aciklama: '' };
 
 function toFormValues(r: RoomResponse): RoomFormValues {
   return {
     ad: r.ad,
     kapasite: r.kapasite ?? '',
+    subeId: r.subeId ?? undefined,
     aciklama: r.aciklama ?? '',
   };
 }
@@ -29,8 +31,18 @@ export default function RoomForm() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const roomQuery = useRoom(id);
+  const subeQuery = useAktifSubeler();
   const createMut = useCreateRoom();
   const updateMut = useUpdateRoom(id ?? 0);
+
+  // Duzenlemede salonun subesi pasifse aktif listede olmaz; secili deger kaybolmasin
+  // diye kayittan sentezleyip listeye ekleriz (grup formundaki kalibin aynisi).
+  const subeOptions = subeQuery.data?.data ?? [];
+  const loadedSube = isEdit ? roomQuery.data : undefined;
+  const subeList =
+    loadedSube?.subeId && !subeOptions.some((s) => s.id === loadedSube.subeId)
+      ? [{ id: loadedSube.subeId, ad: loadedSube.subeAd ?? 'Şube' }, ...subeOptions]
+      : subeOptions;
 
   const {
     register,
@@ -118,6 +130,25 @@ export default function RoomForm() {
               />
             </Field>
           </div>
+            {/* Hiç şube tanımlanmamışsa alan HİÇ gösterilmez: tek şubeli kurum
+                kullanmayacağı bir alanla karşılaşmasın. */}
+            {subeList.length > 0 && (
+              <Field label="Şube" error={errors.subeId?.message}>
+                <select
+                  className={inputClass}
+                  {...register('subeId', {
+                    setValueAs: (v) => (v ? Number(v) : undefined),
+                  })}
+                >
+                  <option value="">Şube yok</option>
+                  {subeList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.ad}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
           <Field label="Açıklama" error={errors.aciklama?.message}>
             <textarea className={inputClass} rows={3} {...register('aciklama')} />
           </Field>

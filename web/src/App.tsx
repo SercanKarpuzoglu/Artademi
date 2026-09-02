@@ -4,6 +4,8 @@ import { Role } from './auth/roles';
 import AppShell from './components/AppShell';
 import AbonelikPage from './features/billing/AbonelikPage';
 import BranchForm from './features/branch/BranchForm';
+import SubeForm from './features/sube/SubeForm';
+import SubeListPage from './features/sube/SubeListPage';
 import BranchListPage from './features/branch/BranchListPage';
 import AttendancePage from './features/attendance/AttendancePage';
 import IslemKaydiPage from './features/audit/IslemKaydiPage';
@@ -172,7 +174,32 @@ export default function App() {
             </RoleRoute>
           }
         />
-        {/* Tanımlar — Branş / Salon / Öğretmen CRUD */}
+        {/* Tanımlar — Şube / Branş / Salon / Öğretmen CRUD.
+            NOT: Şube = fiziksel lokasyon, Branş = ders dalı. Ayrı kavramlar. */}
+        <Route
+          path="subeler"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <SubeListPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="subeler/yeni"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <SubeForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="subeler/:id/duzenle"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <SubeForm />
+            </RoleRoute>
+          }
+        />
         <Route
           path="branslar"
           element={

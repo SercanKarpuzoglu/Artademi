@@ -12,5 +12,8 @@ public record CreateRoomRequest(
 
         Integer kapasite,
 
+        /** Salonun bulundugu sube — OPSIYONEL (tek subeli kurum bos birakir). */
+        Long subeId,
+
         String aciklama) {
 }

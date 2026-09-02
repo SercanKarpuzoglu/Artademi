@@ -1,11 +1,15 @@
 package com.artademi.room;
 
 import com.artademi.common.tenant.TenantAware;
+import com.artademi.sube.Sube;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import org.hibernate.annotations.CreationTimestamp;
@@ -34,6 +38,14 @@ public class Room extends TenantAware {
 
     @Column(name = "aciklama", length = 500)
     private String aciklama;
+
+    /**
+     * Salonun bulundugu sube. OPSIYONEL: tek subeli kurumlar sube tanimlamadan calisir.
+     * Referans serviste {@code findScopedById} ile cozulur (capraz-tenant referans kurali).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sube_id")
+    private Sube sube;
 
     @Column(name = "aktif", nullable = false)
     private boolean aktif = true;
@@ -73,6 +85,14 @@ public class Room extends TenantAware {
 
     public void setKapasite(Integer kapasite) {
         this.kapasite = kapasite;
+    }
+
+    public Sube getSube() {
+        return sube;
+    }
+
+    public void setSube(Sube sube) {
+        this.sube = sube;
     }
 
     public String getAciklama() {

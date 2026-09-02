@@ -10,6 +10,8 @@ export const roomSchema = z.object({
   kapasite: z
     .union([z.literal(''), z.coerce.number().int('Tam sayı olmalıdır').positive('Pozitif olmalıdır')])
     .optional(),
+  // Sube OPSIYONEL: tek lokasyonlu kurum hic sube tanimlamadan calisir.
+  subeId: z.number().int().positive().optional(),
   aciklama: z.string().trim().optional(),
 });
 
@@ -22,6 +24,7 @@ export function toPayload(values: RoomFormValues): RoomInput {
   return {
     ad: values.ad.trim(),
     kapasite,
+    subeId: values.subeId || undefined,
     aciklama: aciklama ? aciklama : undefined,
   };
 }

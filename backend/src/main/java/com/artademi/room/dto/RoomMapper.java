@@ -1,6 +1,7 @@
 package com.artademi.room.dto;
 
 import com.artademi.room.Room;
+import com.artademi.sube.Sube;
 
 /**
  * Request DTO'larini Room entity'sine yansitir. tenant_id ve aktif BURADA ELLE
@@ -12,20 +13,27 @@ public final class RoomMapper {
     private RoomMapper() {
     }
 
-    /** Yeni salon olusturur; aktif true ile baslar (entity varsayilani). */
-    public static Room toNewEntity(CreateRoomRequest req) {
+    /**
+     * Yeni salon olusturur; aktif true ile baslar (entity varsayilani).
+     *
+     * @param sube serviste tenant-guvenli cozulmus sube (yoksa null) — mapper'in
+     *             repository'ye erisimi yoktur, bu yuzden HAZIR alinir
+     */
+    public static Room toNewEntity(CreateRoomRequest req, Sube sube) {
         Room r = Room.create();
         r.setAd(req.ad());
         r.setKapasite(req.kapasite());
         r.setAciklama(req.aciklama());
+        r.setSube(sube);
         r.setAktif(true);
         return r;
     }
 
     /** Mevcut salonun alanlarini gunceller; aktif'e DOKUNMAZ. */
-    public static void applyUpdate(Room r, UpdateRoomRequest req) {
+    public static void applyUpdate(Room r, UpdateRoomRequest req, Sube sube) {
         r.setAd(req.ad());
         r.setKapasite(req.kapasite());
         r.setAciklama(req.aciklama());
+        r.setSube(sube);
     }
 }

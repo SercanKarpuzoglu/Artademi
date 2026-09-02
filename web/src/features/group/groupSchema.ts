@@ -27,6 +27,8 @@ export const groupSchema = z
       .int()
       .positive('Öğretmen zorunludur'),
     salonId: z.number().int().positive().optional(),
+    // Sube OPSIYONEL ve tipten BAGIMSIZ: salonu olmayan OZEL grubun da subesi olabilir.
+    subeId: z.number().int().positive().optional(),
     seviye: optionalText,
     aylikAidat: optionalText,
     dersBasiUcret: optionalText,
@@ -96,6 +98,7 @@ export function toPayload(values: GroupFormValues): GroupInput {
     bransId: values.bransId,
     ogretmenId: values.ogretmenId,
     salonId: tip === 'GRUP' ? values.salonId : values.salonId || undefined,
+    subeId: values.subeId || undefined,
     seviye: clean(values.seviye),
     aylikAidat: tip === 'GRUP' ? normalizeMoney(values.aylikAidat) : undefined,
     dersBasiUcret: tip === 'OZEL' ? normalizeMoney(values.dersBasiUcret) : undefined,

@@ -44,8 +44,8 @@ artademi:
   # (uygulama anahtarsiz ayaga kalkar; testlerde saglayici mock'lanir).
   billing:
     web-return-url: ${BILLING_WEB_RETURN_URL:http://localhost:5173/abonelik}
-    # Platform genel bakisinda MRR hesabi icin (KDV haric, landing'deki tutar).
-    aylik-plan-ucreti: ${BILLING_AYLIK_UCRET:5000}
+    # Platform genel bakisinda gelir hesabi icin (KDV haric, landing'deki tutar).
+    aylik-plan-ucreti: ${BILLING_AYLIK_UCRET:2000}
     iyzico:
       base-url: ${IYZICO_BASE_URL:https://sandbox-api.iyzipay.com}
       api-key: ${IYZICO_API_KEY:}

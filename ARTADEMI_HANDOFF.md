@@ -250,6 +250,15 @@ Migration sırası **V1→V16** (V13=tenant, V14=subscription, **V15=teacher_hak
 - **FRONTDESK:** yalnız öğrenci/grup sayısı + dersler + öğrenciler; **PARA YOK**.
 - **TEACHER:** kendiGruplar (öğrenci sayısı) + bugünDersler + sonYoklamalar; sadece kendi (CurrentTeacherResolver); para YOK.
 - Rol önceliği: ADMIN > ACCOUNTING > FRONTDESK > TEACHER. super.admin → 400 (iş ucu). Mevcut report/finance/student/group servisleri yeniden kullanıldı (kopya yok).
+### 7.18 Şube (fiziksel lokasyon) — `com.artademi.sube` (✅ YENİ, V23)
+- ⚠️ **İSİMLENDİRME TUZAĞI — en kritik nokta:** `com.artademi.branch.Branch` = **BRANŞ** (Bale, Piyano), tablo `branches`. `com.artademi.sube.Sube` = **ŞUBE** (Kadıköy Şubesi), tablo `sube`. İkisi FARKLI kavram; `branch` adı branşta kullanıldığı için şube Türkçe adlandırıldı.
+- **`/api/subeler`** CRUD + `PATCH /{id}/active` (yazma ADMIN, okuma ADMIN/FRONTDESK/FRONTDESK_ACCOUNTING, TEACHER 403). DELETE YOK.
+- Alanlar: `ad` (zorunlu), `adres`, `telefon`, `aktif`. Silme yerine pasifleştirme.
+- **Şube OPSİYONELDİR:** `rooms.sube_id` ve `lesson_group.sube_id` NULLABLE. Tek lokasyonlu kurum hiç şube tanımlamadan çalışır; NOT NULL yapmak mevcut kurumları bozardı. Web'de de şube tanımlı değilse form alanı **hiç gösterilmez**.
+- ⚠️ **Çapraz-tenant koruması:** FK tek başına başka tenant'ın şubesine referansı ENGELLEMEZ. `RoomService.resolveSube` / `GroupService.resolveSube` `findScopedById` ile çözer → yabancı id 404. `SubeControllerTest.salonaBaskaTenantinSubesiAtanamaz_404` bunu açıkça doğrular.
+- Grubun şubesi salondan TÜRETİLMEZ, ayrı tutulur: salonu olmayan (ÖZEL) grubun da şubesi olabilir.
+- Web: `/subeler` liste + form (menü "Tanımlar → Şubeler", branşın üstünde). Salon ve grup formlarında şube seçici; düzenlemede pasif şube seçiliyse listeye sentezlenip görünür kalır.
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
@@ -360,18 +369,60 @@ Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşi
 
 ## 13. SIRADAKİ İŞ: Yapılacaklar
 
+### 13.0 REKABET ANALİZİ SONRASI YOL HARİTASI (2026-09-01)
+
+**Rakip:** [derslic.com.tr](https://derslic.com.tr/) — kurs/etüt merkezleri, sanat kursları, pilates stüdyoları. Bulut tabanlı, **yalnız web** (mobil uygulama YOK, SSS'de teyitli). Fiyat kademeli: 1.750 / 2.250 / 2.750 / 3.500 TL (öğrenci sayısına göre, **KDV dahil**), 15 gün demo, yıllıkta 3 ay hediye.
+
+**En kritik bulgu:** eski fiyatımız (5.000 TL + KDV = 6.000) rakibin giriş kademesinin ~3,4 katıydı; küçük kurumu daha demoya girmeden eliyordu. Yeni fiyat 2.000 + KDV = 2.400 — Derslic'in giriş paketinin (1.750) hâlâ bir miktar üstünde ama 300+ öğrencili kurumlarda artık biz ucuzuz.
+
+#### ✅ Bu turda yapılanlar
+- **Fiyat düşürüldü: aylık 2.000 TL + KDV, TEK PLAN sabit.** Kademe YOK, yıllık plan YOK.
+  - ⚠️ **Yıllık plan bir ara eklenip GERİ ALINDI (2026-09-01, aynı gün).** `AbonelikPeriyodu`, `GET /api/billing/plans`, `PlanSecenegi`, periyot seçici — hepsi kaldırıldı. Tekrar istenirse git geçmişinde var; ama iyzico'da **her dönem AYRI plandır**, o yüzden yıllık için ikinci bir plan referansı (`IYZICO_YILLIK_PLAN_REF`) gerekir.
+  - ⚠️ `BillingProperties.aylikPlanUcreti()` varsayılanı **10.000'di** (yml 5.000 derken) — bayat değer, 2.000'e çekildi.
+  - Landing: fiyat kartı + Mesafeli Satış Sözleşmesi md.3 ve md.6 güncellendi.
+- **iyzico canlı plan açıldı (2026-09-01):** ürün "Artademi Tam Paket" (`affb14cb-6b90-42a1-b291-c673cc4f8bab`) altında yeni plan **"Aylik Tam Paket 2000"** → `IYZICO_PLAN_REF=8a914fbf-61fb-4b5f-9c09-587a8a0c88bb`. `.env.prod` güncellendi (`BILLING_AYLIK_UCRET=2000` da), yedek: `.env.prod.yedek-20260901-174046`.
+  - Canlıda duran eski planlar (abonesi YOK, temizlenebilir): "Aylik Tam Paket 5000" `e2902022-…`, "Aylik Tam Paket" 10.000 `1f2153d4-…`, "TEST 1 TL - silinecek" `a4953332-…`.
+  - ⚠️ **iyzico'da plan fiyatı sonradan DEĞİŞTİRİLEMEZ**; yeni fiyat = yeni plan. Mevcut aboneler eski planda kalır (şu an abone yok, sorun değil).
+- ⚠️ **YENİ TUZAK — iyzico imzası query string İÇERMEZ** (canlı API'de ölçüldü): `hex(HmacSHA256(rnd + uriPath + body, secret))` hesabında `?page=1&count=100` gibi bir query imzaya girerse **"Authentication token is not verified" (errorCode 8)** döner. `IyzicoAuth` javadoc'u tam tersini söylüyordu, düzeltildi. Bugünkü çağrıların hiçbirinde query yok; query'li bir uç eklenirse imza `path.split("?")[0]` ile hesaplanmalı.
+- `scripts/iyzico-plan-olustur.py` yeniden yazıldı: ürünü **bul-ya-da-oluştur** (canlıda ürün zaten var, eski hâli "zaten var" hatasıyla duruyordu), imza query'siz, tek aylık plan açar.
+- **Şube modülü yapıldı** (§7.18) — landing "çok şube" diyordu, kodda karşılığı yoktu.
+
+#### ⏳ SONRAKİ İŞLER (rakip paritesi — öncelik sırasıyla)
+| # | Modül | Durum / not |
+|---|---|---|
+| 1 | **Makbuz / PDF çıktısı** | Projede **hiç** PDF kütüphanesi yok. Tahsilat makbuzu + kayıt formu. Demoda hemen fark edilir. |
+| 2 | **SMS** | §13.2b'de planlı. Önkoşul: **şifreli tenant-bazlı ayar saklama** (iyzico tek anahtarla `.env`'de; SMS her kurumun kendi kimlik bilgisini ister). |
+| 3 | **Otomatik bildirim** | Borç hatırlatma bugün ELLE (`BorcHatirlatmaPage`). Eklenecek: zamanlanmış gönderim (kurum opt-in), devamsızlık bildirimi, haftalık finansal özet. |
+| 4 | **Online ön kayıt formu** | **Altyapı hazır:** `lead` modülü `/api/public/leads` + honeypot + IP soğuma. Eklenecek: tenant'a özel slug, başvuru listesi, başvuru→öğrenci dönüşümü. Düşük maliyet / yüksek görünürlük. |
+| 5 | **Kasa yönetimi** | Çoklu kasa/banka; tahsilat ve gider kasaya bağlanır, kasa bakiyesi + devir. |
+| 6 | **Tedarikçi/cari** | Gider → tedarikçi ilişkisi, tedarikçi bakiyesi. |
+| 7 | **Telafi dersi** | `YoklamaDurumu` bugün yalnız `GELDI/GELMEDI/IZINLI`. Telafi hakkı + kullanım takibi. |
+| 8 | **Ders paketi / kontör** | `Group` bugün `aylik_aidat` + `ders_basi_ucret` taşıyor; "10 derslik paket + kalan ders" üçüncü model olarak yok. |
+| 9 | **Veliden kartla tahsilat** | ⚠️ **ÖNCE HUKUK, SONRA KOD.** Parayı biz toplayıp kuruma aktarırsak bu ödeme aracılığıdır ve lisans sorusu doğurur; kurumun kendi alt üye işyeri (submerchant) hesabıyla yapılırsa iyzico ile ayrı sözleşme modeli gerekir. Mali müşavir/avukata sorulmadan başlanmamalı. Bugünkü iyzico entegrasyonu YALNIZCA kurumun BİZE ödediği abonelik içindir. |
+| 10 | **Yıllık ödeme avantajı** | ❌ **İPTAL** (2026-09-01, Sercan kararı): tek sabit aylık fiyat tercih edildi. Rakip yıllıkta 3 ay hediye veriyor — pazarlama gerekçesi doğarsa yeniden değerlendirilir. |
+
+#### 🎯 Rakipte de OLMAYAN (fark yaratacaklar)
+- **Veli portalı** — veli kendi çocuğunun devamsızlık/borç/programını görür. Ne bizde ne onlarda; ilk yapan öne geçer.
+- Uygulama içi bildirim merkezi · Mobil uygulama (React Native, planlı).
+
+#### Bizim zaten üstün olduğumuz yerler (pazarlamada öne çıkar)
+Çoklu hakediş (saatlik + ciro oranı aynı anda, grup bazında) · grup transferinde otomatik aidat farkı · kardeş eşleştirme · tip düzeyinde veri gizleme (ön büroya para alanları HİÇ gönderilmez) · işlem kaydı · KVKK veri dışa aktarma · devamsızlık + doluluk raporları · otomatik aylık tahakkuk · stok/ürün satışı.
+
+#### Kod olmayan işler
+Yardım videoları · WhatsApp destek hattı · rakibin 15 günlük demosunu açıp "bilinmiyor" işaretli özellikleri (veli portalı, raporlama derinliği, hakediş modeli) doğrulamak.
+
 ### 13.1 ✅ TAMAMLANDI (bu faz)
 - **Platform fazı:** Tenant CRUD + ASKIDA login engeli + admin provisioning + web konsolu. SUPER_ADMIN = platform sahibi, iş modüllerine fail-closed, yalnız `/api/platform/**`.
 - **Platform konsolu tam:** tenant kullanıcı CRUD (ekle/sil) + **soft-delete (SILINDI)** (§7.15).
 - **İş A — öğrenci grup transferi** (§7.5) + **İş B — Model C çoklu hakediş** (§7.3/7.4/7.10), V15+V16, 205 test, prod'da canlı.
 - **Prod CANLI + 403 zinciri çözüldü:** app/auth/landing SSL'li yayında; Security(eski-imaj)+provisioning(SA-rolleri)+CORS 403'leri çözüldü (bkz. §11 prod notu, §7.15 CORS).
-- **Landing (artademi.com):** Caddy file_server, www→apex 301, logolar bağlı; animasyonlu hero + fiyatlandırma (4.000 TL/ay) + KVKK + iletişim (mailto info@artademi.com).
+- **Landing (artademi.com):** Caddy file_server, www→apex 301, logolar bağlı; animasyonlu hero + fiyatlandırma (4.000 TL/ay) + KVKK + iletişim (mailto info@artademi.com). ⚠️ Fiyat o gün 4.000 TL'ydi; GÜNCEL fiyat için §13.0.
 
 ### 13.2 KALAN BÜYÜK FAZ (subscription parasallaşması + bildirim)
-> Hedef: ürün online aylık abonelikle satılır (tek plan **4.000 TL/ay**, landing'de duyuruldu). Kurum satın alır → login → ilk parola ile girer.
+> Hedef: ürün online abonelikle satılır. ⚠️ **GÜNCEL FİYAT: aylık 2.000 TL + KDV / yıllık 20.000 TL + KDV (bkz. §13.0)** — aşağıdaki 4.000/10.000 rakamları TARİHSELDİR. Kurum satın alır → login → ilk parola ile girer.
 - **Ödeme entegrasyonu — BACKEND TAMAM (2026-07, V17):** iyzico Abonelik API adaptörü (`com.artademi.billing`): `GET /api/billing/subscription` + `POST /api/billing/checkout` (ADMIN), `POST /api/billing/callback` (iyzico 302), `POST /api/webhooks/iyzico` (HMAC imzalı, idempotent, fail-closed). `/api/billing/**` TenantStatus muaf (ASKIDA kurum ödeme yapabilir). Env: `IYZICO_API_KEY/SECRET_KEY/MERCHANT_ID/PLAN_REF` (boşken checkout 409, webhook 401). Araştırma raporu `docs/odeme-aracisi-arastirmasi-2026-07.md`. **Web Abonelik sayfası CANLI:** `/abonelik` (ADMIN; menü "Sistem→Abonelik") — özet kartı + RHF/Zod fatura formu + iyzico checkout embed (`IyzicoCheckoutForm` script'leri elle kurar) + `?sonuc=` banner. Compose: `BILLING_WEB_RETURN_URL`, `IYZICO_*` env. **iyzico SANDBOX HAZIR (2026-07-29):** Abonelik modülü destek talebiyle aktifleştirildi (panelde self-servis YOK — entegrasyon@iyzico.com'a üye işyeri no ile yazılır). Merchant ID **3431492**. API'den kurulan ürün "Artademi Tam Paket" + plan "Aylık Tam Paket" (10.000 TL/ay TRY, RECURRING) → `IYZICO_PLAN_REF=ddf664c2-22fb-456d-af7e-cdf5e1c65453`. Anahtarlar `.env.prod`'da (git'te YOK). ⚠️ **Gerçek yanıt sapmaları (canlı testte bulundu, koda işlendi):** `initialize` token'ı KÖKTE döner (data altında değil); ödeme tamamlanmadan sorgulanırsa `failure/201601` döner → istisna değil "başarısız sonuç" sayılır. Webhook imzası doküman ile teyitli: `hex(HmacSHA256(merchantId+secretKey+eventType+subRef+orderRef+custRef, secretKey))`. ✅ **SANDBOX UÇTAN UCA GEÇTİ (2026-07-31):** app.artademi.com/abonelik → iyzico formu → test kartı (5528 7900 0000 0008) → abonelik başladı. Webhook imzası canlı doğrulandı (geçerli→200, sahte→401). ⚠️ **Telefon tuzağı:** iyzico `gsmNumber` için YALNIZCA `+90XXXXXXXXXX` kabul eder (`0555…`/`555…`/`90555…` → HTTP 422); `TurkishPhone.toE164` bunu çevirir. ⚠️ Adaptör 4xx/5xx'i yutup gövdeyi okur — aksi halde iyzico hataları opak 500 olurdu. ⚠️ **WEBHOOK SANDBOX'TA TESLİM EDİLMİYOR (ölçüldü):** URL İşyeri Bildirimleri'ne kaydedildiği halde, başarılı tahsilata rağmen `billing_event`'e hiçbir kayıt düşmedi. → **MUTABAKAT (reconciliation) eklendi ve artık DOĞRULUK KAYNAĞI odur:** `BillingReconciliationService.reconcileAll(today)` sağlayıcıya "bu aboneliğin durumu ne?" diye sorar (`GET /v2/subscription/subscriptions/{ref}` → `subscriptionStatus` + `orders[].orderStatus/endPeriod`), kaçan tahsilatı yakalar ve `markPaid` ile dönemi ilerletir. `SubscriptionScheduler` her gün 03:00'te **önce mutabakat, sonra evaluate** çalıştırır (ters sıra ödeme yapan kurumu haksız yere askıya alırdı). Sağlayıcı sorgulanamazsa kayda DOKUNULMAZ (fail-safe); bir aboneliğin hatası diğerlerini durdurmaz. **KALAN:** webhook teslimi için iyzico'ya sorulacak (opsiyonel — mutabakat olmadan da sistem doğru çalışır) + canlı (production) merchant başvurusu.
 - **Lead/iletişim formu — TAMAM (2026-07):** `POST /api/public/leads` (JWT'siz, honeypot+30sn IP cooldown) → Gmail SMTP ile info@artademi.com'a mail (`SMTP_USERNAME/SMTP_PASSWORD` app-password, `.env.prod`'da). Landing formu fetch ile bağlı (mailto kaldırıldı). Mail health check kapalı (`management.health.mail.enabled=false`). info@artademi.com = Google Workspace grubu (MX/SPF/DKIM Cloudflare'de, doğrulandı).
-- **Platform ops dashboard (SUPER_ADMIN) — ADIM 1 TAMAM (2026-07-31):** `GET /api/platform/dashboard` + web `/platform` (konsolun yeni açılışı) — kurum/abonelik sayıları, **MRR** (yalnız AKTIF+AYLIK+ODENDI sayılır; deneme/grace/SILINDI gelire yazılmaz), dikkat gerektirenler (grace/başarısız/askıda), 7 günlük yaklaşan yenilemeler, son ödeme hareketleri (`billing_event`). Konsola sekme navigasyonu eklendi (`PlatformShell.SEKMELER` — yeni ops sayfaları oraya). MRR fiyatı `BILLING_AYLIK_UCRET` (varsayılan 10.000). **ADIM 2 TAMAM:** `GET /api/platform/billing/subscriptions?filtre=&q=` (iş-dili filtreler: ODEYEN/DENEME/GECIKMIS/ASKIDA/HEPSI; SILINDI yalnız HEPSI'de) + `GET /api/platform/billing/events?page=&size=` (sayfalı, PageMeta) → web `/platform/odemeler` sekmesi: kurum bazlı ödeme durumu tablosu + ham hareket listesi. **ADIM 3 TAMAM — denetim izi (V18 `platform_audit`):** kurum aç/durum değiştir/sil, kullanıcı ekle/sil, abonelik güncelle işlemleri iz bırakır. `GET /api/platform/audit` (sayfalı) → web `/platform/denetim`. ⚠️ Tasarım: entity **salt-yazılır** (setter YOK), `target_ad` **snapshot** (kurum silinse de iz okunur), kurum işlemlerinde iz **aynı transaction'da** yazılır (izsiz işlem olmasın); Keycloak'a giden kullanıcı işlemlerinde ise işlem başarılı olduktan SONRA yazılır (`kaydetBagimsiz`). Actor JWT `preferred_username`'den, yoksa "sistem". Aynı duruma tekrar PATCH iz YAZMAZ (gürültü yok).
+- **Platform ops dashboard (SUPER_ADMIN) — ADIM 1 TAMAM (2026-07-31):** `GET /api/platform/dashboard` + web `/platform` (konsolun yeni açılışı) — kurum/abonelik sayıları, **MRR** (yalnız AKTIF+AYLIK+ODENDI sayılır; deneme/grace/SILINDI gelire yazılmaz), dikkat gerektirenler (grace/başarısız/askıda), 7 günlük yaklaşan yenilemeler, son ödeme hareketleri (`billing_event`). Konsola sekme navigasyonu eklendi (`PlatformShell.SEKMELER` — yeni ops sayfaları oraya). MRR fiyatı `BILLING_AYLIK_UCRET` (varsayılan artık **2.000**; bkz. §13.0). **ADIM 2 TAMAM:** `GET /api/platform/billing/subscriptions?filtre=&q=` (iş-dili filtreler: ODEYEN/DENEME/GECIKMIS/ASKIDA/HEPSI; SILINDI yalnız HEPSI'de) + `GET /api/platform/billing/events?page=&size=` (sayfalı, PageMeta) → web `/platform/odemeler` sekmesi: kurum bazlı ödeme durumu tablosu + ham hareket listesi. **ADIM 3 TAMAM — denetim izi (V18 `platform_audit`):** kurum aç/durum değiştir/sil, kullanıcı ekle/sil, abonelik güncelle işlemleri iz bırakır. `GET /api/platform/audit` (sayfalı) → web `/platform/denetim`. ⚠️ Tasarım: entity **salt-yazılır** (setter YOK), `target_ad` **snapshot** (kurum silinse de iz okunur), kurum işlemlerinde iz **aynı transaction'da** yazılır (izsiz işlem olmasın); Keycloak'a giden kullanıcı işlemlerinde ise işlem başarılı olduktan SONRA yazılır (`kaydetBagimsiz`). Actor JWT `preferred_username`'den, yoksa "sistem". Aynı duruma tekrar PATCH iz YAZMAZ (gürültü yok).
 - ✅ **Ödeme hatırlatma mailleri TAMAM (V19, 2026-08):** `BillingNotificationService` — 4 uyarı tipi (ODEME_BASARISIZ / GRACE_BASLADI / GRACE_BITIYOR (son 3 gün) / ASKIYA_ALINDI), kurumun **ADMIN** rolündeki kullanıcılarına (Keycloak'tan) gider. ⚠️ **Idempotency:** `uq_billing_notification(subscription_id, tip, donem_anahtari)` — scheduler her gün çalışır, aynı uyarı bir DÖNEM içinde tek kez gider; sonraki dönemde yeniden gidebilir. Alıcı yoksa iz YAZILMAZ (yönetici eklenince gitsin). Scheduler sırası: mutabakat → evaluate → **bildirim** (geçişlerden SONRA ki güncel durum yazılsın). Mail/Keycloak hatası günlük işi durdurmaz.
 - **Kalan mail işleri:** (a) provisioning'de yeni admin'e kullanıcı adı + ilk parola maili; (b) Keycloak SMTP (forgot-password akışı kurulu ama mail gitmiyor).
 - **Şifremi unuttum:** Keycloak forgot-password akışı + tema HAZIR; gerçek çalışması SMTP'ye bağlı (yukarıdaki mail işi).

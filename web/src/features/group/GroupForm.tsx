@@ -6,6 +6,7 @@ import { ApiException } from '../../api/client';
 import type { GroupResponse } from '../../api/types';
 import { useBranches } from '../branch/useBranches';
 import { useRooms } from '../room/useRooms';
+import { useAktifSubeler } from '../sube/useSubeler';
 import { useTeachers } from '../teacher/useTeachers';
 import { GroupFormValues, groupSchema, toPayload } from './groupSchema';
 import { useCreateGroup, useGroup, useUpdateGroup } from './useGroups';
@@ -17,6 +18,7 @@ const EMPTY: GroupFormValues = {
   bransId: 0,
   ogretmenId: 0,
   salonId: undefined,
+  subeId: undefined,
   seviye: '',
   aylikAidat: '',
   dersBasiUcret: '',
@@ -37,6 +39,7 @@ function toFormValues(g: GroupResponse): GroupFormValues {
     bransId: g.brans?.id ?? 0,
     ogretmenId: g.ogretmen?.id ?? 0,
     salonId: g.salon?.id ?? undefined,
+    subeId: g.sube?.id ?? undefined,
     seviye: g.seviye ?? '',
     aylikAidat: money(g.aylikAidat),
     dersBasiUcret: money(g.dersBasiUcret),
@@ -62,6 +65,7 @@ export default function GroupForm() {
   const branchQuery = useBranches({ aktif: true, size: 200 });
   const teacherQuery = useTeachers({ aktif: true, size: 200 });
   const roomQuery = useRooms({ aktif: true, size: 200 });
+  const subeQuery = useAktifSubeler();
 
   const {
     register,
@@ -91,6 +95,7 @@ export default function GroupForm() {
   const branchOptions = branchQuery.data?.data ?? [];
   const teacherOptions = teacherQuery.data?.data ?? [];
   const roomOptions = roomQuery.data?.data ?? [];
+  const subeOptions = subeQuery.data?.data ?? [];
 
   const branchList =
     loaded?.brans && !branchOptions.some((b) => b.id === loaded.brans!.id)
@@ -111,6 +116,10 @@ export default function GroupForm() {
     loaded?.salon && !roomOptions.some((r) => r.id === loaded.salon!.id)
       ? [{ id: loaded.salon.id, ad: loaded.salon.ad }, ...roomOptions]
       : roomOptions;
+  const subeList =
+    loaded?.sube && !subeOptions.some((s) => s.id === loaded.sube!.id)
+      ? [{ id: loaded.sube.id, ad: loaded.sube.ad }, ...subeOptions]
+      : subeOptions;
 
   async function onSubmit(values: GroupFormValues) {
     setFormError(null);
@@ -237,6 +246,24 @@ export default function GroupForm() {
                 ))}
               </select>
             </Field>
+            {/* Hiç şube tanımlanmamışsa alan HİÇ gösterilmez (şube opsiyoneldir). */}
+            {subeList.length > 0 && (
+              <Field label="Şube" error={errors.subeId?.message}>
+                <select
+                  className={inputClass}
+                  {...register('subeId', {
+                    setValueAs: (v) => (v ? Number(v) : undefined),
+                  })}
+                >
+                  <option value="">Şube yok</option>
+                  {subeList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.ad}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label="Seviye" error={errors.seviye?.message}>
               <input className={inputClass} {...register('seviye')} />
             </Field>

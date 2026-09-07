@@ -25,6 +25,12 @@ public interface TenantRepository extends JpaRepository<Tenant, UUID>, JpaSpecif
      */
     Optional<Tenant> findByBasvuruSlug(String basvuruSlug);
 
+    /**
+     * Duruma gore kurumlar. Zamanlanmis bildirim isi bunu kullanir: yalnizca AKTIF kurumlar
+     * islenir — askidaki kurumun velisine mail gitmemelidir.
+     */
+    java.util.List<Tenant> findByStatus(TenantStatus status);
+
     /** Mukerrer ad engellemesi (buyuk/kucuk harf duyarsiz). */
     boolean existsByAdIgnoreCase(String ad);
 }

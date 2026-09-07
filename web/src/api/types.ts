@@ -991,3 +991,14 @@ export interface OgrenciyeDonusturInput {
   babaTelefon?: string;
   evAdresi?: string;
 }
+
+// --- Otomatik bildirim tercihleri — backend com.artademi.bildirim ---
+
+/** Kurumun otomatik bildirim tercihleri. Hepsi varsayılan KAPALI. */
+export interface BildirimAyari {
+  borcHatirlatmaOtomatik: boolean;
+  devamsizlikBildirimi: boolean;
+  haftalikOzet: boolean;
+  /** ISO-8601: 1=Pazartesi … 7=Pazar */
+  haftalikOzetGunu: number;
+}

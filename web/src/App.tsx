@@ -9,6 +9,7 @@ import SubeListPage from './features/sube/SubeListPage';
 import BranchListPage from './features/branch/BranchListPage';
 import AttendancePage from './features/attendance/AttendancePage';
 import BasvuruListPage from './features/basvuru/BasvuruListPage';
+import BildirimAyarlariPage from './features/bildirim/BildirimAyarlariPage';
 import IslemKaydiPage from './features/audit/IslemKaydiPage';
 import ForbiddenPage from './features/common/ForbiddenPage';
 import GeriBildirimPage from './features/feedback/GeriBildirimPage';
@@ -376,6 +377,16 @@ export default function App() {
           element={
             <RoleRoute requiredRoles={[Role.ADMIN, Role.FRONTDESK_ACCOUNTING]}>
               <BorcHatirlatmaPage />
+            </RoleRoute>
+          }
+        />
+
+        {/* Bildirim ayarları — YALNIZCA ADMIN: velilere otomatik mail göndermeyi başlatır */}
+        <Route
+          path="bildirim-ayarlari"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <BildirimAyarlariPage />
             </RoleRoute>
           }
         />

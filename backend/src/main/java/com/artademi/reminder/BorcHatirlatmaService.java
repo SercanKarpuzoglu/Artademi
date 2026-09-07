@@ -32,9 +32,13 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Borclu ogrencinin VELISINE odeme hatirlatmasi gonderir.
  *
- * <p><b>Neden ELLE tetiklenir:</b> otomatik borc takibi, okulun velisiyle iliskisini yonetmesini
- * elinden alir. Hangi veliye ne zaman yazilacagina okul karar vermeli; sistem yalnizca listeyi
- * hazirlar ve gonderimi kolaylastirir.
+ * <p><b>Varsayilan ELLE tetiklenir:</b> otomatik borc takibi, okulun velisiyle iliskisini
+ * yonetmesini elinden alir. Hangi veliye ne zaman yazilacagina okul karar vermeli; sistem
+ * yalnizca listeyi hazirlar ve gonderimi kolaylastirir.
+ *
+ * <p>Kurum isterse {@code bildirim_ayari.borc_hatirlatma_otomatik} ile gunluk otomatige alabilir
+ * (bkz. {@link #otomatikGonder()}). Bu karar KURUMUNDUR; varsayilan KAPALIDIR ve otomatik yolda
+ * da asagidaki iki koruma aynen gecerlidir.
  *
  * <p><b>Iki koruma — ikisi de itibar icin:</b>
  * <ol>
@@ -149,6 +153,47 @@ public class BorcHatirlatmaService {
             }
         }
         return new HatirlatmaSonucu(gonderilen, satirlar.size() - gonderilen, satirlar);
+    }
+
+    /**
+     * Gonderilebilir TUM adaylara otomatik hatirlatma gonderir (zamanlanmis is icin).
+     *
+     * <p>Elle akistan farklari: ogrenci secimi YOK (kurum "otomatik" dedigine gore hepsi),
+     * ve kimlik dogrulama yok — iz kaydinda gonderen "sistem" gorunur. Ayni korumalar gecerli:
+     * {@value #SOGUMA_GUN} gun soguma ve {@value #GUNLUK_TAVAN} gunluk tavan. Tavan asilirsa
+     * kalanlar ERTESI GUN gider; tek seferde yuzlerce mail atmak alan adimizin itibarini yakar.
+     *
+     * @return gonderilen hatirlatma sayisi
+     */
+    @Transactional
+    public int otomatikGonder() {
+        if (smtpUsername == null || smtpUsername.isBlank()) {
+            log.warn("Otomatik borç hatırlatması atlandı: SMTP yapılandırılmamış");
+            return 0;
+        }
+        String kurum = tenantService.currentName();
+        int gonderilen = 0;
+        for (BorcluAday aday : adaylar()) {
+            if (!aday.gonderilebilir()) {
+                continue;
+            }
+            if (gonderilen >= GUNLUK_TAVAN) {
+                log.info("Otomatik borç hatırlatması günlük tavana ({}) ulaştı; kalanlar yarın",
+                        GUNLUK_TAVAN);
+                break;
+            }
+            try {
+                mailGonder(aday, kurum);
+                izler.save(BorcHatirlatma.of(aday.ogrenciId(), aday.bakiye(), aday.veliMail(),
+                        "sistem"));
+                gonderilen++;
+            } catch (RuntimeException e) {
+                // Tek velinin maili patlarsa digerleri gitmeye DEVAM etmeli.
+                log.error("Otomatik borç hatırlatması gönderilemedi (ogrenci={}): {}",
+                        aday.ogrenciId(), e.getMessage());
+            }
+        }
+        return gonderilen;
     }
 
     private void mailGonder(BorcluAday aday, String kurum) {

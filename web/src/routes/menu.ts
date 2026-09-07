@@ -74,6 +74,14 @@ export const MENU: readonly MenuItem[] = [
     hazir: true,
   },
   {
+    label: 'Bildirim Ayarları',
+    path: '/bildirim-ayarlari',
+    icon: BellRing,
+    section: 'Sistem',
+    roles: [Role.ADMIN],
+    hazir: true,
+  },
+  {
     label: 'Borç Hatırlatma',
     path: '/borc-hatirlatma',
     icon: BellRing,

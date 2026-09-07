@@ -312,6 +312,33 @@ Projenin demir kuralı "tenant YALNIZCA JWT'den okunur"dur. Burada JWT yoktur: t
 - SPA fallback (`nginx-spa.conf` `try_files`) ve Caddy yönlendirmesi zaten uygun; ek yapılandırma gerekmedi.
 - Ekranlar: `/basvurular` (liste + dönüştürme modalı), bağlantı kartı (yalnız ADMIN), menüde "Ön Kayıt".
 
+### 7.21 Otomatik Bildirim Servisi — `com.artademi.bildirim` (✅ YENİ, V25)
+
+Üç otomatik gönderim, **hepsi kurum başına opt-in ve varsayılan KAPALI**:
+1. **Otomatik borç hatırlatma** — her sabah 04:30; `BorcHatirlatmaService.otomatikGonder()`
+2. **Devamsızlık bildirimi** — her akşam 20:00, o günün `GELMEDI` kayıtları
+3. **Haftalık finansal özet** — seçilen ISO günde (1=Pzt … 7=Paz), yöneticilere
+
+**Uçlar:** `GET|PUT /api/bildirim-ayarlari` (**yalnız ADMIN** — bu ayarlar kurumun VELİLERİNE otomatik mail göndermeyi başlatır, ön büro tek başına açamaz). Web: `/bildirim-ayarlari` (Sistem bölümü).
+
+**⚠️ Neden varsayılan KAPALI.** `BorcHatirlatmaService` javadoc'unda bilinçli bir karar yazılıydı: *"otomatik borç takibi, okulun velisiyle ilişkisini yönetmesini elinden alır"*. Otomatikleştirme bu kararı **iptal etmez**, kurumun tercihine bırakır — açmayan kurum bugünkü elle akışta kalır. Javadoc da buna göre güncellendi. Test: `varsayilan_HEPSI_KAPALI`.
+
+**⚠️ EN KRİTİK NOKTA — zamanlanmış iş + multi-tenant.**
+Zamanlanmış iş bir İSTEKTEN doğmaz; `TenantContext` **boştur** ve fail-closed filtre yüzünden tüm TenantAware sorgular BOŞ döner. `BildirimScheduler` bu yüzden kurumları tek tek dolaşıp bağlamı **kendisi kurar**. Bu, tenant kuralının **ikinci** bilinçli istisnasıdır (birincisi §7.20 public başvuru). Güvenli kılan sınırlar — hepsi `BildirimSchedulerTest`'te kilitli:
+- Tenant listesi **platform tablosundan** gelir (istemci girdisi yok, sahtelenemez)
+- **Yalnızca AKTIF** kurumlar işlenir — askıdaki kurumun velisine mail gitmez
+- Bağlam her kurumdan sonra `finally` ile temizlenir; sızarsa **bir sonraki kurumun işi yanlış tenant'ta çalışır**
+- Bir kurumun hatası diğerlerini **durdurmaz** (tek tek try/catch) — aksi halde tek bozuk kurum tüm platformun bildirimlerini susturur
+
+**Mükerrer kalkanları (itibar koruması).** Mailler bizim alan adımızdan gidiyor; veliler spam işaretlerse KENDİ ödeme uyarılarımız da spam'e düşer.
+- Borç: mevcut **7 gün soğuma** + **günlük 50 tavan** otomatik yolda da aynen geçerli; tavan aşılırsa kalanlar ertesi gün
+- Devamsızlık: `devamsizlik_bildirimi` tablosu (ogrenci_id, oturum_id) — **DB'de unique index**, uygulama kontrolü kaçsa bile mükerrer kayıt olmaz. Job tekrar çalışsa da veli iki kez uyarılmaz. Günlük tavan 200.
+- Veli e-postası yoksa **sessizce atlanır**, iş patlamaz
+
+**Zamanlama gerekçeleri:** devamsızlık **akşam** çalışır çünkü veli "bugün gelmedi" bilgisini aynı gün ister; sabah işi **04:30**'dur çünkü abonelik işi (03:00) askıya alma/ödeme durumlarını günceller, bildirimler güncel durum üzerinden gitmelidir.
+
+**Haftalık özet** ayrı bir hafta raporu uydurmak yerine mevcut, test edilmiş `financialSummary` (içinde bulunulan ay) kullanır — yönetici zaten aylık rakamla çalışıyor.
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)

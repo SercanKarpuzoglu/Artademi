@@ -25,6 +25,17 @@ public interface AttendanceEntryRepository extends JpaRepository<AttendanceEntry
     List<AttendanceEntry> findBySessionId(@Param("sessionId") Long sessionId);
 
     /**
+     * Verilen gunde GELMEDI isaretlenmis kayitlar (otomatik devamsizlik bildirimi icin).
+     *
+     * <p>{@code join fetch}: ogrenci, oturum ve grup ayni sorguda gelir — bildirim metni
+     * hepsini kullanir, N+1 olmasin. Global tenant filtresi uygulanir.
+     */
+    @Query("SELECT e FROM AttendanceEntry e "
+            + "JOIN FETCH e.ogrenci JOIN FETCH e.session s LEFT JOIN FETCH s.grup "
+            + "WHERE s.tarih = :gun AND e.durum = com.artademi.attendance.YoklamaDurumu.GELMEDI")
+    List<AttendanceEntry> gelmeyenler(@Param("gun") java.time.LocalDate gun);
+
+    /**
      * Bir oturumdaki belirli ogrencinin girisi (toplu guncellemede her ogrenci icin aranir). JPQL
      * oldugu icin tenant filtresine tabidir.
      */

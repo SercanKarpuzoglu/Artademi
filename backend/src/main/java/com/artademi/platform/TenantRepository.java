@@ -1,5 +1,6 @@
 package com.artademi.platform;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -14,6 +15,15 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
  * uzerinden okur.
  */
 public interface TenantRepository extends JpaRepository<Tenant, UUID>, JpaSpecificationExecutor<Tenant> {
+
+    /**
+     * Public on kayit baglantisini tenant'a cozer.
+     *
+     * <p>⚠️ Kimliksiz istekten cagrilir. {@code tenant} PLATFORM tablosudur ve tenant
+     * filtresinden muaftir, bu yuzden bu sorgu TenantContext bos iken de calisir —
+     * zaten amac tenant'i BELIRLEMEKTIR.
+     */
+    Optional<Tenant> findByBasvuruSlug(String basvuruSlug);
 
     /** Mukerrer ad engellemesi (buyuk/kucuk harf duyarsiz). */
     boolean existsByAdIgnoreCase(String ad);

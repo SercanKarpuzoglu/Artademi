@@ -8,6 +8,7 @@ import SubeForm from './features/sube/SubeForm';
 import SubeListPage from './features/sube/SubeListPage';
 import BranchListPage from './features/branch/BranchListPage';
 import AttendancePage from './features/attendance/AttendancePage';
+import BasvuruListPage from './features/basvuru/BasvuruListPage';
 import IslemKaydiPage from './features/audit/IslemKaydiPage';
 import ForbiddenPage from './features/common/ForbiddenPage';
 import GeriBildirimPage from './features/feedback/GeriBildirimPage';
@@ -137,6 +138,16 @@ export default function App() {
           element={
             <RoleRoute requiredRoles={OFIS}>
               <StudentForm />
+            </RoleRoute>
+          }
+        />
+
+        {/* Ön kayıt başvuruları — ofis rolleri (başvuruda parasal bilgi yok) */}
+        <Route
+          path="basvurular"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <BasvuruListPage />
             </RoleRoute>
           }
         />

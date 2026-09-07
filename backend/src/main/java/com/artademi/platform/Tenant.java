@@ -38,6 +38,19 @@ public class Tenant {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /**
+     * Kurumun public on kayit baglantisinin adi ({@code /basvuru/<slug>}).
+     *
+     * <p>NULL = kurum bu ozelligi ACMAMIS; public form 404 doner. Acmak/kapatmak kurumun
+     * kendi tercihidir.
+     *
+     * <p>⚠️ Bu deger kimliksiz istekte tenant'i cozmek icin kullanilir; bu yuzden
+     * benzersizdir (V24'te kismi unique indeks) ve YALNIZCA tenant'i belirler —
+     * hicbir yetki tasimaz.
+     */
+    @Column(name = "basvuru_slug", length = 60)
+    private String basvuruSlug;
+
     protected Tenant() {
         // JPA icin
     }
@@ -73,5 +86,13 @@ public class Tenant {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getBasvuruSlug() {
+        return basvuruSlug;
+    }
+
+    public void setBasvuruSlug(String basvuruSlug) {
+        this.basvuruSlug = basvuruSlug;
     }
 }

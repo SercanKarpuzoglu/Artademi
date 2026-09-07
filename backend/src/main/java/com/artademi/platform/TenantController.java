@@ -2,6 +2,7 @@ package com.artademi.platform;
 
 import com.artademi.common.ApiResponse;
 import com.artademi.platform.dto.TenantResponse;
+import com.artademi.platform.dto.BasvuruSlugRequest;
 import com.artademi.platform.dto.UpdateTenantRequest;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,5 +37,16 @@ public class TenantController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<TenantResponse> update(@Valid @RequestBody UpdateTenantRequest request) {
         return ApiResponse.ok(service.updateName(request));
+    }
+
+    /**
+     * Public on kayit baglanti adini belirler/kaldirir. Yalnizca ADMIN: bu baglanti
+     * kurumun disariya acilan yuzudur.
+     */
+    @PutMapping("/basvuru-slug")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<TenantResponse> basvuruSlug(
+            @Valid @RequestBody BasvuruSlugRequest request) {
+        return ApiResponse.ok(service.updateBasvuruSlug(request));
     }
 }

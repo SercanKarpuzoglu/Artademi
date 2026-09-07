@@ -3,6 +3,8 @@ package com.artademi.platform;
 import com.artademi.common.exception.NotFoundException;
 import com.artademi.common.exception.TenantRequiredException;
 import com.artademi.common.tenant.TenantContext;
+import com.artademi.common.exception.ConflictException;
+import com.artademi.platform.dto.BasvuruSlugRequest;
 import com.artademi.platform.dto.TenantResponse;
 import com.artademi.platform.dto.UpdateTenantRequest;
 import java.util.UUID;
@@ -38,6 +40,31 @@ public class TenantService {
             return null;
         }
         return repository.findById(id).map(Tenant::getAd).orElse(null);
+    }
+
+    /**
+     * Kurumun public on kayit baglanti adini belirler; bos gonderim ozelligi KAPATIR.
+     *
+     * <p>Slug tum kurumlar arasinda benzersizdir (V24'te kismi unique indeks). Baskasinin
+     * kullandigi bir ad istenirse 409 doner — veritabani hatasini kullaniciya ham
+     * gostermek yerine anlasilir mesaj veririz.
+     */
+    @Transactional
+    public TenantResponse updateBasvuruSlug(BasvuruSlugRequest req) {
+        Tenant tenant = loadCurrent();
+        if (req.kapatiliyorMu()) {
+            tenant.setBasvuruSlug(null);
+            return TenantResponse.from(tenant);
+        }
+        String slug = req.slug().trim();
+        repository.findByBasvuruSlug(slug)
+                .filter(sahip -> !sahip.getId().equals(tenant.getId()))
+                .ifPresent(sahip -> {
+                    throw new ConflictException(
+                            "Bu bağlantı adı başka bir kurum tarafından kullanılıyor.");
+                });
+        tenant.setBasvuruSlug(slug);
+        return TenantResponse.from(tenant);
     }
 
     /** Kendi tenant'inin adini gunceller (yalnizca ADMIN — controller'da zorlanir). */

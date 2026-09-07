@@ -25,4 +25,10 @@ public interface BranchRepository
      */
     @Query("SELECT b FROM Branch b WHERE b.id = :id")
     Optional<Branch> findScopedById(@Param("id") Long id);
+
+    /**
+     * Aktif branslar, ada gore sirali. Turetilmis sorgu oldugu icin global tenant filtresi
+     * uygulanir. Public basvuru formundaki brans acilir listesini besler.
+     */
+    java.util.List<Branch> findByAktifTrueOrderByAdAsc();
 }

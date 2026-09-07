@@ -271,6 +271,47 @@ Migration sırası **V1→V16** (V13=tenant, V14=subscription, **V15=teacher_hak
 - Kütüphane: **OpenPDF 3.0.5** (LGPL — Maven bağımlılığı olarak SaaS'ta uygun; uygulama son kullanıcıya dağıtılmıyor). ⚠️ 3.x'te paket adı `com.lowagie.text` DEĞİL, **`org.openpdf.text`**.
 - Web: tahsilat listesinde satır başına "Makbuz (PDF)", öğrenci detayında "Kayıt Formu (PDF)".
 
+### 7.20 Online Ön Kayıt (Başvuru) — `com.artademi.basvuru` (✅ YENİ, V24)
+
+Kurum kendi public başvuru bağlantısını paylaşır; veli JWT olmadan form doldurur, talep kurumun listesine düşer ve oradan öğrenciye dönüştürülür.
+
+**Uçlar**
+- `GET /api/public/basvuru/{slug}` — form bilgisi (kurum adı + aktif branşlar). **Kimlik YOK.**
+- `POST /api/public/basvuru/{slug}` — başvuru gönder. **Kimlik YOK.**
+- `GET /api/basvurular` (+ `/{id}`, `/yeni-sayisi`) — ADMIN + ön büro
+- `PATCH /api/basvurular/{id}/durum`
+- `POST /api/basvurular/{id}/ogrenciye-donustur`
+- `PUT /api/tenant/basvuru-slug` — bağlantı adını belirle/kaldır (**yalnız ADMIN**)
+
+**⚠️ EN ÖNEMLİ NOKTA — tenant kuralının tek istisnası.**
+Projenin demir kuralı "tenant YALNIZCA JWT'den okunur"dur. Burada JWT yoktur: tenant **URL'deki slug**'dan çözülür. İstisnayı güvenli kılan sınırlar (hepsi test altında):
+1. **Slug yetki taşımaz** — yalnızca "hangi kurumun formu" sorusunu yanıtlar; kurum bu bağlantıyı zaten kamuya duyurur.
+2. **Yüzey iki uçtan ibarettir** — form bilgisi okuma + başvuru yazma. Başka hiçbir iş verisi bu yoldan okunamaz. Form yanıtı yalnızca kurum adı ve branş adları taşır.
+3. **Yalnızca AKTIF kurum** — ASKIDA/SILINDI kurumda form 404. Ödemesi duran kurum altyapımız üzerinden talep toplayamaz. (`/api/public/**` TenantStatusInterceptor'dan muaf olduğu için bu kontrol serviste ELLE yapılır.)
+4. **Bağlam dar kapsamlı** — `TenantContext` yalnızca işlem süresince set edilir ve `finally`'de ÖNCEKİ değerine geri alınır (blanket `clear()` değil: istek kimlikli de gelmiş olabilir). `PublicBasvuruTest.kimliksizIstek_TenantContextSizdirmaz` bunu kilitler; bağlam thread'de kalsaydı havuzdaki thread bir sonraki isteğe tenant taşırdı.
+
+**Kötüye kullanım koruması**
+- Honeypot (`website` alanı) — dolu ise kayıt açılmaz ama **200 döner** (bota engellendiğini sezdirmeyiz).
+- Soğuma: **(slug + IP)** başına 60 sn. ⚠️ Anahtar yalnızca IP DEĞİLDİR — ortak IP arkasındaki (NAT/ofis/site) iki farklı veli birbirini engellememeli; sadece IP ile anahtarlamak gerçek bir talebi kaybettirirdi. Test: `soguma_ayniIpFarkliForm_ENGELLENMEZ`.
+- Mükerrer telefon: aynı telefon 24 saat içinde tekrar gönderirse ikinci kayıt açılmaz, ama kullanıcıya **başarı** gösterilir (yoksa "gitmedi mi?" diye tekrar tekrar dener).
+- Soğuma haritası 10.000 girdiyi aşınca budanır (public uçta sınırsız büyüme olmasın).
+
+**Öğrenciye dönüştürme**
+- TC + doğum tarihi **formda sorulmaz**, dönüştürmede istenir: form sürtünmesi azalsın ve ilgilenilmemiş bir talepten gereksiz kişisel veri toplanmasın.
+- Öğrenci yetişkin değilse anne VEYA baba ad+TC zorunlu — `@VeliRequired` ile öğrenci formundaki **aynı** validator kullanılır (iki yer ayrışıp tutarsızlaşmasın).
+- Öğrenci **elle kurulmaz**, `StudentMapper.toNewEntity` kullanılır ki oluşturma değişmezleri (başlangıç statüsü DENEME) tek yerde kalsın. Elle kurulduğunda `status` boş kalıp NOT NULL kısıtına takılmıştı.
+- Mükerrer dönüşüm 409 — aynı kişinin iki öğrenci kaydı tahakkuk/yoklamayı böler.
+- `OGRENCIYE_DONUSTU` durumu **elle atanamaz** (409); yoksa öğrencisi olmayan "dönüştürüldü" kayıtları oluşur ve liste yalan söyler.
+
+**Bildirim**
+- Yeni başvuruda kurumun ADMIN kullanıcılarına mail (Keycloak'tan adresler). Gönderim **tamamen try/catch içinde**: SMTP ya da Keycloak erişilemezken veli formu dolduramaz ve talep kaybolurdu — kaydın durması bildirimden önemlidir.
+
+**Web**
+- ⚠️ `main.tsx` bootstrap'ta dallanır: yol `/basvuru/` ile başlıyorsa **Keycloak HİÇ başlatılmaz**. `initKeycloak()` `login-required` ile çalışır, yani çağrıldığı anda veliyi giriş ekranına atardı.
+- Public sayfa `api/publicClient.ts` kullanır — paylaşılan `api` istemcisinin istek interceptor'ı her çağrıda `keycloak.updateToken()` çağırıp başarısızlıkta `login()`'e yönlendirdiği için o istemci public sayfada KULLANILAMAZ.
+- SPA fallback (`nginx-spa.conf` `try_files`) ve Caddy yönlendirmesi zaten uygun; ek yapılandırma gerekmedi.
+- Ekranlar: `/basvurular` (liste + dönüştürme modalı), bağlantı kartı (yalnız ADMIN), menüde "Ön Kayıt".
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
@@ -405,7 +446,7 @@ Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşi
 | 1 | ~~**Makbuz / PDF çıktısı**~~ | ✅ **TAMAM** (2026-09-02) — tahsilat makbuzu + öğrenci kayıt formu, gömülü Türkçe font. Bkz. §7.19. |
 | 2 | **SMS** | §13.2b'de planlı. Önkoşul: **şifreli tenant-bazlı ayar saklama** (iyzico tek anahtarla `.env`'de; SMS her kurumun kendi kimlik bilgisini ister). |
 | 3 | **Otomatik bildirim** | Borç hatırlatma bugün ELLE (`BorcHatirlatmaPage`). Eklenecek: zamanlanmış gönderim (kurum opt-in), devamsızlık bildirimi, haftalık finansal özet. |
-| 4 | **Online ön kayıt formu** | **Altyapı hazır:** `lead` modülü `/api/public/leads` + honeypot + IP soğuma. Eklenecek: tenant'a özel slug, başvuru listesi, başvuru→öğrenci dönüşümü. Düşük maliyet / yüksek görünürlük. |
+| 4 | ~~**Online ön kayıt formu**~~ | ✅ **TAMAM** (2026-09-07) — public form (slug) + başvuru listesi + öğrenciye dönüştürme. Bkz. §7.20. |
 | 5 | **Kasa yönetimi** | Çoklu kasa/banka; tahsilat ve gider kasaya bağlanır, kasa bakiyesi + devir. |
 | 6 | **Tedarikçi/cari** | Gider → tedarikçi ilişkisi, tedarikçi bakiyesi. |
 | 7 | **Telafi dersi** | `YoklamaDurumu` bugün yalnız `GELDI/GELMEDI/IZINLI`. Telafi hakkı + kullanım takibi. |

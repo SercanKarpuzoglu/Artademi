@@ -2,6 +2,7 @@ import {
   BarChart3,
   BellRing,
   ClipboardCheck,
+  ClipboardList,
   Coins,
   CreditCard,
   DoorOpen,
@@ -51,6 +52,7 @@ export const MENU: readonly MenuItem[] = [
   { label: 'Genel Bakış', path: '/dashboard', icon: LayoutDashboard, section: 'Genel', roles: HEPSI, hazir: true },
   { label: 'Öğrenciler', path: '/ogrenciler', icon: Users, section: 'Eğitim', roles: OFIS, hazir: true },
   { label: 'Gruplar / Kayıt', path: '/gruplar', icon: GraduationCap, section: 'Eğitim', roles: OFIS, hazir: true },
+  { label: 'Ön Kayıt', path: '/basvurular', icon: ClipboardList, section: 'Eğitim', roles: OFIS, hazir: true },
   {
     label: 'Yoklama',
     path: '/yoklama',

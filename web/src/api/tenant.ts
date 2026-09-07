@@ -12,3 +12,12 @@ export async function updateTenant(payload: UpdateTenantInput): Promise<TenantRe
   const res = await api.put<ApiResponse<TenantResponse>>('/api/tenant', payload);
   return res.data.data;
 }
+
+/**
+ * Public ön kayıt bağlantı adını belirler; boş/null gönderim özelliği KAPATIR.
+ * Sadece ADMIN — bu bağlantı kurumun dışarıya açılan yüzüdür.
+ */
+export async function updateBasvuruSlug(slug: string | null): Promise<TenantResponse> {
+  const res = await api.put<ApiResponse<TenantResponse>>('/api/tenant/basvuru-slug', { slug });
+  return res.data.data;
+}

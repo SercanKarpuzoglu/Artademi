@@ -79,6 +79,8 @@ export interface TenantResponse {
   id: string;
   ad: string;
   status: TenantStatus;
+  /** Public ön kayıt bağlantı adı; null = özellik kapalı. */
+  basvuruSlug: string | null;
 }
 
 // --- Platform konsolu (SUPER_ADMIN) — backend platform DTO'lari ile birebir ---
@@ -932,4 +934,60 @@ export interface AuditRow {
   targetAd: string | null;
   detail: string | null;
   createdAt: string;
+}
+
+// --- Online ön kayıt (Başvuru) — backend com.artademi.basvuru ile birebir aynalanır ---
+
+/** Başvurunun kurum tarafındaki takip durumu — backend BasvuruDurumu. */
+export type BasvuruDurumu = 'YENI' | 'ARANDI' | 'OGRENCIYE_DONUSTU' | 'OLUMSUZ';
+
+/** Kurum içi başvuru satırı — backend BasvuruResponse. `kaynakIp` bilinçli olarak dışarı verilmez. */
+export interface BasvuruResponse {
+  id: number;
+  ad: string;
+  soyad: string;
+  telefon: string;
+  email: string | null;
+  veliAdi: string | null;
+  bransId: number | null;
+  bransAdi: string | null;
+  mesaj: string | null;
+  durum: BasvuruDurumu;
+  ogrenciId: number | null;
+  olusturulmaTarihi: string;
+}
+
+/** Public formun açılış bilgisi — backend BasvuruFormBilgisi. Minimum veri taşır. */
+export interface BasvuruFormBilgisi {
+  kurumAdi: string;
+  branslar: { id: number; ad: string }[];
+}
+
+/** Public form gönderimi. `website` honeypot alanıdır; insan doldurmaz. */
+export interface BasvuruGonderInput {
+  ad: string;
+  soyad: string;
+  telefon: string;
+  email?: string;
+  veliAdi?: string;
+  bransId?: number | null;
+  mesaj?: string;
+  website?: string;
+}
+
+/**
+ * Başvuruyu öğrenciye dönüştürme. TC ve doğum tarihi burada istenir (formda değil);
+ * öğrenci yetişkin değilse anne VEYA baba için ad+TC zorunludur (öğrenci formuyla aynı kural).
+ */
+export interface OgrenciyeDonusturInput {
+  tcKimlikNo: string;
+  dogumTarihi: string;
+  yetiskinMi: boolean;
+  anneAd?: string;
+  anneTcKimlikNo?: string;
+  anneTelefon?: string;
+  babaAd?: string;
+  babaTcKimlikNo?: string;
+  babaTelefon?: string;
+  evAdresi?: string;
 }

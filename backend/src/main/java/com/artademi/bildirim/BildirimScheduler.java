@@ -39,6 +39,16 @@ public class BildirimScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(BildirimScheduler.class);
 
+    /**
+     * ⚠️ Cron'lar ve tarih hesabi TURKIYE saatine gore.
+     *
+     * <p>Konteynerde {@code TZ} ayarli DEGILDIR, JVM UTC calisir. {@code zone} verilmezse
+     * "aksam 20:00" aslinda 23:00'te (TR) tetiklenir ve veliye gece yarisi mail gider —
+     * bildirimin amaci tam da bunun tersi. Ayni sekilde {@code LocalDate.now()} da UTC
+     * gunu verir; gun donumune yakin saatlerde YANLIS gune bakar.
+     */
+    static final java.time.ZoneId TURKIYE = java.time.ZoneId.of("Europe/Istanbul");
+
     private final TenantRepository tenants;
     private final BildirimAyariService ayarlar;
     private final OtomatikBildirimService bildirimler;
@@ -56,11 +66,12 @@ public class BildirimScheduler {
      * Her aksam 20:00 — O GUNUN devamsizliklari.
      *
      * <p>Aksam calisir cunku veli "bugun gelmedi" bilgisini AYNI GUN ister; ertesi sabah
-     * gonderilen bir devamsizlik bildirimi ise yaramaz.
+     * gonderilen bir devamsizlik bildirimi ise yaramaz. Saat TURKIYE saatidir
+     * ({@code zone}) — JVM UTC oldugu icin bu belirtilmezse 23:00'te gonderilirdi.
      */
-    @Scheduled(cron = "0 0 20 * * *")
+    @Scheduled(cron = "0 0 20 * * *", zone = "Europe/Istanbul")
     public void devamsizlikJobu() {
-        LocalDate bugun = LocalDate.now();
+        LocalDate bugun = LocalDate.now(TURKIYE);
         log.info("Devamsızlık bildirimi işi başlıyor: {}", bugun);
         int toplam = kurumlariDolas(tenant -> {
             if (!ayarlar.aktifAyar().isDevamsizlikBildirimi()) {
@@ -78,12 +89,14 @@ public class BildirimScheduler {
     /**
      * Her sabah 04:30 — borc hatirlatmasi ve (gunu geldiyse) haftalik ozet.
      *
-     * <p>04:30, abonelik job'indan (03:00) SONRA: o is askiya alma/ ödeme durumlarini
-     * gunceller; bildirimler guncel durum uzerinden gitmelidir.
+     * <p>04:30 (TR), abonelik job'indan SONRA: o is askiya alma/odeme durumlarini gunceller;
+     * bildirimler guncel durum uzerinden gitmelidir. NOT: {@code SubscriptionScheduler}
+     * zone BELIRTMEZ, yani UTC 03:00 = TR 06:00'da calisir — yine de bu isten oncedir,
+     * dolayisiyla sira korunur.
      */
-    @Scheduled(cron = "0 30 4 * * *")
+    @Scheduled(cron = "0 30 4 * * *", zone = "Europe/Istanbul")
     public void sabahJobu() {
-        LocalDate bugun = LocalDate.now();
+        LocalDate bugun = LocalDate.now(TURKIYE);
         int bugunIso = bugun.getDayOfWeek().getValue(); // 1=Pazartesi … 7=Pazar
         log.info("Sabah bildirim işi başlıyor: {} (ISO gün {})", bugun, bugunIso);
 

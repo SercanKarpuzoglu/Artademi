@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BellRing,
+  CalendarClock,
   ClipboardCheck,
   ClipboardList,
   Coins,
@@ -61,6 +62,7 @@ export const MENU: readonly MenuItem[] = [
     roles: [Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING, Role.TEACHER],
     hazir: true,
   },
+  { label: 'Telafi Dersleri', path: '/telafi', icon: CalendarClock, section: 'Eğitim', roles: OFIS, hazir: true },
   { label: 'Şubeler', path: '/subeler', icon: Store, section: 'Tanımlar', roles: OFIS, hazir: true },
   { label: 'Branşlar', path: '/branslar', icon: Tags, section: 'Tanımlar', roles: OFIS, hazir: true },
   { label: 'Salonlar', path: '/salonlar', icon: DoorOpen, section: 'Tanımlar', roles: OFIS, hazir: true },

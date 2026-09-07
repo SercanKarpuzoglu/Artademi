@@ -23,6 +23,7 @@ import PayoutPage from './features/payout/PayoutPage';
 import BorcHatirlatmaPage from './features/reminder/BorcHatirlatmaPage';
 import ProfilePage from './features/profile/ProfilePage';
 import ReportsPage from './features/report/ReportsPage';
+import TelafiPage from './features/telafi/TelafiPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
 import StudentDetailPage from './features/student/StudentDetailPage';
@@ -139,6 +140,16 @@ export default function App() {
           element={
             <RoleRoute requiredRoles={OFIS}>
               <StudentForm />
+            </RoleRoute>
+          }
+        />
+
+        {/* Telafi dersleri — ofis rolleri (parasal bilgi yok) */}
+        <Route
+          path="telafi"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <TelafiPage />
             </RoleRoute>
           }
         />

@@ -398,6 +398,35 @@ Dalga 2'nin ilk maddesi: rakipteki finans derinliği farkı (kasa tanımı, teda
 
 **Silme YOK:** kasa ve tedarikçi `aktif` ile pasifleştirilir; geçmiş tahsilat/giderler bağlı kalır.
 
+### 7.24 Telafi Dersi Hakkı — `com.artademi.telafi` (✅ YENİ, V28)
+
+Öğrenci derse gelmediğinde kurum telafi hakkı tanıyabilir; hak sonradan bir derste kullanılır ve iz bırakır.
+
+**Uçlar** — **ofis rolleri** (ADMIN + FRONTDESK + FRONTDESK_ACCOUNTING; telafi takibi ön büro işidir ve parasal bilgi taşımaz; TEACHER erişemez):
+- `GET /api/telafi` (durum/öğrenci filtresi), `GET /api/telafi/{id}`, `GET /api/telafi/bekleyen-sayisi`
+- `GET /api/telafi/adaylar` — hak verilebilecek devamsızlıklar (son 60 gün)
+- `POST /api/telafi` — hak ver
+- `POST /api/telafi/{id}/kullan`, `POST /api/telafi/{id}/iptal`
+
+Web: `/telafi` (Eğitim bölümü).
+
+**⚠️ HAK OTOMATİK DOĞMAZ.** Her `GELMEDI` kaydından otomatik hak üretilseydi liste kullanılamaz hale gelirdi (bir dönemde yüzlerce devamsızlık olur) ve kurumun kendi kuralı ("haber verdiyse telafi veririm") ezilirdi. `/adaylar` yalnızca **öneri** listesidir; hakkı kurum tanır. Hak verilen devamsızlık listeden çıkar.
+
+**⚠️ SÜRE DOLMASI SAKLANMAZ, HESAPLANIR.** `SURESI_DOLDU` diye bir durum **yoktur** — olsaydı onu her gece güncelleyen ayrı bir job gerekirdi ve job kaçarsa durum yalan söylerdi. `son_kullanma_tarihi` tutulur, "doldu mu" sorusu okuma anında `TelafiHakki.suresiDolduMu(bugün)` ile cevaplanır. `son_kullanma_tarihi` NULL = süresiz.
+
+**Çakışma kuralları (hepsi 409, hepsi testli):**
+- Aynı devamsızlıktan **ikinci hak verilemez** — bir devamsızlık iki telafi dersi doğurmamalı. DB'de kısmi unique indeks (`kaynak_oturum_id IS NOT NULL` iken); kaynaksız (elle tanımlanan) haklar bu kısıttan muaf, yoksa kurum ikinci bir elle hak tanımlayamazdı.
+- Kullanılmış hak tekrar kullanılamaz (aynı telafiyi iki kez saymak olurdu)
+- İptal edilmiş hak kullanılamaz (geri alınmış hakkı diriltmek olurdu)
+- Süresi dolmuş hak kullanılamaz (süre koymanın anlamı budur)
+- Kullanılmış hak iptal edilemez
+
+**Kullanım kanıt ister:** `kullanilanOturumId` zorunlu — hangi derste telafi edildiği kayda geçmeden "kullanıldı" demek izsiz kalırdı.
+
+**Silme YOK:** hak `IPTAL` ile geri alınır; kimin ne zaman hak kazandığı ve kullandığı izi korunur.
+
+**Çapraz-tenant:** öğrenci ve oturum `findScopedById` ile çözülür; yabancı id 404 (testli).
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)

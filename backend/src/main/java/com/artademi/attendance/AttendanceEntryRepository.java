@@ -36,6 +36,19 @@ public interface AttendanceEntryRepository extends JpaRepository<AttendanceEntry
     List<AttendanceEntry> gelmeyenler(@Param("gun") java.time.LocalDate gun);
 
     /**
+     * Tarih araligindaki GELMEDI kayitlari — telafi aday listesi icin.
+     *
+     * <p>{@code join fetch}: ogrenci, oturum ve grup ayni sorguda gelir (N+1 olmasin).
+     */
+    @Query("SELECT e FROM AttendanceEntry e "
+            + "JOIN FETCH e.ogrenci JOIN FETCH e.session s LEFT JOIN FETCH s.grup "
+            + "WHERE s.tarih BETWEEN :baslangic AND :bitis "
+            + "AND e.durum = com.artademi.attendance.YoklamaDurumu.GELMEDI "
+            + "ORDER BY s.tarih DESC")
+    List<AttendanceEntry> gelmeyenlerAralikta(@Param("baslangic") java.time.LocalDate baslangic,
+            @Param("bitis") java.time.LocalDate bitis);
+
+    /**
      * Bir oturumdaki belirli ogrencinin girisi (toplu guncellemede her ogrenci icin aranir). JPQL
      * oldugu icin tenant filtresine tabidir.
      */

@@ -1078,3 +1078,40 @@ export interface TedarikciInput {
   vergiNo?: string;
   aciklama?: string;
 }
+
+// --- Telafi dersi hakkı — backend com.artademi.telafi ---
+
+export type TelafiDurumu = 'BEKLIYOR' | 'KULLANILDI' | 'IPTAL';
+
+/** `suresiDoldu` HESAPLANIR (saklanmaz); yalnızca BEKLIYOR haklar için anlamlıdır. */
+export interface TelafiResponse {
+  id: number;
+  ogrenciId: number;
+  ogrenciAdSoyad: string;
+  kaynakOturumId: number | null;
+  kaynakDers: string | null;
+  kaynakGrup: string | null;
+  verilmeTarihi: string;
+  sonKullanmaTarihi: string | null;
+  durum: TelafiDurumu;
+  suresiDoldu: boolean;
+  kullanilanOturumId: number | null;
+  kullanimTarihi: string | null;
+  aciklama: string | null;
+}
+
+/** Hak verilebilecek devamsızlık. Hak OTOMATİK doğmaz; bu yalnızca öneri listesidir. */
+export interface TelafiAdayi {
+  ogrenciId: number;
+  ogrenciAdSoyad: string;
+  oturumId: number;
+  tarih: string;
+  grupAdi: string | null;
+}
+
+export interface TelafiVerInput {
+  ogrenciId: number;
+  kaynakOturumId?: number | null;
+  sonKullanmaTarihi?: string;
+  aciklama?: string;
+}

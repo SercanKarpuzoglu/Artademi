@@ -56,6 +56,7 @@ public class AttendanceService {
     private final ScheduleRepository scheduleRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final AttendanceAccessGuard accessGuard;
+    private final com.artademi.paket.PaketService paketService;
 
     public AttendanceService(
             AttendanceSessionRepository sessionRepository,
@@ -63,13 +64,15 @@ public class AttendanceService {
             GroupRepository groupRepository,
             ScheduleRepository scheduleRepository,
             EnrollmentRepository enrollmentRepository,
-            AttendanceAccessGuard accessGuard) {
+            AttendanceAccessGuard accessGuard,
+            com.artademi.paket.PaketService paketService) {
         this.sessionRepository = sessionRepository;
         this.entryRepository = entryRepository;
         this.groupRepository = groupRepository;
         this.scheduleRepository = scheduleRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.accessGuard = accessGuard;
+        this.paketService = paketService;
     }
 
     /**
@@ -146,6 +149,14 @@ public class AttendanceService {
                         .orElseThrow(() -> new NotFoundException(
                                 "Öğrenci bu oturumda bulunamadı: " + item.ogrenciId()));
                 entry.setDurum(item.durum());
+
+                // ⚠️ Kontor dusumu: paketli ogrencide GELDI/GELMEDI ders duser, IZINLI
+                // dusmez (varsa geri alinir). Paketi olmayan ogrencide hicbir sey olmaz.
+                // Bu cagri yoklamayi ASLA engellemez — kontoru bitmis ogrenci de derse
+                // yazilmaya devam eder.
+                paketService.yoklamaDegisti(item.ogrenciId(), session.getId(),
+                        session.getGrup() != null ? session.getGrup().getId() : null,
+                        item.durum(), session.getTarih());
             }
         }
 

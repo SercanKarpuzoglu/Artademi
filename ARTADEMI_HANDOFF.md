@@ -427,6 +427,39 @@ Web: `/telafi` (Eğitim bölümü).
 
 **Çapraz-tenant:** öğrenci ve oturum `findScopedById` ile çözülür; yabancı id 404 (testli).
 
+### 7.25 Ders Paketi (Kontör) — `com.artademi.paket` (✅ YENİ, V29)
+
+Dalga 2'nin son maddesi. **Üçüncü fiyatlandırma modeli**: mevcut ikisi grup üzerindeydi (`aylik_aidat`, `ders_basi_ucret`); paket **öğrenci** üzerindedir — "10 derslik bale paketi, 4.000 TL".
+
+**Uçlar** — **ADMIN + FRONTDESK_ACCOUNTING** (satış tahakkuk üretir, PARASAL işlemdir):
+`GET /api/paketler` (ogrenciId filtresi), `GET /{id}`, `POST /api/paketler` (sat), `POST /{id}/iptal`. Web: Finans → **Ders Paketleri** sekmesi.
+
+**⚠️ KONTÖR DÜŞÜMÜ YOKLAMA DURUMUNA BAĞLI:**
+
+| Durum | Kontör |
+|---|---|
+| `GELDI` | düşer |
+| `GELMEDI` (habersiz) | **düşer** — okul dersi tahsis etti |
+| `IZINLI` (haber vermiş) | düşmez; daha önce düşülmüşse **geri alınır** |
+
+Bu ayrım mevcut `YoklamaDurumu` ile birebir örtüşüyor — "haber verdi mi" diye ayrı bir alan eklemeye gerek kalmadı. Türkiye'deki yaygın uygulama da bu.
+
+**⚠️ KALAN DERS SAKLANMAZ, HESAPLANIR.** Tüketilen her ders bir `paket_kullanim` **satırıdır**; kalan = `toplam_ders` − satır sayısı. Sayaç tutulsaydı yoklama düzeltmesinde (GELDI → IZINLI) geri alma adımı kaçabilir ve sapma sessiz kalırdı. Satır silinince kalan kendiliğinden geri gelir. Test: `IZINLI_kontorDUSMEZ_onceDusulduyseGERI_ALINIR`.
+
+**⚠️ Benzersizlik anahtarı (öğrenci, oturum) — paket DEĞİL.** Öğrencinin iki paketi varsa aynı dersten iki kontör düşmemeli. DB'de unique index; ayrıca idempotans sağlar (yoklama iki kez kaydedilirse kontör bir kez düşer).
+
+**⚠️ KONTÖR BİTİNCE YOKLAMA ENGELLENMEZ.** Kontörü biten öğrenci derse yazılmaya devam eder; sadece düşüm yapılmaz. Yoklama alınamaması öğretmeni sistem dışına iter — paket takibi bunu hak etmez. Liste "kontör bitti" gösterir. Kalan negatife düşmez.
+
+**FIFO + grup önceliği:** düşüm sırası (1) oturumun grubuna bağlı paketler, (2) grubu olmayan genel paketler; her ikisinde de en eski satış önce. Aksi halde süresi yaklaşan paket boşta kalırken yeni paket harcanır ve öğrenci hak kaybeder.
+
+**Satış PEŞİN tek tahakkuk üretir** (`accrual_id` ile bağlı, açıklaması "Ders paketi: …"). Taksit isteyen kurum tahakkuku elle böler; otomatik taksit "kaç taksit, hangi tarihlerde" gibi kurumdan kuruma değişen kurallar gerektirir — kapsam dışı.
+
+**⚠️ Paket iptalinde tahakkuk OTOMATİK SİLİNMEZ.** Tahsilat yapılmış olabilir; iade/mahsup kurumun kararı olan bir finans işlemidir. Silmek yapılmış tahsilatı sahipsiz bırakırdı. Arayüzde bu uyarı gösterilir.
+
+**`BITTI` diye bir durum YOK** — kalan ders hesaplanan bir değer; "bitti" durumu tutmak, yoklama düzeltmesiyle kontör geri geldiğinde durumu da geri almayı gerektirirdi ve o adım kaçarsa durum yalan söylerdi.
+
+**Entegrasyon noktası:** `AttendanceService.updateEntries` → `PaketService.yoklamaDegisti(...)`. Bu çağrı yoklamayı asla engellemez; paketi olmayan öğrencide hiçbir şey yapmaz.
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)

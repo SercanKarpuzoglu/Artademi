@@ -1115,3 +1115,41 @@ export interface TelafiVerInput {
   sonKullanmaTarihi?: string;
   aciklama?: string;
 }
+
+// --- Ders paketi (kontör) — backend com.artademi.paket ---
+
+export type PaketDurumu = 'AKTIF' | 'IPTAL';
+
+/**
+ * Ders paketi. `kullanilanDers` ve `kalanDers` HESAPLANIR (saklanmaz);
+ * `suresiDoldu` da öyle.
+ */
+export interface PaketResponse {
+  id: number;
+  ogrenciId: number;
+  ogrenciAdSoyad: string;
+  ad: string;
+  grupId: number | null;
+  grupAdi: string | null;
+  toplamDers: number;
+  kullanilanDers: number;
+  kalanDers: number;
+  tutar: string;
+  satisTarihi: string;
+  sonKullanmaTarihi: string | null;
+  suresiDoldu: boolean;
+  durum: PaketDurumu;
+  accrualId: number | null;
+  aciklama: string | null;
+}
+
+export interface PaketSatInput {
+  ogrenciId: number;
+  ad: string;
+  grupId?: number | null;
+  toplamDers: number;
+  tutar: string;
+  satisTarihi?: string;
+  sonKullanmaTarihi?: string;
+  aciklama?: string;
+}

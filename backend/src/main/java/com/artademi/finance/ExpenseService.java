@@ -25,17 +25,48 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExpenseService {
 
     private final ExpenseRepository repository;
+    private final com.artademi.kasa.KasaRepository kasaRepository;
+    private final com.artademi.tedarikci.TedarikciRepository tedarikciRepository;
 
-    public ExpenseService(ExpenseRepository repository) {
+    public ExpenseService(ExpenseRepository repository,
+            com.artademi.kasa.KasaRepository kasaRepository,
+            com.artademi.tedarikci.TedarikciRepository tedarikciRepository) {
         this.repository = repository;
+        this.kasaRepository = kasaRepository;
+        this.tedarikciRepository = tedarikciRepository;
+    }
+
+    /**
+     * Kasa/tedarikci secildiyse AYNI tenant'a ait oldugunu dogrular.
+     *
+     * <p>⚠️ findScopedById: FK tek basina yabanci referansi engellemez; istemci baska kurumun
+     * id'sini gondererek capraz-tenant bag kuramamalidir.
+     */
+    private com.artademi.kasa.Kasa resolveKasa(Long kasaId) {
+        if (kasaId == null) {
+            return null;
+        }
+        return kasaRepository.findScopedById(kasaId)
+                .orElseThrow(() -> new NotFoundException("Kasa bulunamadı: " + kasaId));
+    }
+
+    private com.artademi.tedarikci.Tedarikci resolveTedarikci(Long tedarikciId) {
+        if (tedarikciId == null) {
+            return null;
+        }
+        return tedarikciRepository.findScopedById(tedarikciId)
+                .orElseThrow(() -> new NotFoundException("Tedarikçi bulunamadı: " + tedarikciId));
     }
 
     /** Yeni gider olusturur, 201. */
     @Transactional
     public ExpenseResponse create(CreateExpenseRequest req) {
         LocalDate giderTarihi = req.giderTarihi() != null ? req.giderTarihi() : LocalDate.now();
-        Expense saved = repository.save(
-                ExpenseMapper.toNewEntity(req.tutar(), giderTarihi, req.kategori(), req.aciklama()));
+        Expense yeni = ExpenseMapper.toNewEntity(
+                req.tutar(), giderTarihi, req.kategori(), req.aciklama());
+        yeni.setKasa(resolveKasa(req.kasaId()));
+        yeni.setTedarikci(resolveTedarikci(req.tedarikciId()));
+        Expense saved = repository.save(yeni);
         return ExpenseResponse.from(saved);
     }
 

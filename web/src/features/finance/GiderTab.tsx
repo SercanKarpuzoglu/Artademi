@@ -1,5 +1,8 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ApiException } from '../../api/client';
+import { getKasalar } from '../../api/kasa';
+import { getTedarikciler } from '../../api/tedarikci';
 import type { ExpenseInput } from '../../api/types';
 import { formatDate, formatMoney } from '../../lib/format';
 import { useCreateExpense, useExpenses } from './useFinance';
@@ -149,6 +152,15 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
   const [kategori, setKategori] = useState('');
   const [giderTarihi, setGiderTarihi] = useState(today());
   const [aciklama, setAciklama] = useState('');
+  const [kasaId, setKasaId] = useState('');
+  const [tedarikciId, setTedarikciId] = useState('');
+
+  // Tanimliysa secici gosterilir; hic yoksa alan HIC gorunmez (ikisi de opsiyoneldir).
+  const kasalarQ = useQuery({ queryKey: ['kasalar', 'aktif'], queryFn: () => getKasalar(true) });
+  const tedarikcilerQ = useQuery({
+    queryKey: ['tedarikciler', 'aktif'],
+    queryFn: () => getTedarikciler(true),
+  });
 
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -168,6 +180,8 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
       kategori: kategori.trim() || undefined,
       giderTarihi: giderTarihi || undefined,
       aciklama: aciklama.trim() || undefined,
+      kasaId: kasaId ? Number(kasaId) : undefined,
+      tedarikciId: tedarikciId ? Number(tedarikciId) : undefined,
     };
 
     try {
@@ -199,6 +213,30 @@ function ExpenseForm({ onDone }: { onDone: () => void }) {
         <Field label="Tutar (₺)" required error={fieldErrors.tutar}>
           <input className={inputClass} inputMode="decimal" value={tutar} onChange={(e) => setTutar(e.target.value)} />
         </Field>
+        {(kasalarQ.data?.length ?? 0) > 0 && (
+          <Field label="Kasa" error={fieldErrors.kasaId}>
+            <select className={inputClass} value={kasaId} onChange={(e) => setKasaId(e.target.value)}>
+              <option value="">Kasa seçilmedi</option>
+              {kasalarQ.data?.map((k) => (
+                <option key={k.id} value={k.id}>{k.ad}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {(tedarikcilerQ.data?.length ?? 0) > 0 && (
+          <Field label="Tedarikçi" error={fieldErrors.tedarikciId}>
+            <select
+              className={inputClass}
+              value={tedarikciId}
+              onChange={(e) => setTedarikciId(e.target.value)}
+            >
+              <option value="">Tedarikçi seçilmedi</option>
+              {tedarikcilerQ.data?.map((t) => (
+                <option key={t.id} value={t.id}>{t.ad}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Kategori" error={fieldErrors.kategori}>
           <input className={inputClass} value={kategori} onChange={(e) => setKategori(e.target.value)} />
         </Field>

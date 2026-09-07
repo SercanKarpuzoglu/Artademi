@@ -34,5 +34,11 @@ public record CreatePaymentRequest(
         @NotNull(message = "Ödeme yöntemi zorunludur")
         OdemeYontemi odemeYontemi,
 
-        String aciklama) {
+        String aciklama,
+
+        /**
+         * Tahsilatin islenecegi kasa. OPSIYONEL: kasa kullanmak zorunlu degildir; tek
+         * kasayla calisan kurum hic tanimlamadan devam edebilir.
+         */
+        Long kasaId) {
 }

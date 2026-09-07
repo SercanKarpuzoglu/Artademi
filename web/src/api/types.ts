@@ -567,6 +567,8 @@ export interface PaymentInput {
   odemeTarihi?: string;
   odemeYontemi: OdemeYontemi;
   aciklama?: string;
+  /** Tahsilatın işleneceği kasa. Opsiyonel — kasa kullanmak zorunlu değildir. */
+  kasaId?: number | null;
 }
 
 /** Gider yaniti — backend ExpenseResponse. Para alani number VEYA string gelebilir. */
@@ -587,6 +589,10 @@ export interface ExpenseInput {
   giderTarihi?: string;
   kategori?: string;
   aciklama?: string;
+  /** Giderin çıkacağı kasa. Opsiyonel. */
+  kasaId?: number | null;
+  /** Gider kime yapıldı. Opsiyonel. */
+  tedarikciId?: number | null;
 }
 
 /** Öğrenci bakiyesi — backend BalanceResponse. Para alanlari number VEYA string gelebilir. */
@@ -1001,4 +1007,74 @@ export interface BildirimAyari {
   haftalikOzet: boolean;
   /** ISO-8601: 1=Pazartesi … 7=Pazar */
   haftalikOzetGunu: number;
+}
+
+// --- Kasa ve tedarikçi — backend com.artademi.kasa / com.artademi.tedarikci ---
+
+export type KasaTipi = 'NAKIT' | 'BANKA';
+export type HareketYonu = 'GIRIS' | 'CIKIS';
+export type HareketTipi = 'TRANSFER' | 'DUZELTME';
+
+/** Kasa. `bakiye` HESAPLANMIŞ değerdir — veritabanında saklanmaz. */
+export interface KasaResponse {
+  id: number;
+  ad: string;
+  tip: KasaTipi;
+  iban: string | null;
+  acilisBakiyesi: string;
+  bakiye: string;
+  aktif: boolean;
+}
+
+export interface KasaInput {
+  ad: string;
+  tip: KasaTipi;
+  iban?: string;
+  acilisBakiyesi?: string;
+}
+
+export interface HareketResponse {
+  id: number;
+  kasaId: number;
+  yon: HareketYonu;
+  tip: HareketTipi;
+  tutar: string;
+  tarih: string;
+  aciklama: string | null;
+  transferGrubu: string | null;
+}
+
+export interface TransferInput {
+  kaynakKasaId: number;
+  hedefKasaId: number;
+  tutar: string;
+  tarih?: string;
+  aciklama?: string;
+}
+
+export interface DuzeltmeInput {
+  yon: HareketYonu;
+  tutar: string;
+  tarih?: string;
+  aciklama?: string;
+}
+
+/** Tedarikçi. `toplamOdenen` giderlerden HESAPLANIR — saklanmaz. */
+export interface TedarikciResponse {
+  id: number;
+  ad: string;
+  telefon: string | null;
+  email: string | null;
+  vergiNo: string | null;
+  aciklama: string | null;
+  aktif: boolean;
+  toplamOdenen: string;
+}
+
+export interface TedarikciInput {
+  ad: string;
+  telefon?: string;
+  email?: string;
+  vergiNo?: string;
+  aciklama?: string;
 }

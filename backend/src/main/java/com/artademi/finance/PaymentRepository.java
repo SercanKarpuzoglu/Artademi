@@ -30,6 +30,16 @@ public interface PaymentRepository
     Optional<Payment> findScopedById(@Param("id") Long id);
 
     /**
+     * Kasaya islenmis tahsilat toplami. Kasa bakiyesi bu deger uzerinden HESAPLANIR;
+     * bakiye hicbir yerde saklanmaz (saklanan bakiye zamanla sapar).
+     *
+     * <p>Kayit yoksa {@code null} doner — cagiran taraf sifira cevirir.
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT SUM(p.tutar) FROM Payment p WHERE p.kasa.id = :kasaId")
+    java.math.BigDecimal kasayaGirenToplam(@Param("kasaId") Long kasaId);
+
+    /**
      * Bir ogrencinin TOPLAM tahsilati. COALESCE ile bos sonuc 0 doner. JPQL oldugu icin tenant
      * filtresine tabidir (yalnizca aktif tenant). Bakiye hesabinda kullanilir.
      */

@@ -21,5 +21,11 @@ public record CreateExpenseRequest(
 
         String kategori,
 
-        String aciklama) {
+        String aciklama,
+
+        /** Giderin cikacagi kasa. OPSIYONEL — bkz. CreatePaymentRequest.kasaId. */
+        Long kasaId,
+
+        /** Gider kime yapildi. OPSIYONEL. */
+        Long tedarikciId) {
 }

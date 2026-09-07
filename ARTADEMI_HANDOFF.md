@@ -369,6 +369,35 @@ Konteynerde `TZ` **ayarlı değil**, JVM UTC çalışıyor. `@Scheduled(cron = .
 
 NOT: `SubscriptionScheduler` zone belirtmez → UTC 03:00 = TR 06:00. Sıralama korunduğu (bildirimlerden önce) ve "düşük trafik" amacı bozulmadığı için değiştirilmedi.
 
+### 7.23 Kasa + Tedarikçi — `com.artademi.kasa` / `com.artademi.tedarikci` (✅ YENİ, V27)
+
+Dalga 2'nin ilk maddesi: rakipteki finans derinliği farkı (kasa tanımı, tedarikçi, kâr-zarar) kapatılmaya başlandı.
+
+**Uçlar** — hepsi **ADMIN + FRONTDESK_ACCOUNTING** (kasa bakiyesi ve "toplam ödenen" PARASAL bilgidir, ön büro görmez):
+- `GET|POST|PUT /api/kasalar`, `PATCH /api/kasalar/{id}/durum`
+- `GET /api/kasalar/{id}/hareketler`, `POST /api/kasalar/{id}/duzeltme`
+- `POST /api/kasalar/transfer`, `DELETE /api/kasalar/hareketler/{id}`
+- `GET|POST|PUT /api/tedarikciler`, `PATCH /api/tedarikciler/{id}/durum`
+
+**⚠️ BAKİYE SAKLANMAZ, HESAPLANIR.**
+`açılış + tahsilatlar − giderler + hareket girişleri − hareket çıkışları`. Saklanan bakiye zamanla gerçekten sapar: bir tahsilat elle düzeltilir, bir gider silinir, bir güncelleme kaçar ve kimse fark etmez. Aynı şey `tedarikci.toplamOdenen` için de geçerli — giderlerden hesaplanır.
+
+**⚠️ TRANSFER İKİ SATIRDIR.** Kaynakta `CIKIS`, hedefte `GIRIS`, ortak `transfer_grubu` (UUID) ile bağlı. Tek satır olsaydı her bakiye sorgusu "bu satır bana giriş mi çıkış mı" diye iki yöne bakmak zorunda kalırdı. Silme **grup üzerinden** yapılır — tek bacağı silmek kasalar arasında kaybolmuş para bırakırdı. Test: `transferSilme_IKI_bacagiBirdenSiler`.
+
+**⚠️ Tahsilat/gider `kasa_hareketi` tablosunda DEĞİLDİR.** Kendi tablolarında durur, kasaya `kasa_id` ile bağlanır. İkisine birden yazılsaydı aynı para iki kez sayılırdı. `kasa_hareketi` yalnızca transfer + elle düzeltme taşır.
+
+**Tutar her zaman pozitif; yön `yon` alanındadır.** Negatif tutara izin verilseydi "eksi giriş" ile "artı çıkış" aynı şeyi iki biçimde ifade eder, raporlar çaprazlanırdı. DB'de `CHECK (tutar > 0)`.
+
+**Açılış bakiyesi** bilinçli: sisteme geçmeden önceki tutarı girmek, geçmiş hareketleri tek tek girmek zorunda kalmadan doğru bakiye göstermenin tek yolu.
+
+**`kasa_id` / `tedarikci_id` NULLABLE** — (a) mevcut kayıtların kasası yok, NOT NULL migration'ı çalışan kurumları bozar; (b) kasa kullanmak zorunlu değil. Arayüzde de hiç kasa tanımlı değilse seçici **hiç görünmez**.
+
+**Çapraz-tenant koruması:** FK aynı tenant'ı garanti etmez; `PaymentService.resolveKasa` ve `ExpenseService.resolveKasa/resolveTedarikci` `findScopedById` kullanır. Testler yabancı kasa/tedarikçi id'siyle 404 döndüğünü doğrular.
+
+**⚠️ Tedarikçi CARİ HESAP DEĞİLDİR.** Fatura/borç-alacak takibi yok; yalnızca giderlerin kime yapıldığı ve toplam. Gerçek cari, fatura ve ödeme kalemlerini ayrı modellemeyi gerektirir — kapsam dışı bırakıldı, kodda ve DTO'da açıkça yazılı.
+
+**Silme YOK:** kasa ve tedarikçi `aktif` ile pasifleştirilir; geçmiş tahsilat/giderler bağlı kalır.
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)

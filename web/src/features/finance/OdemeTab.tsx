@@ -1,5 +1,7 @@
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
+import { getKasalar } from '../../api/kasa';
 import { indirMakbuz } from '../../api/payments';
 import type { OdemeYontemi, PaymentInput, StudentResponse } from '../../api/types';
 import { formatDate, formatMoney } from '../../lib/format';
@@ -206,6 +208,9 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
   const [odemeYontemi, setOdemeYontemi] = useState<OdemeYontemi>('NAKIT');
   const [odemeTarihi, setOdemeTarihi] = useState(today());
   const [aciklama, setAciklama] = useState('');
+  const [kasaId, setKasaId] = useState('');
+  // Kasa tanimliysa secici gosterilir; hic kasa yoksa alan HIC gorunmez (kasa opsiyoneldir).
+  const kasalarQ = useQuery({ queryKey: ['kasalar', 'aktif'], queryFn: () => getKasalar(true) });
 
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -235,6 +240,7 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
       accrualId: accrualId ? Number(accrualId) : undefined,
       odemeTarihi: odemeTarihi || undefined,
       aciklama: aciklama.trim() || undefined,
+      kasaId: kasaId ? Number(kasaId) : undefined,
     };
 
     try {
@@ -310,6 +316,22 @@ function PaymentForm({ onDone }: { onDone: () => void }) {
             onChange={(e) => setOdemeTarihi(e.target.value)}
           />
         </Field>
+        {(kasalarQ.data?.length ?? 0) > 0 && (
+          <Field label="Kasa" error={fieldErrors.kasaId}>
+            <select
+              className={inputClass}
+              value={kasaId}
+              onChange={(e) => setKasaId(e.target.value)}
+            >
+              <option value="">Kasa seçilmedi</option>
+              {kasalarQ.data?.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.ad}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Açıklama" error={fieldErrors.aciklama}>
           <input className={inputClass} value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
         </Field>

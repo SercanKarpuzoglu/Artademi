@@ -67,6 +67,14 @@ public class Payment extends TenantAware {
     @Column(name = "aciklama")
     private String aciklama;
 
+    /**
+     * Tahsilatin islendigi kasa. NULLABLE, bilincli: mevcut kayitlarin kasasi yoktur ve
+     * kasa kullanmak ZORUNLU degildir (tek kasayla calisan kurum hic tanimlamayabilir).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "kasa_id")
+    private com.artademi.kasa.Kasa kasa;
+
     @CreationTimestamp
     @Column(name = "olusturulma_tarihi", nullable = false, updatable = false)
     private Instant olusturulmaTarihi;
@@ -142,6 +150,14 @@ public class Payment extends TenantAware {
 
     public void setAciklama(String aciklama) {
         this.aciklama = aciklama;
+    }
+
+    public com.artademi.kasa.Kasa getKasa() {
+        return kasa;
+    }
+
+    public void setKasa(com.artademi.kasa.Kasa kasa) {
+        this.kasa = kasa;
     }
 
     public Instant getOlusturulmaTarihi() {

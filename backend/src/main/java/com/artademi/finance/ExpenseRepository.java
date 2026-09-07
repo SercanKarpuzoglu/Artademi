@@ -29,6 +29,17 @@ public interface ExpenseRepository
     Optional<Expense> findScopedById(@Param("id") Long id);
 
     /**
+     * Kasadan cikan gider toplami. Kasa bakiyesi bu deger uzerinden HESAPLANIR;
+     * bakiye hicbir yerde saklanmaz. Kayit yoksa {@code null} doner.
+     */
+    @Query("SELECT SUM(e.tutar) FROM Expense e WHERE e.kasa.id = :kasaId")
+    java.math.BigDecimal kasadanCikanToplam(@Param("kasaId") Long kasaId);
+
+    /** Tedarikciye yapilan gider toplami ("bu ay kime ne kadar odedik"). */
+    @Query("SELECT SUM(e.tutar) FROM Expense e WHERE e.tedarikci.id = :tedarikciId")
+    java.math.BigDecimal tedarikciyeOdenenToplam(@Param("tedarikciId") Long tedarikciId);
+
+    /**
      * Verilen [from,to] araligindaki TUM giderlerin toplami (RAPOR). COALESCE ile bos sonuc 0. JPQL
      * oldugu icin global tenant filtresine tabidir (yalnizca aktif tenant). Salt okunur.
      */

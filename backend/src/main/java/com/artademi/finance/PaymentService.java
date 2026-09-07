@@ -39,13 +39,16 @@ public class PaymentService {
     private final AccrualRepository accrualRepository;
     private final StudentRepository studentRepository;
     private final GroupRepository groupRepository;
+    private final com.artademi.kasa.KasaRepository kasaRepository;
 
     public PaymentService(PaymentRepository repository, AccrualRepository accrualRepository,
-            StudentRepository studentRepository, GroupRepository groupRepository) {
+            StudentRepository studentRepository, GroupRepository groupRepository,
+            com.artademi.kasa.KasaRepository kasaRepository) {
         this.repository = repository;
         this.accrualRepository = accrualRepository;
         this.studentRepository = studentRepository;
         this.groupRepository = groupRepository;
+        this.kasaRepository = kasaRepository;
     }
 
     /** Yeni tahsilat olusturur, 201. */
@@ -65,9 +68,25 @@ public class PaymentService {
         }
 
         LocalDate odemeTarihi = req.odemeTarihi() != null ? req.odemeTarihi() : LocalDate.now();
-        Payment saved = repository.save(PaymentMapper.toNewEntity(
-                ogrenci, accrual, grup, req.tutar(), odemeTarihi, req.odemeYontemi(), req.aciklama()));
+        Payment yeni = PaymentMapper.toNewEntity(
+                ogrenci, accrual, grup, req.tutar(), odemeTarihi, req.odemeYontemi(), req.aciklama());
+        yeni.setKasa(resolveKasa(req.kasaId()));
+        Payment saved = repository.save(yeni);
         return PaymentResponse.from(saved);
+    }
+
+    /**
+     * Kasa secildiyse AYNI tenant'a ait oldugunu dogrular.
+     *
+     * <p>⚠️ findScopedById: FK tek basina yabanci kasa referansini engellemez; istemci baska
+     * kurumun kasa id'sini gondererek capraz-tenant bag kuramamalidir.
+     */
+    private com.artademi.kasa.Kasa resolveKasa(Long kasaId) {
+        if (kasaId == null) {
+            return null;
+        }
+        return kasaRepository.findScopedById(kasaId)
+                .orElseThrow(() -> new NotFoundException("Kasa bulunamadı: " + kasaId));
     }
 
     @Transactional(readOnly = true)

@@ -6,6 +6,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -42,6 +45,16 @@ public class Expense extends TenantAware {
 
     @Column(name = "aciklama")
     private String aciklama;
+
+    /** Giderin cikildigi kasa. NULLABLE — bkz. Payment.kasa. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "kasa_id")
+    private com.artademi.kasa.Kasa kasa;
+
+    /** Gider kime yapildi. NULLABLE — tedarikci tanimlamak zorunlu degildir. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tedarikci_id")
+    private com.artademi.tedarikci.Tedarikci tedarikci;
 
     @CreationTimestamp
     @Column(name = "olusturulma_tarihi", nullable = false, updatable = false)
@@ -94,6 +107,22 @@ public class Expense extends TenantAware {
 
     public void setAciklama(String aciklama) {
         this.aciklama = aciklama;
+    }
+
+    public com.artademi.kasa.Kasa getKasa() {
+        return kasa;
+    }
+
+    public void setKasa(com.artademi.kasa.Kasa kasa) {
+        this.kasa = kasa;
+    }
+
+    public com.artademi.tedarikci.Tedarikci getTedarikci() {
+        return tedarikci;
+    }
+
+    public void setTedarikci(com.artademi.tedarikci.Tedarikci tedarikci) {
+        this.tedarikci = tedarikci;
     }
 
     public Instant getOlusturulmaTarihi() {

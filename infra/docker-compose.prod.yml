@@ -99,6 +99,11 @@ services:
       # Landing form maili (Gmail SMTP, app password) — degerler .env.prod'da
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
+      # Kurum bazli gizli ayarlarin sifrelenmesi (AES-256-GCM), base64 32 bayt.
+      # ⚠️ .env.prod'a eklemek YETMEZ; degisken burada bildirilmezse konteynere GIRMEZ
+      # ve gizli ayar saklama sessizce devre disi kalir (fail-closed).
+      # ⚠️ Bu anahtar kaybolursa saklanan tum kimlik bilgileri geri getirilemez.
+      ARTADEMI_SIFRELEME_ANAHTARI: ${ARTADEMI_SIFRELEME_ANAHTARI:-}
     # DIŞARI PORT YOK — Caddy /api'yi iç ağdan 8081'e proxy'ler
     depends_on:
       postgres:

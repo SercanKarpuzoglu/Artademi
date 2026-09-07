@@ -66,3 +66,9 @@ infra/artademi-realm.json
 
 # Parsius durum raporu (yerel, panel tarafından okunur)
 .parsius/
+
+# ⚠️ Kimlik bilgileri — ASLA commit edilmez.
+# Depo PUBLIC'tir; buraya konan bir anahtar herkese açık hale gelir.
+# Şifreleme anahtarı buradaysa: kaybolursa saklanan tüm kimlik bilgileri
+# geri getirilemez, sızarsa hepsi ele geçer. İkisi de geri dönüşü olmayan hatalar.
+credentials/

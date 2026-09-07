@@ -4,8 +4,9 @@ import { ApiException } from '../../api/client';
 import type { BasvuruDurumu, BasvuruResponse } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
-import { formatDate } from '../../lib/format';
+import { formatDateTime } from '../../lib/format';
 import BaglantiKarti from './BaglantiKarti';
+import BasvuruDetayModal from './BasvuruDetayModal';
 import DonusturModal from './DonusturModal';
 import { useBasvurular, useDurumGuncelle } from './useBasvurular';
 
@@ -45,6 +46,7 @@ export default function BasvuruListPage() {
   const [durum, setDurum] = useState<BasvuruDurumu | undefined>(undefined);
   const [page, setPage] = useState(0);
   const [donusturulecek, setDonusturulecek] = useState<BasvuruResponse | null>(null);
+  const [detay, setDetay] = useState<BasvuruResponse | null>(null);
   const [hata, setHata] = useState<string | null>(null);
 
   const q = useBasvurular({ durum, page, size: PAGE_SIZE });
@@ -123,6 +125,7 @@ export default function BasvuruListPage() {
                     key={b.id}
                     b={b}
                     islemde={durumMutation.isPending}
+                    onAc={() => setDetay(b)}
                     onDurum={durumDegistir}
                     onDonustur={() => setDonusturulecek(b)}
                     onOgrenciAc={(id) => navigate(`/ogrenciler/${id}`)}
@@ -160,6 +163,23 @@ export default function BasvuruListPage() {
         </div>
       )}
 
+      {detay && (
+        <BasvuruDetayModal
+          basvuru={detay}
+          islemde={durumMutation.isPending}
+          onKapat={() => setDetay(null)}
+          onDurum={(durum) => {
+            durumDegistir(detay.id, durum);
+            setDetay(null);
+          }}
+          onDonustur={() => {
+            setDonusturulecek(detay);
+            setDetay(null);
+          }}
+          onOgrenciAc={(id) => navigate(`/ogrenciler/${id}`)}
+        />
+      )}
+
       {donusturulecek && (
         <DonusturModal
           basvuru={donusturulecek}
@@ -177,37 +197,54 @@ export default function BasvuruListPage() {
 function Satir({
   b,
   islemde,
+  onAc,
   onDurum,
   onDonustur,
   onOgrenciAc,
 }: {
   b: BasvuruResponse;
   islemde: boolean;
+  onAc: () => void;
   onDurum: (id: number, durum: BasvuruDurumu) => void;
   onDonustur: () => void;
   onOgrenciAc: (id: number) => void;
 }) {
   const donusmus = b.durum === 'OGRENCIYE_DONUSTU';
   return (
-    <tr>
+    // Satir detayi acar (mesaj/e-posta yalnizca orada gorunur). Klavyeyle de erisilebilir.
+    <tr
+      className="cursor-pointer hover:bg-bg"
+      onClick={onAc}
+      tabIndex={0}
+      role="button"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onAc();
+        }
+      }}
+    >
       <td>
         <b>
           {b.ad} {b.soyad}
         </b>
         {b.veliAdi && <div className="text-[12px] text-ink-soft">Veli: {b.veliAdi}</div>}
+        {/* Mesaj tabloya sigmaz; en azindan VARLIGINI belli et ki hangi satiri acacagi bilinsin. */}
+        {b.mesaj && <div className="text-[12px] text-ink-soft">✉︎ mesaj var</div>}
       </td>
       <td>
-        <a href={`tel:${b.telefon}`} className="text-rasp">
+        <a href={`tel:${b.telefon}`} className="text-rasp" onClick={(e) => e.stopPropagation()}>
           {b.telefon}
         </a>
         {b.email && <div className="text-[12px] text-ink-soft">{b.email}</div>}
       </td>
       <td className="text-ink-soft">{b.bransAdi ?? '—'}</td>
-      <td className="text-ink-soft">{formatDate(b.olusturulmaTarihi)}</td>
+      <td className="text-ink-soft">{formatDateTime(b.olusturulmaTarihi)}</td>
       <td>
         <span className={`badge ${DURUM_BADGE[b.durum]}`}>{DURUM_ETIKET[b.durum]}</span>
       </td>
-      <td className="t-right">
+      {/* Dugmeler satir tiklamasini TETIKLEMEMELI; aksi halde her islemde modal da acilir. */}
+      <td className="t-right" onClick={(e) => e.stopPropagation()}>
         {donusmus ? (
           <button
             type="button"

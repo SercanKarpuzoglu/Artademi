@@ -339,6 +339,36 @@ Zamanlanmış iş bir İSTEKTEN doğmaz; `TenantContext` **boştur** ve fail-clo
 
 **Haftalık özet** ayrı bir hafta raporu uydurmak yerine mevcut, test edilmiş `financialSummary` (içinde bulunulan ay) kullanır — yönetici zaten aylık rakamla çalışıyor.
 
+### 7.22 Şifreli Kurum Ayarı — `com.artademi.gizli` (✅ YENİ, V26)
+
+Kurum bazlı gizli değerleri (SMS/WhatsApp kimlik bilgileri) **AES-256-GCM** ile şifreli saklar.
+
+**Neden gerekli:** bugüne kadar tek dış entegrasyon iyzico ve anahtarı TEK + platform düzeyinde (`.env`). SMS/WhatsApp'ta ise **her kurumun kendi kimlik bilgisi** olur ve veritabanında durmak zorundadır. Düz metin kabul edilemez: yedek sızarsa tüm müşterilerimizin sağlayıcı hesapları ele geçer.
+
+**Yapılandırma:** `ARTADEMI_SIFRELEME_ANAHTARI` — base64, **32 bayt**. Üretmek için `openssl rand -base64 32`. Boş bırakılabilir (uygulama açılır) ama o zaman gizli ayar yazılamaz/okunamaz.
+
+**Dört tasarım kararı (hepsi test altında):**
+1. **GCM, CBC değil.** Kimlik doğrulamalı: DB'deki değer kurcalanırsa çözme **patlar**. CBC olsaydı çöplükle çözülür, biz de onu sağlayıcıya "kullanıcı adı" diye gönderirdik. Test: `kurcalananDeger_COZULMEZ_sessizceGecmez`.
+2. **Her şifrelemede yeni IV.** Aynı düz metin her seferinde farklı çıktı. Sabit IV olsaydı iki kurumun aynı parolayı kullandığı DB'ye bakmakla anlaşılırdı. Test: `ayniDuzMetin_FARKLI_sifreliMetinUretir`.
+3. **`v1:` sürüm öneki.** Saklanan biçim `v1:<base64 IV>:<base64 şifreli>`. Anahtar rotasyonunda eski kayıtlar v1 ile okunmaya devam eder, yeniler v2 yazılır. Öneksiz rotasyon tüm tabloyu tek seferde dönüştürmeyi gerektirirdi.
+4. **Fail-closed.** Anahtar yoksa şifreleme de çözme de hata verir; yanlış uzunlukta anahtar **açılışta** patlar. "Anahtar yoksa düz metin yaz" kolaylığı korumayı sessizce yok ederdi.
+
+**Sızıntı önlemleri:**
+- Arayüze yalnızca **maske** gider (`••••4821`); 4 karakterden kısa değerler tamamen maskelenir (kısa bir değerin "son 4 hanesi" değerin kendisidir).
+- `GizliAyarService.oku()` düz değer döner ve **yalnızca sunucu içi entegrasyon kodu içindir** — HTTP yanıtına, loga veya hata mesajına ASLA konmaz.
+- Şifreleme hatalarında istisna **sebep zinciri taşımaz**; bazı kütüphaneler istisna mesajında girdi parçası taşıyabiliyor.
+- `GizliAyar.getDegerSifreli()` package-private.
+
+**Kurcalanmış kayıtta sessizce "yok" DENMEZ:** entegrasyonun "hiç yapılandırılmamış" sanması gerçek sorunu gizlerdi.
+
+**⚠️ Henüz controller/ekran YOK — bilinçli.** Hangi alanların saklanacağı SMS sağlayıcısı seçilmeden belli değil (Netgsm'in istediği alanlar İletimerkezi'ninkinden farklı). Genel "anahtar/değer gir" ekranı kullanıcıya ham anahtar yazdırmak olurdu. Sağlayıcı belli olunca ekran kısa iş.
+
+### ⚠️ Saat dilimi tuzağı (V25 düzeltmesi)
+
+Konteynerde `TZ` **ayarlı değil**, JVM UTC çalışıyor. `@Scheduled(cron = ...)` `zone` belirtilmezse "akşam 20:00" aslında **TR 23:00**'te tetiklenir — veliye gece yarısı mail. `BildirimScheduler` artık `zone = "Europe/Istanbul"` kullanıyor ve tarihi `LocalDate.now(TURKIYE)` ile alıyor (UTC günü, gün dönümüne yakın saatlerde yanlış güne bakar).
+
+NOT: `SubscriptionScheduler` zone belirtmez → UTC 03:00 = TR 06:00. Sıralama korunduğu (bildirimlerden önce) ve "düşük trafik" amacı bozulmadığı için değiştirilmedi.
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)

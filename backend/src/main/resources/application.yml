@@ -27,6 +27,13 @@ spring:
 # Keycloak Admin REST API (service account) — kullanici yonetimi modulu (com.artademi.user).
 # Sir KODA GOMULMEZ; admin-client-secret yalnizca ortam degiskeninden gelir (varsayilan YOK).
 artademi:
+  # Kurum bazli gizli ayarlarin (SMS/WhatsApp kimlik bilgileri) sifrelenmesi.
+  # base64, 32 BAYT. Uretmek icin: openssl rand -base64 32
+  # ⚠️ BOS BIRAKILABILIR (uygulama ayaga kalkar) ama o zaman gizli ayar YAZILAMAZ/OKUNAMAZ.
+  # ⚠️ Bu anahtar KAYBOLURSA saklanan tum kimlik bilgileri geri getirilemez — yedekleyin.
+  sifreleme:
+    anahtar: ${ARTADEMI_SIFRELEME_ANAHTARI:}
+
   # Landing iletisim formu (lead) mail hedefi — info@ grubu (Google Workspace).
   mail:
     lead-to: ${LEAD_MAIL_TO:info@artademi.com}

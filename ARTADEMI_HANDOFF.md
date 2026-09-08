@@ -757,11 +757,11 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 - super.admin: tenant'sız, iş uçlarına 400, yalnız `/api/platform/**`; web'de ayrı PlatformApp ağacı (AppShell render edilmez).
 - Tek mesaj = tek istek (kullanıcı tercihi).
 - ⚠️ **`formatDate` sadece `YYYY-MM-DD` içindir.** `Instant` alanı (`olusturulmaTarihi`, `createdAt` …) verirseniz ekranda `07T09:30:47.326471Z.09.2026` gibi bozuk metin çıkar — hata sessizdir, patlamaz. Instant için **`formatDateTime`** kullanın. (Bu tuzak üç kez ısırdı: TenantListPage ve DashboardPage call site'ta `.slice(0,10)` ile yamamıştı, Ön Kayıt listesinde canlıya çıktı. `formatDate` artık defansif ama doğru fonksiyonu seçmek yine de sizin işiniz.)
-- ⚠️ **Sunucu GitHub'dan `git pull` YAPAMIYOR.** `GET /info/refs` 200 döner (depo public) ama nesneleri taşıyan `POST /git-upload-pack` **401** verir; protokol v1'e düşürmek de çözmez. Deploy şu an **git bundle** ile yapılıyor:
+- **Deploy (2026-09-08'den itibaren normal `git pull`):**
   ```bash
-  git bundle create /tmp/x.bundle <sunucudaki-commit>..main
-  scp /tmp/x.bundle root@37.27.241.117:/tmp/
-  ssh root@37.27.241.117 'cd /opt/artademi && git pull /tmp/x.bundle main'
+  ssh root@37.27.241.117 "cd /opt/artademi && git pull && cd infra && \
+    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build backend web"
   ```
-  Sunucunun git geçmişi bozulmaz. Kalıcı çözüm: sunucuya deploy key (SSH) veya token kurmak — kimlik bilgisi gerektirdiği için kullanıcı yapmalı.
+  Sunucuda **SSH deploy key** kurulu (`/root/.ssh/artademi_deploy`, `~/.ssh/config`'te github.com için tanımlı); remote `git@github.com:...`. Anahtar **salt-okunur** ve yalnızca bu depoya kapsamlı — sunucu ele geçirilse bile kod push'lanamaz.
+- ⚠️ **Geçmiş tuzak (çözüldü, tekrarlarsa tanıyın):** HTTPS remote ile sunucu `git pull` yapamıyordu — `GET /info/refs` 200 dönerken nesneleri taşıyan `POST /git-upload-pack` **401** veriyordu (depo public olmasına rağmen); protokol v1'e düşürmek de çözmedi. Çözüm HTTPS'i onarmak değil **SSH'a geçmek** oldu. O dönemde deploy'lar `git bundle` ile yapıldı; artık gerekmiyor. Aynı belirti dönerse önce `ssh -T git@github.com` ile anahtarı doğrulayın.
 - Deploy: compose **`infra/`** altındadır (`/opt/artademi/infra/docker-compose.prod.yml`), repo kökünde DEĞİL. Landing Caddy'den doğrudan servis edilir (pull yeterli), ama **panel ayrı bir `web` konteyneridir** — frontend değişikliği için `up -d --build web` şart.

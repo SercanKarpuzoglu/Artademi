@@ -64,6 +64,18 @@ public interface EnrollmentRepository
     List<Enrollment> findAktifAidatliKayitlar();
 
     /**
+     * Otomatik tahakkukta ATLANACAK ama kurumun haberdar edilmesi gereken kayitlar: AKTIF kayit +
+     * DENEME ogrenci + GRUP tipi + aylikAidat dolu. Ogrenci deneme dersinden sonra elle AKTIF
+     * yapilmadiysa aylarca fatura kesilmez; bu liste o durumu uretim/onizleme sonucunda uyari olarak
+     * gosterir (urun karari 2026-09-09: statu gecisi otomatik DEGIL, uyari ile). Tenant filtreli.
+     */
+    @Query("SELECT e FROM Enrollment e WHERE e.durum = com.artademi.enrollment.EnrollmentDurumu.AKTIF "
+            + "AND e.ogrenci.status = com.artademi.student.StudentStatus.DENEME "
+            + "AND e.grup.tip = com.artademi.group.GrupTipi.GRUP "
+            + "AND e.grup.aylikAidat IS NOT NULL")
+    List<Enrollment> findDenemeAidatliKayitlar();
+
+    /**
      * Grup bazinda AKTIF kayit sayisi (RAPOR — grup doluluk). [grupId, COUNT] satirlari doner; N+1
      * yerine tek sorgu. JPQL oldugu icin global tenant filtresine tabidir. Salt okunur.
      */

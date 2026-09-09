@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { AccrualGenerationResult } from '../../api/types';
 import { formatMoney } from '../../lib/format';
@@ -112,6 +113,34 @@ export default function OtomatikTahakkukTab() {
               </dd>
             </div>
           </dl>
+
+          {result.data.atlananDenemeOgrenciler.length > 0 && (
+            <div className="rounded-[12px] border border-amber/40 bg-amber-soft px-4 py-3 text-[13px]">
+              <p className="font-semibold text-amber">
+                {result.data.atlananDenemeOgrenciler.length} deneme öğrencisi aidat almayacak
+              </p>
+              <p className="mt-1 text-ink-soft">
+                Bu öğrenciler aidatlı bir gruba kayıtlı ama statüleri <b>Deneme</b>; tahakkuk
+                üretilmedi. Deneme dersi bittiyse öğrenciyi <b>Aktif</b> yapıp bu dönemi tekrar
+                üretin (mevcut kayıtlar atlanır, yalnız eksikler eklenir).
+              </p>
+              <ul className="mt-2 space-y-1">
+                {result.data.atlananDenemeOgrenciler.map((d) => (
+                  <li key={`${d.ogrenciId}-${d.grupId}`} className="flex flex-wrap items-center gap-2">
+                    <span>
+                      <b>
+                        {d.ad} {d.soyad}
+                      </b>{' '}
+                      <span className="text-ink-soft">· {d.grupAd}</span>
+                    </span>
+                    <Link to={`/ogrenciler/${d.ogrenciId}/duzenle`} className="text-rasp underline">
+                      Aktif yap
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {result.data.ozet.length > 0 && (
             <table className="data-table">

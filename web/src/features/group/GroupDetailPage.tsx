@@ -4,6 +4,7 @@ import { ApiException } from '../../api/client';
 import type { EnrollmentDurumu, GroupResponse } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
+import StatusBadge from '../../components/StatusBadge';
 import { formatDate, formatMoney } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
 import { useStudents } from '../student/useStudents';
@@ -125,6 +126,8 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
   const [picker, setPicker] = useState('');
   const debouncedPicker = useDebounce(picker, 300);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  // DENEME öğrenci gruba yazıldı: statü kendiliğinden AKTİF olmaz (ürün kararı) — kurum uyarılır.
+  const [denemeUyari, setDenemeUyari] = useState<{ id: number; ad: string } | null>(null);
   const studentsQuery = useStudents({
     q: debouncedPicker.trim() || undefined,
     size: 10,
@@ -133,12 +136,21 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
     debouncedPicker.trim() && canManage ? studentsQuery.data?.data ?? [] : [];
 
   const enrollments = enrollmentsQuery.data?.data ?? [];
+  const denemeSayisi = enrollments.filter(
+    (e) => e.durum === 'AKTIF' && e.ogrenci.status === 'DENEME',
+  ).length;
+  // Aylık aidat yalnız GRUP tipinde üretilir; OZEL derste deneme uyarısının parasal sonucu yok.
+  const aidatliGrup = group.tip === 'GRUP';
 
   async function onAdd(ogrenciId: number) {
     setPickerError(null);
+    setDenemeUyari(null);
     try {
-      await createMut.mutateAsync({ ogrenciId, grupId: groupId });
+      const kayit = await createMut.mutateAsync({ ogrenciId, grupId: groupId });
       setPicker('');
+      if (kayit.ogrenci.status === 'DENEME') {
+        setDenemeUyari({ id: kayit.ogrenci.id, ad: `${kayit.ogrenci.ad} ${kayit.ogrenci.soyad}` });
+      }
     } catch (e) {
       if (e instanceof ApiException) {
         if (e.code === 'CONFLICT') {
@@ -198,8 +210,9 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
                     disabled={createMut.isPending}
                     onClick={() => onAdd(s.id)}
                   >
-                    <span>
+                    <span className="flex items-center gap-2">
                       {s.ad} {s.soyad}
+                      {s.status !== 'AKTIF' && <StatusBadge status={s.status} />}
                     </span>
                     <span className="font-mono text-xs text-ink-soft">{s.tcKimlikNo}</span>
                   </button>
@@ -209,6 +222,32 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
           )}
           {pickerError && <p className="mt-1 text-xs text-red">{pickerError}</p>}
         </div>
+      )}
+
+      {denemeUyari && (
+        <div
+          role="status"
+          className="rounded-[12px] border border-amber/40 bg-amber-soft px-4 py-3 text-[13px]"
+        >
+          <p className="font-semibold text-amber">{denemeUyari.ad} Deneme statüsünde gruba yazıldı</p>
+          <p className="mt-1 text-ink-soft">
+            Statü kendiliğinden değişmez: öğrenci <b>Aktif</b> listesinde görünmez
+            {aidatliGrup && ' ve aylık aidat tahakkuku üretilmez'}. Deneme dersi değil, gerçek
+            kayıtsa{' '}
+            <Link to={`/ogrenciler/${denemeUyari.id}/duzenle`} className="text-rasp underline">
+              öğrenciyi Aktif yapın
+            </Link>
+            .
+          </p>
+        </div>
+      )}
+
+      {!denemeUyari && denemeSayisi > 0 && (
+        <p className="text-[13px] text-amber">
+          Bu grupta {denemeSayisi} deneme öğrencisi var
+          {aidatliGrup ? '; aylık aidat tahakkuku üretilmez' : ''}. Deneme dersi bitenleri Aktif
+          yapmayı unutmayın.
+        </p>
       )}
 
       {enrollmentsQuery.isLoading ? (
@@ -237,9 +276,16 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
             {enrollments.map((e) => (
               <tr key={e.id}>
                 <td>
-                  <b>
-                    {e.ogrenci.ad} {e.ogrenci.soyad}
-                  </b>
+                  <span className="inline-flex items-center gap-2">
+                    <b>
+                      {e.ogrenci.ad} {e.ogrenci.soyad}
+                    </b>
+                    {e.ogrenci.status === 'DENEME' && (
+                      <Link to={`/ogrenciler/${e.ogrenci.id}/duzenle`} title="Aktif yapmak için düzenle">
+                        <StatusBadge status="DENEME" />
+                      </Link>
+                    )}
+                  </span>
                 </td>
                 <td className="text-ink-soft">{formatDate(e.kayitTarihi)}</td>
                 <td>

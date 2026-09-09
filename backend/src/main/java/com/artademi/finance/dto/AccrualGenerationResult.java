@@ -12,6 +12,9 @@ import java.util.List;
  *   <li>{@code toplamTutar} — uretilen (onizlemede: uretilecek) tahakkuklarin toplam tutari,
  *       {@link BigDecimal} scale 2 HALF_UP.</li>
  *   <li>{@code ozet} — uretilen (onizlemede: uretilecek) kalemlerin listesi.</li>
+ *   <li>{@code atlananDenemeOgrenciler} — aidatli gruba AKTIF kayitli ama statusu DENEME oldugu icin
+ *       tahakkuk URETILMEYEN ogrenciler. Uyari amacli: kurum deneme dersinden sonra ogrenciyi elle
+ *       AKTIF yapmayi unutmussa burada gorur. {@code atlananSayisi}'na DAHIL DEGILDIR.</li>
  * </ul>
  */
 public record AccrualGenerationResult(
@@ -19,12 +22,22 @@ public record AccrualGenerationResult(
         int uretilenSayisi,
         int atlananSayisi,
         BigDecimal toplamTutar,
-        List<OzetKalemi> ozet) {
+        List<OzetKalemi> ozet,
+        List<DenemeOgrenci> atlananDenemeOgrenciler) {
 
     /** Uretilen/uretilecek tek bir tahakkuk kalemi (ogrenci+grup+tutar). */
     public record OzetKalemi(
             Long ogrenciId,
             Long grupId,
             BigDecimal tutar) {
+    }
+
+    /** DENEME statusu yuzunden atlanan ogrenci (uyari satiri). */
+    public record DenemeOgrenci(
+            Long ogrenciId,
+            String ad,
+            String soyad,
+            Long grupId,
+            String grupAd) {
     }
 }

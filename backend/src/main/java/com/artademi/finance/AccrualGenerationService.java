@@ -4,6 +4,7 @@ import com.artademi.common.exception.ValidationException;
 import com.artademi.enrollment.Enrollment;
 import com.artademi.enrollment.EnrollmentRepository;
 import com.artademi.finance.dto.AccrualGenerationResult;
+import com.artademi.finance.dto.AccrualGenerationResult.DenemeOgrenci;
 import com.artademi.finance.dto.AccrualGenerationResult.OzetKalemi;
 import com.artademi.group.Group;
 import com.artademi.student.Student;
@@ -26,6 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
  * Her uygun (ogrenci, grup) icin o donemde zaten tahakkuk varsa ATLANIR (idempotent — ayni donem
  * tekrar calistirilinca mukerrer olusmaz), yoksa grubun {@code aylikAidat}'i tutariyla yeni Accrual
  * olusturulur.
+ *
+ * <p>DENEME ogrenci: aidatli gruba kayitli ama statusu DENEME olan ogrenciye tahakkuk uretilmez
+ * (statu gecisi kurumun elle karari — 2026-09-09). Unutulmasin diye bu ogrenciler sonucta
+ * {@code atlananDenemeOgrenciler} olarak ayri listelenir; sayaclara karismaz.
  *
  * <p>PARA KURALI: toplam ve kalem tutarlari {@link BigDecimal}, scale 2, {@link RoundingMode#HALF_UP}.
  */
@@ -83,8 +88,13 @@ public class AccrualGenerationService {
             toplamTutar = toplamTutar.add(tutar);
         }
 
+        List<DenemeOgrenci> deneme = enrollmentRepository.findDenemeAidatliKayitlar().stream()
+                .map(k -> new DenemeOgrenci(k.getOgrenci().getId(), k.getOgrenci().getAd(),
+                        k.getOgrenci().getSoyad(), k.getGrup().getId(), k.getGrup().getAd()))
+                .toList();
+
         return new AccrualGenerationResult(
-                donem, ozet.size(), atlanan, toplamTutar.setScale(2, RoundingMode.HALF_UP), ozet);
+                donem, ozet.size(), atlanan, toplamTutar.setScale(2, RoundingMode.HALF_UP), ozet, deneme);
     }
 
     /** "YYYY-MM" donemini parse/normalize eder; gecersizse 400 VALIDATION_ERROR. */

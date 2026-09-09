@@ -383,6 +383,8 @@ export interface EnrollmentStudentRef {
   id: number;
   ad: string;
   soyad: string;
+  /** DENEME ise grup ekraninda uyari: aidat tahakkuku uretilmez, Aktif listesinde gorunmez. */
+  status: StudentStatus;
 }
 
 /** Kayıt yanitindaki grup referansi (özet). */
@@ -618,6 +620,14 @@ export interface AccrualGenerationResult {
   atlananSayisi: number;
   toplamTutar: string | number;
   ozet: { ogrenciId: number; grupId: number; tutar: string | number }[];
+  /** Aidatli gruba kayitli ama DENEME oldugu icin tahakkuk uretilmeyenler (uyari; sayaclara dahil degil). */
+  atlananDenemeOgrenciler: {
+    ogrenciId: number;
+    ad: string;
+    soyad: string;
+    grupId: number;
+    grupAd: string;
+  }[];
 }
 
 // --- Hakediş (Payout) modülü — backend DTO'lari ile birebir aynalanir. YALNIZCA ADMIN. ---

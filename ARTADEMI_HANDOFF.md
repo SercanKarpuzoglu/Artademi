@@ -462,6 +462,27 @@ Bu ayrım mevcut `YoklamaDurumu` ile birebir örtüşüyor — "haber verdi mi" 
 
 ---
 
+### 7.26 Öğrenci statüsü: DENEME→AKTİF geçişi ELLE (ürün kararı 2026-09-09)
+
+Test ekibi: "Öğrenciyi gruba atıyorum, yoklamasını alıyorum; aktif listesinde çıkmıyor." Doğrulandı
+(kod + kırmızı test + tarayıcı/DB): yeni öğrenci `DENEME` doğar (`StudentMapper.toNewEntity`),
+gruba kayıt ve yoklama statüyü değiştirmez, "Aktif" sekmesi `status=AKTIF` filtresidir ve
+`findAktifAidatliKayitlar` yalnız AKTİF öğrenciye aidat üretir (mali etki: Deneme'de unutulan
+öğrenciye fatura kesilmez).
+
+**Karar: otomatik geçiş YOK; kurum elle Aktif yapar, sistem iki yerde uyarır.**
+- Grup ekranı: `EnrollmentResponse.OgrenciRef.status` eklendi. `GroupDetailPage` — seçicide
+  Aktif olmayanlara rozet; Deneme öğrenci eklenince amber uyarı + "öğrenciyi Aktif yapın" bağlantısı
+  (`/ogrenciler/:id/duzenle`); listede Deneme rozeti (bağlantılı) ve "Bu grupta N deneme öğrencisi var" satırı.
+- Otomatik tahakkuk: `AccrualGenerationResult.atlananDenemeOgrenciler` (id, ad, soyad, grupId, grupAd) —
+  `EnrollmentRepository.findDenemeAidatliKayitlar()` ile; **sayaçlara dahil değil**. Önizleme ve üretimde
+  döner; `OtomatikTahakkukTab` "N deneme öğrencisi aidat almayacak" bloğu + "Aktif yap" bağlantıları.
+  Aktif yapıp aynı dönemi tekrar üretmek yeterli (idempotent, yalnız eksikler eklenir).
+- Regresyon testi: `student/OgrenciAktiflesmeTest` — DENEME'de kalma, kayıt yanıtında statü, önizleme/üretim
+  uyarı listesi, `PATCH /api/students/{id}/status` AKTİF sonrası üretim.
+- Reddedilen seçenekler (tekrar gündeme gelirse): (A) kayıt=AKTİF — deneme dersine gelen de faturalanır;
+  (B) kayıt formunda "deneme dersi" kutusu — en dengeli ama kurum akışına ek alan.
+
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
 
 | Alan | ADMIN | FRONTDESK | FRONTDESK_ACCOUNTING | TEACHER | SUPER_ADMIN |
@@ -756,6 +777,7 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 - **Lina (tenant A) ASKIDA'ya alınmaz** — ana dev tenant; askıya alma testleri Anka/yan tenant'larla.
 - super.admin: tenant'sız, iş uçlarına 400, yalnız `/api/platform/**`; web'de ayrı PlatformApp ağacı (AppShell render edilmez).
 - Tek mesaj = tek istek (kullanıcı tercihi).
+- **DENEME→AKTİF otomatik DEĞİL** (ürün kararı, §7.26). "Aktif listede çıkmıyor" şikâyeti gelirse hata değil; uyarılar grup ekranı + Otomatik Tahakkuk'ta. Statü `PATCH /api/students/{id}/status`.
 - ⚠️ **`formatDate` sadece `YYYY-MM-DD` içindir.** `Instant` alanı (`olusturulmaTarihi`, `createdAt` …) verirseniz ekranda `07T09:30:47.326471Z.09.2026` gibi bozuk metin çıkar — hata sessizdir, patlamaz. Instant için **`formatDateTime`** kullanın. (Bu tuzak üç kez ısırdı: TenantListPage ve DashboardPage call site'ta `.slice(0,10)` ile yamamıştı, Ön Kayıt listesinde canlıya çıktı. `formatDate` artık defansif ama doğru fonksiyonu seçmek yine de sizin işiniz.)
 - **Deploy (2026-09-08'den itibaren normal `git pull`):**
   ```bash

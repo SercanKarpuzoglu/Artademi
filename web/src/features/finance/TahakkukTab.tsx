@@ -78,6 +78,11 @@ export default function TahakkukTab() {
                     <td className="text-ink-soft">{a.grup?.ad ?? '—'}</td>
                     <td className="t-right">
                       <span className="amount">{formatMoney(a.tutar)} ₺</span>
+                      {a.indirimTutar !== null && a.indirimTutar !== undefined && Number(a.indirimTutar) > 0 && (
+                        <div className="text-[11.5px] text-ink-soft" title={a.indirimAciklama ?? undefined}>
+                          brüt {formatMoney(a.brutTutar ?? a.tutar)} − indirim {formatMoney(a.indirimTutar)}
+                        </div>
+                      )}
                     </td>
                     <td className="text-ink-soft">
                       <div className="flex items-center justify-between gap-2">

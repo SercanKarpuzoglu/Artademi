@@ -14,7 +14,11 @@ public record AccrualResponse(
         String donem,
         String aciklama,
         OgrenciRef ogrenci,
-        GrupRef grup) {
+        GrupRef grup,
+        /** Indirim uygulanmis tahakkukta brut (grup ucreti); yoksa null. */
+        BigDecimal brutTutar,
+        BigDecimal indirimTutar,
+        String indirimAciklama) {
 
     /** Ogrenci ozeti (id + ad + soyad). */
     public record OgrenciRef(Long id, String ad, String soyad) {
@@ -37,6 +41,9 @@ public record AccrualResponse(
                 a.getDonem(),
                 a.getAciklama(),
                 ogrenci,
-                grup);
+                grup,
+                a.getBrutTutar(),
+                a.getIndirimTutar(),
+                a.getIndirimAciklama());
     }
 }

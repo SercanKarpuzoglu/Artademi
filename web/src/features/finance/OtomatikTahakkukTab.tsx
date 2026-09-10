@@ -148,7 +148,9 @@ export default function OtomatikTahakkukTab() {
                 <tr>
                   <th>Öğrenci ID</th>
                   <th>Grup ID</th>
-                  <th className="t-right">Tutar</th>
+                  <th className="t-right">Brüt</th>
+                  <th className="t-right">İndirim</th>
+                  <th className="t-right">Net</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,6 +158,16 @@ export default function OtomatikTahakkukTab() {
                   <tr key={`${o.ogrenciId}-${o.grupId}-${i}`}>
                     <td>{o.ogrenciId}</td>
                     <td>{o.grupId}</td>
+                    <td className="t-right text-ink-soft">
+                      <span className="amount">{formatMoney(o.brut)} ₺</span>
+                    </td>
+                    <td className="t-right" title={o.indirimAciklama ?? undefined}>
+                      {o.indirim !== null && o.indirim !== undefined && Number(o.indirim) > 0 ? (
+                        <span className="amount text-green">− {formatMoney(o.indirim)} ₺</span>
+                      ) : (
+                        <span className="text-ink-soft">—</span>
+                      )}
+                    </td>
                     <td className="t-right">
                       <span className="amount">{formatMoney(o.tutar)} ₺</span>
                     </td>

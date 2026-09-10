@@ -20,7 +20,8 @@ export type SilinebilirTur =
   | 'telafi'
   | 'basvuru'
   | 'ders-saati'
-  | 'yoklama-oturumu';
+  | 'yoklama-oturumu'
+  | 'indirim';
 
 export const TUR_ETIKET: Record<SilinebilirTur, string> = {
   ogrenci: 'Öğrenci',
@@ -41,6 +42,7 @@ export const TUR_ETIKET: Record<SilinebilirTur, string> = {
   basvuru: 'Başvuru',
   'ders-saati': 'Ders saati',
   'yoklama-oturumu': 'Yoklama oturumu',
+  indirim: 'İndirim',
 };
 
 export interface SilmeOnizleme {

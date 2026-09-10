@@ -152,4 +152,38 @@ public class Accrual extends TenantAware implements SoftDeletable {
     public void setSilen(String silen) {
         this.silen = silen;
     }
+
+    // --- Dalga D: indirim izi. tutar NET'tir; brut ve indirim ekranda "500 - 75 = 425" icin saklanir. ---
+    @Column(name = "brut_tutar", precision = 12, scale = 2)
+    private BigDecimal brutTutar;
+
+    @Column(name = "indirim_tutar", precision = 12, scale = 2)
+    private BigDecimal indirimTutar;
+
+    @Column(name = "indirim_aciklama", length = 500)
+    private String indirimAciklama;
+
+    public BigDecimal getBrutTutar() {
+        return brutTutar;
+    }
+
+    public void setBrutTutar(BigDecimal brutTutar) {
+        this.brutTutar = brutTutar;
+    }
+
+    public BigDecimal getIndirimTutar() {
+        return indirimTutar;
+    }
+
+    public void setIndirimTutar(BigDecimal indirimTutar) {
+        this.indirimTutar = indirimTutar;
+    }
+
+    public String getIndirimAciklama() {
+        return indirimAciklama;
+    }
+
+    public void setIndirimAciklama(String indirimAciklama) {
+        this.indirimAciklama = indirimAciklama;
+    }
 }

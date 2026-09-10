@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.indirim.IndirimService;
+import com.artademi.indirim.IndirimSonucu;
 
 /**
  * Otomatik aylik tahakkuk uretimi. Mevcut {@link Accrual} kayitlari uretilir; YENI ENTITY YOK.
@@ -39,11 +41,13 @@ public class AccrualGenerationService {
 
     private final EnrollmentRepository enrollmentRepository;
     private final AccrualRepository accrualRepository;
+    private final IndirimService indirimService;
 
     public AccrualGenerationService(EnrollmentRepository enrollmentRepository,
-            AccrualRepository accrualRepository) {
+            AccrualRepository accrualRepository, IndirimService indirimService) {
         this.enrollmentRepository = enrollmentRepository;
         this.accrualRepository = accrualRepository;
+        this.indirimService = indirimService;
     }
 
     /** Donem icin tahakkuklari URETIR ve kaydeder. Ayni donem tekrar calisirsa mukerrer olusmaz. */
@@ -74,17 +78,28 @@ public class AccrualGenerationService {
                 atlanan++;
                 continue;
             }
-            BigDecimal tutar = grup.getAylikAidat().setScale(2, RoundingMode.HALF_UP);
+            BigDecimal brut = grup.getAylikAidat().setScale(2, RoundingMode.HALF_UP);
+            // Dalga D: ogrenciye ozel indirim donem basinda gecerliyse net = brut - indirim.
+            IndirimSonucu indirim = indirimService.hesapla(ogrenci.getId(), grup.getId(),
+                    YearMonth.parse(donem).atDay(1), brut);
+            BigDecimal tutar = indirim.net();
             if (persist) {
                 Accrual accrual = Accrual.create();
                 accrual.setOgrenci(ogrenci);
                 accrual.setGrup(grup);
                 accrual.setDonem(donem);
                 accrual.setTutar(tutar);
-                accrual.setAciklama("Otomatik aylık tahakkuk - " + donem);
+                accrual.setAciklama("Otomatik aylık tahakkuk - " + donem
+                        + (indirim.var() ? " (indirim: " + indirim.aciklama() + ")" : ""));
+                if (indirim.var()) {
+                    accrual.setBrutTutar(indirim.brut());
+                    accrual.setIndirimTutar(indirim.indirim());
+                    accrual.setIndirimAciklama(indirim.aciklama());
+                }
                 accrualRepository.save(accrual);
             }
-            ozet.add(new OzetKalemi(ogrenci.getId(), grup.getId(), tutar));
+            ozet.add(new OzetKalemi(ogrenci.getId(), grup.getId(), tutar, indirim.brut(),
+                    indirim.var() ? indirim.indirim() : null, indirim.aciklama()));
             toplamTutar = toplamTutar.add(tutar);
         }
 

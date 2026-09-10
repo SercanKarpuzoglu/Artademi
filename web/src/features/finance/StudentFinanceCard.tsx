@@ -1,6 +1,7 @@
 import { ApiException } from '../../api/client';
 import { formatDate, formatMoney } from '../../lib/format';
 import { YONTEM_LABEL } from './financeDisplay';
+import OgrenciIndirimleri from './OgrenciIndirimleri';
 import { useStudentBalance, useStudentFinance } from './useFinance';
 
 /**
@@ -88,6 +89,8 @@ export default function StudentFinanceCard({ studentId }: { studentId: number })
           )}
         </div>
       )}
+
+      <OgrenciIndirimleri studentId={studentId} />
     </section>
   );
 }

@@ -566,11 +566,52 @@ export interface FinanceGroupRef {
 /** Tahakkuk yaniti — backend AccrualResponse. Para alanlari number VEYA string gelebilir. */
 export interface AccrualResponse {
   id: number;
+  /** NET tutar (indirim düşülmüş). */
   tutar: string | number;
   donem: string | null;
   aciklama: string | null;
   ogrenci: FinanceStudentRef;
   grup: FinanceGroupRef | null;
+  /** İndirim uygulanmışsa brüt / indirim / açıklama; yoksa null. */
+  brutTutar: string | number | null;
+  indirimTutar: string | number | null;
+  indirimAciklama: string | null;
+}
+
+// --- İndirim / kampanya (Dalga D) — backend com.artademi.indirim ---
+export type IndirimTipi = 'ORAN' | 'TUTAR';
+export interface IndirimResponse {
+  id: number;
+  ad: string;
+  tip: IndirimTipi;
+  deger: string | number;
+  /** "%15" / "500 ₺" */
+  etiket: string;
+  aciklama: string | null;
+  aktif: boolean;
+}
+export interface IndirimInput {
+  ad: string;
+  tip: IndirimTipi;
+  deger: string;
+  aciklama?: string;
+}
+export interface OgrenciIndirimiResponse {
+  id: number;
+  indirim: IndirimResponse;
+  grupId: number | null;
+  grupAd: string | null;
+  baslangic: string;
+  bitis: string | null;
+  aciklama: string | null;
+  aktif: boolean;
+}
+export interface OgrenciIndirimiInput {
+  indirimId: number;
+  grupId?: number;
+  baslangic?: string;
+  bitis?: string;
+  aciklama?: string;
 }
 
 /**
@@ -666,7 +707,15 @@ export interface AccrualGenerationResult {
   uretilenSayisi: number;
   atlananSayisi: number;
   toplamTutar: string | number;
-  ozet: { ogrenciId: number; grupId: number; tutar: string | number }[];
+  ozet: {
+    ogrenciId: number;
+    grupId: number;
+    /** NET */
+    tutar: string | number;
+    brut: string | number;
+    indirim: string | number | null;
+    indirimAciklama: string | null;
+  }[];
   /** Aidatli gruba kayitli ama DENEME oldugu icin tahakkuk uretilmeyenler (uyari; sayaclara dahil degil). */
   atlananDenemeOgrenciler: {
     ogrenciId: number;

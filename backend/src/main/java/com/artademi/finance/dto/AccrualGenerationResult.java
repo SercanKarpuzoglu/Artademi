@@ -29,7 +29,11 @@ public record AccrualGenerationResult(
     public record OzetKalemi(
             Long ogrenciId,
             Long grupId,
-            BigDecimal tutar) {
+            /** NET tutar (indirim dusulmus). */
+            BigDecimal tutar,
+            BigDecimal brut,
+            BigDecimal indirim,
+            String indirimAciklama) {
     }
 
     /** DENEME statusu yuzunden atlanan ogrenci (uyari satiri). */

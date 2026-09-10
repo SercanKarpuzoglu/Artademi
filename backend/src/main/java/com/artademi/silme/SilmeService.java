@@ -59,6 +59,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.indirim.IndirimTanimi;
+import com.artademi.indirim.IndirimTanimiRepository;
+import com.artademi.indirim.OgrenciIndirimiRepository;
 
 /**
  * Yumusak silme merkezi (Dalga B-3, urun karari 2026-09-10: "Sil her sayfada, yalniz yonetici, uyari ile,
@@ -100,6 +103,8 @@ public class SilmeService {
     private final AttendanceSessionRepository sessions;
     private final AttendanceEntryRepository entries;
     private final EnrollmentRepository enrollments;
+    private final IndirimTanimiRepository indirimler;
+    private final OgrenciIndirimiRepository ogrenciIndirimleri;
 
     public SilmeService(EntityManager em, StudentRepository students, GroupRepository groups,
             TeacherRepository teachers, RoomRepository rooms, BranchRepository branches,
@@ -109,7 +114,8 @@ public class SilmeService {
             DersPaketiRepository paketler, PaketKullanimRepository paketKullanimlari,
             TelafiHakkiRepository telafiler, BasvuruRepository basvurular, ScheduleRepository schedules,
             AttendanceSessionRepository sessions, AttendanceEntryRepository entries,
-            EnrollmentRepository enrollments) {
+            EnrollmentRepository enrollments, IndirimTanimiRepository indirimler,
+            OgrenciIndirimiRepository ogrenciIndirimleri) {
         this.em = em;
         this.students = students;
         this.groups = groups;
@@ -133,6 +139,8 @@ public class SilmeService {
         this.sessions = sessions;
         this.entries = entries;
         this.enrollments = enrollments;
+        this.indirimler = indirimler;
+        this.ogrenciIndirimleri = ogrenciIndirimleri;
     }
 
     // ---------- onizleme ----------
@@ -291,6 +299,14 @@ public class SilmeService {
                     etkiler.add(satir + " yoklama satırı silinecek");
                 }
             }
+            case INDIRIM -> {
+                IndirimTanimi i = bul(tur, indirimler.findScopedById(id));
+                ad = i.getAd();
+                long atama = ogrenciIndirimleri.countAktifByIndirim(id);
+                if (atama > 0) {
+                    engel = atama + " öğrenciye atanmış; önce atamaları bitirin";
+                }
+            }
             default -> throw new NotFoundException("Bilinmeyen kayıt türü");
         }
         return new SilmeOnizleme(tur.yol(), id, ad, engel == null, engel, etkiler, bagli);
@@ -349,6 +365,7 @@ public class SilmeService {
                 }
                 damgala(sessions.findScopedById(id), kim);
             }
+            case INDIRIM -> damgala(indirimler.findScopedById(id), kim);
             default -> throw new NotFoundException("Bilinmeyen kayıt türü");
         }
     }

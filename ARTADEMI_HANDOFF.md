@@ -860,6 +860,26 @@ bozulmaz (`DalgaBSilmeTest` bunu sabitler). Geri alınabilir.
   görür); `GET /api/attendance-sessions?from&to` eklendi. Bildirim Ayarları'na toggle.
 - Testler: `dalga/DalgaCTest` (kilit, İZİNLİ kısıtı, bildirim hedefleme + tenant, yoklama alınmadı işi).
 
+### 7.31 Dalga D — indirim / kampanya (✅ 2026-09-10)
+
+- **V34**: `indirim_tanimi` (ad, tip ORAN|TUTAR, deger, aktif; yumuşak silinebilir), `ogrenci_indirimi` (öğrenci, tanım,
+  grup NULL = tüm gruplar, başlangıç/bitiş, aktif), `accrual.brut_tutar/indirim_tutar/indirim_aciklama`.
+- **Hesap kuralı** (`IndirimService.hesapla`): dönemin ilk gününde geçerli atamalar → ORAN'lar toplanıp brüt üzerinden bir
+  kez uygulanır, TUTAR'lar eklenir; indirim brütü aşamaz (net ≥ 0); scale 2 HALF_UP. `accrual.tutar` **NET**'tir (tüm
+  tüketiciler — bakiye, makbuz, raporlar — net görür); brüt/indirim/açıklama ayrıca saklanır.
+- Uygulama noktası: yalnız **otomatik aylık tahakkuk** (`AccrualGenerationService`, önizleme dahil — `OzetKalemi.brut/
+  indirim/indirimAciklama`). Elle tahakkuk, ders paketi ve grup transferi farkı indirim uygulamaz (bilinçli; gerekirse
+  aynı `hesapla` çağrılır).
+- Uçlar (`IndirimController`): `/api/indirimler` GET (ADMIN+muhasebe) / POST-PUT-PATCH durum (ADMIN);
+  `/api/students/{id}/indirimler` GET+POST, `PATCH /api/ogrenci-indirimleri/{id}/bitir` (ADMIN+muhasebe; ön büro 403).
+  Atama silinmez, "bitir" (aktif=false, bitiş=bugün) — geçmiş tahakkukların gerekçesi kalsın. `SilinebilirTur.INDIRIM`:
+  aktif ataması olan tanım silinemez.
+- Web: Finans → **İndirimler** sekmesi (`IndirimTab`, tanım CRUD, ADMIN yazar); öğrenci detayı Finans kartında
+  **İndirimler** bölümü (`OgrenciIndirimleri`: tanım seç, grup seç veya tüm gruplar, tarih aralığı, Bitir); Tahakkuklar
+  satırında "brüt X − indirim Y"; Otomatik Tahakkuk önizlemesinde Brüt / İndirim / Net sütunları.
+- Testler: `dalga/DalgaDTest` (oran+tutar, önizleme=üretim, bitir → sonraki ay, pasif tanım, tarih aralığı, brütü aşma,
+  doğrulama, yetki, silme engeli, tenant).
+
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 
 Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:
@@ -873,6 +893,6 @@ buna gömülür) · **İzinli yalnız yönetici düzeltmesinde** · sıra **A→
 | A | Yönetici Paneli açılır alt menü (Eğitmenler · Ders Ücretleri/Gruplar; Yoklama Listesi C'de eklenecek); Öğretmen→Eğitmen; öğrenci detayından gruba ekle; eğitmen girişi = Yoklama + Haftalık Program; Ödemeler→Gelirler (+ürün satış gelirleri); stok alış fiyatı + basit giriş/çıkış | ✅ 2026-09-10 (bkz. §7.27) |
 | B | Öğrenci listesi sütunları (gruplar, bakiye, statü, devam serisi −N); kara liste (+açıklama, tekrar kayıtta popup); yönetici yumuşak silme her sayfada | ✅ 2026-09-10 (§7.28, §7.29) |
 | C | Yeni yoklama ekranı (dikey liste, renkli Geldi/Gelmedi, Kaydet sonrası eğitmen kilidi, admin düzeltir); Yoklama Listesi sayfası; "yoklama alındı" uygulama içi anlık bildirim (zil + 30 sn sorgu + toast); "yoklama alınmadı" eğitmen bildirimi (e-posta şimdi, kanal soyutlaması WhatsApp'a hazır) | ✅ 2026-09-10 (§7.30) |
-| D | İndirim/kampanya tanımı (oran/tutar) + öğrenciye özel atama (grup, tarih aralığı) + tahakkukta brüt−indirim=net, makbuzda görünür | ⏳ |
+| D | İndirim/kampanya tanımı (oran/tutar) + öğrenciye özel atama (grup, tarih aralığı) + tahakkukta brüt−indirim=net (Tahakkuklar listesinde ve önizlemede görünür) | ✅ 2026-09-10 (§7.31) |
 | E | Dönem tanımı (branş/grup, 1./2. dönem), grup ücretleri (dönemlik/aylık), kayıtta dönemlik/aylık seçimi, program × dönem = kredi (örn. 22 / 4), öğrenci detayında kalan kredi, kredi bitince/dönem dışı derse gelince admin+asistan uyarısı. **Önce 1 sayfalık tasarım onayı.** | ⏳ |
 | F | Raporlar grafikli yenileme (pasta/çubuk/trend); eğitmen kalitesi paneli (yük, öğrenci sayısı, katılım oranı) | ⏳ |

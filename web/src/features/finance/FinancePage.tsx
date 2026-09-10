@@ -5,11 +5,12 @@ import GiderTab from './GiderTab';
 import KasaTab from './KasaTab';
 import PaketTab from './PaketTab';
 import GelirTab from './GelirTab';
+import IndirimTab from './IndirimTab';
 import OtomatikTahakkukTab from './OtomatikTahakkukTab';
 import TahakkukTab from './TahakkukTab';
 import TedarikciTab from './TedarikciTab';
 
-type TabKey = 'tahakkuk' | 'odeme' | 'gider' | 'paket' | 'kasa' | 'tedarikci' | 'otomatik';
+type TabKey = 'tahakkuk' | 'odeme' | 'gider' | 'paket' | 'indirim' | 'kasa' | 'tedarikci' | 'otomatik';
 
 export default function FinancePage() {
   const { hasRole } = useAuth();
@@ -22,6 +23,7 @@ export default function FinancePage() {
     { key: 'odeme', label: 'Gelirler' },
     { key: 'gider', label: 'Giderler' },
     { key: 'paket', label: 'Ders Paketleri' },
+    { key: 'indirim', label: 'İndirimler' },
     { key: 'kasa', label: 'Kasalar' },
     { key: 'tedarikci', label: 'Tedarikçiler' },
     ...(isAdmin ? [{ key: 'otomatik' as TabKey, label: 'Otomatik Tahakkuk' }] : []),
@@ -53,6 +55,7 @@ export default function FinancePage() {
       {tab === 'odeme' && <GelirTab />}
       {tab === 'gider' && <GiderTab />}
       {tab === 'paket' && <PaketTab />}
+      {tab === 'indirim' && <IndirimTab />}
       {tab === 'kasa' && <KasaTab />}
       {tab === 'tedarikci' && <TedarikciTab />}
       {tab === 'otomatik' && isAdmin && <OtomatikTahakkukTab />}

@@ -197,6 +197,7 @@ export default function DonusturModal({
       <KaraListeUyariModal
         ogrenciAd={`${basvuru.ad} ${basvuru.soyad}`}
         sebep={karaSebep}
+        eylem="donustur"
         pending={mutation.isPending}
         onVazgec={() => setKaraSebep(null)}
         onYineDeEkle={() => {

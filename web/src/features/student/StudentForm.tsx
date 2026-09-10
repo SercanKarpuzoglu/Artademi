@@ -234,6 +234,7 @@ export default function StudentForm() {
       <KaraListeUyariModal
         ogrenciAd={`${karaUyari.values.ad} ${karaUyari.values.soyad}`}
         sebep={karaUyari.sebep}
+        eylem="kayit"
         pending={createMut.isPending}
         onVazgec={() => setKaraUyari(null)}
         onYineDeEkle={() => onSubmit(karaUyari.values, true)}

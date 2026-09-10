@@ -9,7 +9,7 @@ export interface GetTeachersParams {
   size?: number;
 }
 
-/** Öğretmen listesi (sayfali). Zarfin tamamini dondurur (data + meta). Tenant JWT'den okunur. */
+/** Eğitmen listesi (sayfali). Zarfin tamamini dondurur (data + meta). Tenant JWT'den okunur. */
 export async function getTeachers(
   params: GetTeachersParams = {},
 ): Promise<ApiResponse<TeacherResponse[]>> {
@@ -17,19 +17,19 @@ export async function getTeachers(
   return res.data;
 }
 
-/** Tek öğretmen (detay/duzenleme icin). */
+/** Tek eğitmen (detay/duzenleme icin). */
 export async function getTeacher(id: number): Promise<TeacherResponse> {
   const res = await api.get<ApiResponse<TeacherResponse>>(`/api/teachers/${id}`);
   return res.data.data;
 }
 
-/** Yeni öğretmen olusturur. */
+/** Yeni eğitmen olusturur. */
 export async function createTeacher(payload: TeacherInput): Promise<TeacherResponse> {
   const res = await api.post<ApiResponse<TeacherResponse>>('/api/teachers', payload);
   return res.data.data;
 }
 
-/** Öğretmen gunceller. */
+/** Eğitmen gunceller. */
 export async function updateTeacher(id: number, payload: TeacherInput): Promise<TeacherResponse> {
   const res = await api.put<ApiResponse<TeacherResponse>>(`/api/teachers/${id}`, payload);
   return res.data.data;

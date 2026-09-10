@@ -45,7 +45,7 @@ public class TenantAuditInterceptor implements HandlerInterceptor {
         MODUL.put("schedules", "Program");
         MODUL.put("branches", "Branş");
         MODUL.put("rooms", "Salon");
-        MODUL.put("teachers", "Öğretmen");
+        MODUL.put("teachers", "Eğitmen");
         MODUL.put("accruals", "Tahakkuk");
         MODUL.put("payments", "Tahsilat");
         MODUL.put("expenses", "Gider");

@@ -8,7 +8,7 @@ import { currentMonth, useTeacherPayouts } from './useReports';
 const inputClass =
   'w-full rounded-[10px] border border-line bg-card px-3 py-2 text-[13.5px] focus:border-rasp focus:outline-none focus:ring-1 focus:ring-rasp';
 
-/** Öğretmen Hakediş sekmesi — YALNIZCA ADMIN. Salt okunur. */
+/** Eğitmen Hakediş sekmesi — YALNIZCA ADMIN. Salt okunur. */
 export default function TeacherPayoutsTab() {
   const [donem, setDonem] = useState(currentMonth());
   const query = useTeacherPayouts(donem.trim());
@@ -49,7 +49,7 @@ export default function TeacherPayoutsTab() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Öğretmen</th>
+                  <th>Eğitmen</th>
                   <th>Tip</th>
                   <th className="t-right">Tutar</th>
                   <th>Durum</th>

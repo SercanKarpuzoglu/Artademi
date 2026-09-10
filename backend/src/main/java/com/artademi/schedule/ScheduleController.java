@@ -4,6 +4,8 @@ import com.artademi.common.ApiResponse;
 import com.artademi.common.PageMeta;
 import com.artademi.schedule.dto.CreateScheduleRequest;
 import com.artademi.schedule.dto.ScheduleResponse;
+import com.artademi.teacher.CurrentTeacherResolver;
+import com.artademi.teacher.Teacher;
 import com.artademi.schedule.dto.UpdateActiveRequest;
 import com.artademi.schedule.dto.UpdateScheduleRequest;
 import jakarta.validation.Valid;
@@ -42,9 +44,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class ScheduleController {
 
     private final ScheduleService service;
+    private final CurrentTeacherResolver currentTeacherResolver;
 
-    public ScheduleController(ScheduleService service) {
+    public ScheduleController(ScheduleService service, CurrentTeacherResolver currentTeacherResolver) {
         this.service = service;
+        this.currentTeacherResolver = currentTeacherResolver;
+    }
+
+    /**
+     * Oturum sahibi egitmenin haftalik programi (aktif gruplarinin aktif ders saatleri). YALNIZCA
+     * TEACHER; ofis rolleri genel listeyi kullanir. Egitmen eslesmesi yoksa 200 + [].
+     */
+    @GetMapping("/mine")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ApiResponse<List<ScheduleResponse>> mine() {
+        Long ogretmenId = currentTeacherResolver.current().map(Teacher::getId).orElse(null);
+        return ApiResponse.ok(service.mine(ogretmenId));
     }
 
     /** Yeni program olustur (aktif true), 201. */

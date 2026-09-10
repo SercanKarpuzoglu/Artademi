@@ -34,7 +34,7 @@ const inputClass =
   'w-full rounded-[10px] border border-line bg-card px-3 py-2 text-[13.5px] focus:border-rasp focus:outline-none focus:ring-1 focus:ring-rasp';
 
 /**
- * Geri bildirim / destek sayfası (giriş yapmış HER rol — öğretmen de sorun bildirebilmeli).
+ * Geri bildirim / destek sayfası (giriş yapmış HER rol — eğitmen de sorun bildirebilmeli).
  * Kimlik oturumdan alınır; kullanıcıya ad/kurum sorulmaz. Mesaj info@artademi.com'a düşer.
  */
 export default function GeriBildirimPage() {

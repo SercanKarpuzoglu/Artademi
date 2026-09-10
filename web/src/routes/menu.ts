@@ -2,6 +2,7 @@ import {
   BarChart3,
   BellRing,
   CalendarClock,
+  CalendarDays,
   ClipboardCheck,
   ClipboardList,
   Coins,
@@ -13,6 +14,7 @@ import {
   ScrollText,
   Package,
   ShieldCheck,
+  SlidersHorizontal,
   Store,
   Tags,
   UserCog,
@@ -37,7 +39,17 @@ export interface MenuItem {
   roles: readonly Role[];
   /** true ise gerçek sayfa; false ise "Yakında" placeholder (bu job kapsamı). */
   hazir?: boolean;
+  /**
+   * Açılır alt menü: aynı {@code grup} adını taşıyan ardışık öğeler tek başlık altında toplanır
+   * ("Yönetici Paneli"); başlığa tıklayınca açılır, içindeki sayfa aktifse kendiliğinden açık.
+   */
+  grup?: string;
 }
+
+/** Açılır grup başlıklarının ikonları (menü tek kaynak). */
+export const GRUP_IKON: Record<string, LucideIcon> = {
+  'Yönetici Paneli': SlidersHorizontal,
+};
 
 const HEPSI: readonly Role[] = [
   Role.ADMIN,
@@ -49,24 +61,59 @@ const HEPSI: readonly Role[] = [
 
 const OFIS: readonly Role[] = [Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING];
 
+const OFIS_VE_EGITMEN: readonly Role[] = [
+  Role.ADMIN,
+  Role.FRONTDESK,
+  Role.FRONTDESK_ACCOUNTING,
+  Role.TEACHER,
+];
+
+const YONETICI_PANELI = 'Yönetici Paneli';
+
 export const MENU: readonly MenuItem[] = [
-  { label: 'Genel Bakış', path: '/dashboard', icon: LayoutDashboard, section: 'Genel', roles: HEPSI, hazir: true },
+  // Eğitmen girişinde yalnız Yoklama + Haftalık Program görünür (Genel Bakış ofis rollerine).
+  { label: 'Genel Bakış', path: '/dashboard', icon: LayoutDashboard, section: 'Genel', roles: OFIS, hazir: true },
   { label: 'Öğrenciler', path: '/ogrenciler', icon: Users, section: 'Eğitim', roles: OFIS, hazir: true },
-  { label: 'Gruplar / Kayıt', path: '/gruplar', icon: GraduationCap, section: 'Eğitim', roles: OFIS, hazir: true },
   { label: 'Ön Kayıt', path: '/basvurular', icon: ClipboardList, section: 'Eğitim', roles: OFIS, hazir: true },
   {
     label: 'Yoklama',
     path: '/yoklama',
     icon: ClipboardCheck,
     section: 'Eğitim',
-    roles: [Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING, Role.TEACHER],
+    roles: OFIS_VE_EGITMEN,
+    hazir: true,
+  },
+  {
+    label: 'Haftalık Program',
+    path: '/program',
+    icon: CalendarDays,
+    section: 'Eğitim',
+    roles: OFIS_VE_EGITMEN,
     hazir: true,
   },
   { label: 'Telafi Dersleri', path: '/telafi', icon: CalendarClock, section: 'Eğitim', roles: OFIS, hazir: true },
+  // Yönetici Paneli — açılır alt menü (9 Eylül talebi): Eğitmenler, Ders Ücretleri / Gruplar.
+  {
+    label: 'Eğitmenler',
+    path: '/egitmenler',
+    icon: UserCog,
+    section: YONETICI_PANELI,
+    grup: YONETICI_PANELI,
+    roles: OFIS,
+    hazir: true,
+  },
+  {
+    label: 'Ders Ücretleri / Gruplar',
+    path: '/gruplar',
+    icon: GraduationCap,
+    section: YONETICI_PANELI,
+    grup: YONETICI_PANELI,
+    roles: OFIS,
+    hazir: true,
+  },
   { label: 'Şubeler', path: '/subeler', icon: Store, section: 'Tanımlar', roles: OFIS, hazir: true },
   { label: 'Branşlar', path: '/branslar', icon: Tags, section: 'Tanımlar', roles: OFIS, hazir: true },
   { label: 'Salonlar', path: '/salonlar', icon: DoorOpen, section: 'Tanımlar', roles: OFIS, hazir: true },
-  { label: 'Öğretmenler', path: '/ogretmenler', icon: UserCog, section: 'Tanımlar', roles: OFIS, hazir: true },
   {
     label: 'Finans',
     path: '/finans',

@@ -28,7 +28,7 @@ public record UpdateGroupRequest(
         @NotNull(message = "Branş zorunludur")
         Long bransId,
 
-        @NotNull(message = "Öğretmen zorunludur")
+        @NotNull(message = "Eğitmen zorunludur")
         Long ogretmenId,
 
         Long salonId,

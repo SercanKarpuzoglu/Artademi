@@ -132,7 +132,7 @@ public class VeriDisaAktarmaService {
 
                 İçerik:
                   01 Öğrenciler          09 Yoklama girişleri
-                  02 Öğretmenler         10 Tahakkuklar
+                  02 Eğitmenler         10 Tahakkuklar
                   03 Branşlar            11 Tahsilatlar
                   04 Salonlar            12 Giderler
                   05 Gruplar             13 Hakedişler
@@ -187,7 +187,7 @@ public class VeriDisaAktarmaService {
 
     private byte[] gruplar() throws IOException {
         CsvYazici c = new CsvYazici();
-        c.satir("Id", "Ad", "Tip", "Branş", "Öğretmen", "Salon", "Seviye", "Aylık Aidat",
+        c.satir("Id", "Ad", "Tip", "Branş", "Eğitmen", "Salon", "Seviye", "Aylık Aidat",
                 "Ders Başı Ücret", "Hakediş Tipi");
         groups.findAll().forEach(g -> c.satir(g.getId(), g.getAd(), g.getTip(),
                 g.getBrans() == null ? null : g.getBrans().getAd(),
@@ -262,7 +262,7 @@ public class VeriDisaAktarmaService {
 
     private byte[] hakedisler() throws IOException {
         CsvYazici c = new CsvYazici();
-        c.satir("Id", "Öğretmen", "Dönem", "Hakediş Tipi", "Tutar", "Ders Sayısı", "Birim Ücret",
+        c.satir("Id", "Eğitmen", "Dönem", "Hakediş Tipi", "Tutar", "Ders Sayısı", "Birim Ücret",
                 "Toplam Tahsilat", "KDV Oranı", "Net Ciro", "Oran", "Durum", "Ödeme Tarihi");
         payouts.findAll().forEach(p -> c.satir(p.getId(),
                 adSoyad(p.getOgretmen().getAd(), p.getOgretmen().getSoyad()),

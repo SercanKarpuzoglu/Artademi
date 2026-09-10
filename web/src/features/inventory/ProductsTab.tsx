@@ -10,7 +10,7 @@ import {
   useCreateProduct,
   useProducts,
   useSetProductActive,
-  useSetProductStock,
+  useStokHareket,
   useUpdateProduct,
 } from './useInventory';
 
@@ -118,7 +118,8 @@ export default function ProductsTab() {
               <thead>
                 <tr>
                   <th>Ad</th>
-                  <th className="t-right">Fiyat</th>
+                  <th className="t-right">Alış</th>
+                  <th className="t-right">Satış</th>
                   <th>Stok</th>
                   <th>Durum</th>
                   {isAdmin && <th className="t-right">İşlemler</th>}
@@ -164,13 +165,18 @@ export default function ProductsTab() {
 
 function ProductRow({ product, isAdmin }: { product: ProductResponse; isAdmin: boolean }) {
   const [editing, setEditing] = useState(false);
-  const [stokEditing, setStokEditing] = useState(false);
+  // Stok giriş/çıkış: hangi yön açık (null = kapalı).
+  const [hareket, setHareket] = useState<'giris' | 'cikis' | null>(null);
   const badge = stockBadge(product.stokAdedi);
+  const marj =
+    product.alisFiyati === null || product.alisFiyati === undefined
+      ? null
+      : Number(product.satisFiyati) - Number(product.alisFiyati);
 
   if (isAdmin && editing) {
     return (
       <tr>
-        <td colSpan={5}>
+        <td colSpan={6}>
           <ProductForm editing={product} onDone={() => setEditing(false)} />
         </td>
       </tr>
@@ -186,7 +192,19 @@ function ProductRow({ product, isAdmin }: { product: ProductResponse; isAdmin: b
         )}
       </td>
       <td className="t-right">
+        {product.alisFiyati === null || product.alisFiyati === undefined ? (
+          <span className="text-ink-soft">—</span>
+        ) : (
+          <span className="amount">{formatMoney(product.alisFiyati)} ₺</span>
+        )}
+      </td>
+      <td className="t-right">
         <span className="amount">{formatMoney(product.satisFiyati)} ₺</span>
+        {marj !== null && (
+          <div className={`text-[11.5px] ${marj < 0 ? 'text-red' : 'text-ink-soft'}`}>
+            marj {formatMoney(marj)} ₺
+          </div>
+        )}
       </td>
       <td>
         {badge.className ? (
@@ -194,8 +212,8 @@ function ProductRow({ product, isAdmin }: { product: ProductResponse; isAdmin: b
         ) : (
           badge.label
         )}
-        {isAdmin && stokEditing && (
-          <StockEditor product={product} onDone={() => setStokEditing(false)} />
+        {isAdmin && hareket && (
+          <StokHareketEditor product={product} yon={hareket} onDone={() => setHareket(null)} />
         )}
       </td>
       <td>
@@ -212,9 +230,17 @@ function ProductRow({ product, isAdmin }: { product: ProductResponse; isAdmin: b
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => setStokEditing((v) => !v)}
+              onClick={() => setHareket((v) => (v === 'giris' ? null : 'giris'))}
             >
-              Stok
+              + Giriş
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={product.stokAdedi === 0}
+              onClick={() => setHareket((v) => (v === 'cikis' ? null : 'cikis'))}
+            >
+              − Çıkış
             </button>
             <ActiveToggle product={product} />
           </div>
@@ -238,20 +264,33 @@ function ActiveToggle({ product }: { product: ProductResponse }) {
   );
 }
 
-function StockEditor({ product, onDone }: { product: ProductResponse; onDone: () => void }) {
-  const mut = useSetProductStock();
-  const [value, setValue] = useState(String(product.stokAdedi));
+/** Stok giriş/çıkış: yalnız miktar girilir; yön düğmeden gelir. Çıkış mevcut stoğu aşamaz. */
+function StokHareketEditor({
+  product,
+  yon,
+  onDone,
+}: {
+  product: ProductResponse;
+  yon: 'giris' | 'cikis';
+  onDone: () => void;
+}) {
+  const mut = useStokHareket();
+  const [value, setValue] = useState('1');
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     setError(null);
     const n = Number(value);
-    if (!Number.isInteger(n) || n < 0) {
-      setError('Stok adedi 0 veya pozitif tam sayı olmalı');
+    if (!Number.isInteger(n) || n <= 0) {
+      setError('Miktar pozitif tam sayı olmalı');
+      return;
+    }
+    if (yon === 'cikis' && n > product.stokAdedi) {
+      setError(`Mevcut stok ${product.stokAdedi}; daha fazlası çıkarılamaz`);
       return;
     }
     try {
-      await mut.mutateAsync({ id: product.id, stokAdedi: n });
+      await mut.mutateAsync({ id: product.id, miktar: yon === 'giris' ? n : -n });
       onDone();
     } catch (err) {
       setError(err instanceof ApiException ? err.message : 'Bir hata oluştu');
@@ -260,10 +299,14 @@ function StockEditor({ product, onDone }: { product: ProductResponse; onDone: ()
 
   return (
     <div className="mt-2 flex items-center gap-2">
+      <span className={`badge ${yon === 'giris' ? 'b-green' : 'b-amber'}`}>
+        {yon === 'giris' ? 'Giriş' : 'Çıkış'}
+      </span>
       <input
         type="number"
-        min={0}
+        min={1}
         step={1}
+        aria-label="Miktar"
         className="w-24 rounded-[10px] border border-line bg-card px-2 py-1 text-[13.5px] focus:border-rasp focus:outline-none focus:ring-1 focus:ring-rasp"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -294,6 +337,9 @@ function ProductForm({
   const [satisFiyati, setSatisFiyati] = useState(
     editing ? String(editing.satisFiyati) : '',
   );
+  const [alisFiyati, setAlisFiyati] = useState(
+    editing?.alisFiyati !== null && editing?.alisFiyati !== undefined ? String(editing.alisFiyati) : '',
+  );
   const [stokAdedi, setStokAdedi] = useState(editing ? String(editing.stokAdedi) : '0');
   const [aciklama, setAciklama] = useState(editing?.aciklama ?? '');
 
@@ -315,6 +361,10 @@ function ProductForm({
     if (!satisFiyati.trim() || Number.isNaN(fiyat) || fiyat <= 0) {
       errs.satisFiyati = 'Satış fiyatı pozitif olmalı';
     }
+    const alis = alisFiyati.trim() ? Number(alisFiyati.replace(',', '.')) : null;
+    if (alis !== null && (Number.isNaN(alis) || alis < 0)) {
+      errs.alisFiyati = 'Alış fiyatı 0 veya pozitif olmalı';
+    }
     if (!isEdit) {
       const stok = Number(stokAdedi);
       if (!Number.isInteger(stok) || stok < 0) {
@@ -331,6 +381,7 @@ function ProductForm({
         const payload: UpdateProductInput = {
           ad: ad.trim(),
           satisFiyati: satisFiyati.trim(),
+          alisFiyati: alisFiyati.trim() || undefined,
           aciklama: aciklama.trim() || undefined,
         };
         await updateMut.mutateAsync(payload);
@@ -338,6 +389,7 @@ function ProductForm({
         const payload: ProductInput = {
           ad: ad.trim(),
           satisFiyati: satisFiyati.trim(),
+          alisFiyati: alisFiyati.trim() || undefined,
           stokAdedi: Number(stokAdedi),
           aciklama: aciklama.trim() || undefined,
         };
@@ -376,6 +428,15 @@ function ProductForm({
             inputMode="decimal"
             value={satisFiyati}
             onChange={(e) => setSatisFiyati(e.target.value)}
+          />
+        </Field>
+        <Field label="Alış Fiyatı (₺)" error={fieldErrors.alisFiyati}>
+          <input
+            className={inputClass}
+            inputMode="decimal"
+            placeholder="Boş bırakılabilir"
+            value={alisFiyati}
+            onChange={(e) => setAlisFiyati(e.target.value)}
           />
         </Field>
         {!isEdit && (

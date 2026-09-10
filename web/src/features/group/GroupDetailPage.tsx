@@ -72,7 +72,7 @@ export default function GroupDetailPage() {
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
             <Info label="Branş" value={g.brans?.ad} />
             <Info
-              label="Öğretmen"
+              label="Eğitmen"
               value={g.ogretmen ? `${g.ogretmen.ad} ${g.ogretmen.soyad}` : null}
             />
             <Info label="Salon" value={g.salon?.ad} />

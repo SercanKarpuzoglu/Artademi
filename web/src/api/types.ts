@@ -197,7 +197,7 @@ export interface StudentResponse {
   guncellenmeTarihi: string;
 }
 
-// --- Tanımlar modülü (Branş / Salon / Öğretmen) — backend DTO'lari ile birebir aynalanir ---
+// --- Tanımlar modülü (Branş / Salon / Eğitmen) — backend DTO'lari ile birebir aynalanir ---
 
 /**
  * Şube yaniti — backend SubeResponse.
@@ -260,17 +260,17 @@ export interface RoomInput {
   aciklama?: string;
 }
 
-/** Öğretmen/grup hakediş tipi (Model C). */
+/** Eğitmen/grup hakediş tipi (Model C). */
 export type HakedisTipi = 'SAATLIK' | 'CIRO_ORANI' | 'OZEL_DERS';
 
-/** Öğretmenin bağlı olduğu branş referansı (özet). */
+/** Eğitmenin bağlı olduğu branş referansı (özet). */
 export interface TeacherBranchRef {
   id: number;
   ad: string;
 }
 
 /**
- * Öğretmenin TANIMLADIĞI tek hakediş satırı (Model C) — backend TeacherResponse.HakedisRow.
+ * Eğitmenin TANIMLADIĞI tek hakediş satırı (Model C) — backend TeacherResponse.HakedisRow.
  * Yalnızca tip ile eşleşen para alanı doludur; diğerleri null. Para alanlari number VEYA string.
  */
 export interface TeacherHakedisRow {
@@ -280,7 +280,7 @@ export interface TeacherHakedisRow {
   dersBasiUcret: string | number | null;
 }
 
-/** Öğretmen yaniti — backend TeacherResponse. Model C: hakedisler listesi. */
+/** Eğitmen yaniti — backend TeacherResponse. Model C: hakedisler listesi. */
 export interface TeacherResponse {
   id: number;
   ad: string;
@@ -296,7 +296,7 @@ export interface TeacherResponse {
 }
 
 /**
- * Öğretmen olusturma/guncelleme govdesindeki tek hakediş satırı (Model C). Para alanlari BigDecimal
+ * Eğitmen olusturma/guncelleme govdesindeki tek hakediş satırı (Model C). Para alanlari BigDecimal
  * hassasiyetini korumak icin STRING gonderilir; yalnizca tip ile eslesen alan doldurulur.
  */
 export interface HakedisSatiriInput {
@@ -307,7 +307,7 @@ export interface HakedisSatiriInput {
 }
 
 /**
- * Öğretmen olusturma/guncelleme govdesi (Model C). {@code hakedisler} en az 1 satir; her tip &le;1
+ * Eğitmen olusturma/guncelleme govdesi (Model C). {@code hakedisler} en az 1 satir; her tip &le;1
  * kez. Para alanlari STRING gonderilir.
  */
 export interface TeacherInput {
@@ -331,7 +331,7 @@ export interface GroupRef {
   ad: string;
 }
 
-/** Grup yanitindaki öğretmen referansi (özet). */
+/** Grup yanitindaki eğitmen referansi (özet). */
 export interface GroupTeacherRef {
   id: number;
   ad: string;
@@ -438,6 +438,10 @@ export interface ScheduleResponse {
   bitisSaati: string; // "HH:mm:ss"
   aktif: boolean;
   grup: ScheduleGroupRef | null;
+  /** Grubun salonu (OZEL/salonsuz grupta null). */
+  salon: { id: number; ad: string } | null;
+  /** Grubun eğitmeni (atanmamışsa null). */
+  ogretmen: { id: number; ad: string; soyad: string } | null;
   olusturulmaTarihi?: string;
   guncellenmeTarihi?: string;
 }
@@ -635,7 +639,7 @@ export interface AccrualGenerationResult {
 /** Hakediş durumu: hesaplandi ya da odendi. */
 export type PayoutDurumu = 'HESAPLANDI' | 'ODENDI';
 
-/** Hakediş yanitindaki öğretmen referansi (özet). */
+/** Hakediş yanitindaki eğitmen referansi (özet). */
 export interface PayoutOgretmenRef {
   id: number;
   ad: string;
@@ -670,7 +674,7 @@ export interface PayoutResponse {
 
 /**
  * Hakediş hesaplama govdesi. kdvOrani BigDecimal hassasiyetini korumak icin STRING
- * gonderilir; bos ise gonderilmez (yalnizca CIRO_ORANI öğretmenlerde anlamli).
+ * gonderilir; bos ise gonderilmez (yalnizca CIRO_ORANI eğitmenlerde anlamli).
  */
 export interface CalculatePayoutInput {
   ogretmenId: number;
@@ -685,6 +689,8 @@ export interface ProductResponse {
   id: number;
   ad: string;
   satisFiyati: string | number;
+  /** Alış (maliyet) fiyatı; girilmemişse null. Kâr marjı ekranda satış − alış olarak hesaplanır. */
+  alisFiyati: string | number | null;
   stokAdedi: number;
   aciklama: string | null;
   aktif: boolean;
@@ -699,6 +705,7 @@ export interface ProductResponse {
 export interface ProductInput {
   ad: string;
   satisFiyati: string;
+  alisFiyati?: string;
   stokAdedi?: number;
   aciklama?: string;
 }
@@ -710,6 +717,7 @@ export interface ProductInput {
 export interface UpdateProductInput {
   ad: string;
   satisFiyati: string;
+  alisFiyati?: string;
   aciklama?: string;
 }
 
@@ -789,7 +797,7 @@ export interface StudentBalanceRow {
   bakiye: string | number;
 }
 
-/** Öğretmen hakediş satiri — backend TeacherPayoutRow. Para alani number VEYA string gelebilir. */
+/** Eğitmen hakediş satiri — backend TeacherPayoutRow. Para alani number VEYA string gelebilir. */
 export interface TeacherPayoutRow {
   ogretmenId: number;
   ad: string;
@@ -799,7 +807,7 @@ export interface TeacherPayoutRow {
   durum: PayoutDurumu;
 }
 
-/** Öğretmen hakediş raporu yaniti — backend TeacherPayoutsResponse. */
+/** Eğitmen hakediş raporu yaniti — backend TeacherPayoutsResponse. */
 export interface TeacherPayoutsResponse {
   donem: string;
   toplamHakedis: string | number;
@@ -1162,4 +1170,13 @@ export interface PaketSatInput {
   satisTarihi?: string;
   sonKullanmaTarihi?: string;
   aciklama?: string;
+}
+
+/** Finans > Gelirler özeti — backend GelirOzetiResponse (öğrenci ödemeleri + ürün satışları). */
+export interface GelirOzetiResponse {
+  from: string;
+  to: string;
+  odemeToplam: string | number;
+  satisToplam: string | number;
+  toplam: string | number;
 }

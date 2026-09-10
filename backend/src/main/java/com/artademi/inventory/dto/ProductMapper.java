@@ -18,6 +18,7 @@ public final class ProductMapper {
         Product p = Product.create();
         p.setAd(req.ad());
         p.setSatisFiyati(req.satisFiyati());
+        p.setAlisFiyati(req.alisFiyati());
         p.setStokAdedi(req.stokAdedi() == null ? 0 : req.stokAdedi());
         p.setAciklama(req.aciklama());
         p.setAktif(true);
@@ -28,6 +29,7 @@ public final class ProductMapper {
     public static void applyUpdate(Product p, UpdateProductRequest req) {
         p.setAd(req.ad());
         p.setSatisFiyati(req.satisFiyati());
+        p.setAlisFiyati(req.alisFiyati());
         p.setAciklama(req.aciklama());
     }
 }

@@ -23,7 +23,7 @@ interface TabDef {
 const TAB_DEFS: readonly TabDef[] = [
   { key: 'financial', label: 'Finansal Özet', roles: [Role.ADMIN] },
   { key: 'balances', label: 'Öğrenci Borç', roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING] },
-  { key: 'payouts', label: 'Öğretmen Hakediş', roles: [Role.ADMIN] },
+  { key: 'payouts', label: 'Eğitmen Hakediş', roles: [Role.ADMIN] },
   {
     key: 'occupancy',
     label: 'Grup Doluluk',
@@ -49,7 +49,7 @@ export default function ReportsPage() {
       <div className="topbar">
         <div>
           <h1>Raporlar</h1>
-          <div className="sub">Finansal özet, öğrenci borç, öğretmen hakediş ve grup doluluk</div>
+          <div className="sub">Finansal özet, öğrenci borç, eğitmen hakediş ve grup doluluk</div>
         </div>
       </div>
 

@@ -90,14 +90,14 @@ public class PayoutService {
         List<PayoutHesap> hesaplar = hesapla(ogretmen, donem, req.kdvOrani());
         if (hesaplar.isEmpty()) {
             throw new ValidationException(
-                    "Bu öğretmen için bu dönemde hesaplanacak grup/hakediş bulunamadı");
+                    "Bu eğitmen için bu dönemde hesaplanacak grup/hakediş bulunamadı");
         }
 
         // Mukerrer kontrolu (tip bazinda) — herhangi biri varsa 409, hicbir satir kaydetme.
         for (PayoutHesap hesap : hesaplar) {
             if (repository.existsByOgretmenAndDonemAndTip(ogretmen.getId(), donem, hesap.hakedisTipi())) {
                 throw new ConflictException(
-                        "Bu öğretmen için bu dönemde " + hesap.hakedisTipi() + " hakedişi zaten hesaplanmış");
+                        "Bu eğitmen için bu dönemde " + hesap.hakedisTipi() + " hakedişi zaten hesaplanmış");
             }
         }
 
@@ -245,7 +245,7 @@ public class PayoutService {
 
     private Teacher resolveTeacher(Long ogretmenId) {
         return teacherRepository.findScopedById(ogretmenId)
-                .orElseThrow(() -> new NotFoundException("Öğretmen bulunamadı: " + ogretmenId));
+                .orElseThrow(() -> new NotFoundException("Eğitmen bulunamadı: " + ogretmenId));
     }
 
     private YearMonth parseDonem(String donem) {

@@ -163,7 +163,7 @@ export default function GroupForm() {
       <div className="topbar">
         <div>
           <h1>{isEdit ? 'Grup Düzenle' : 'Yeni Grup'}</h1>
-          <div className="sub">Grup/özel ders bilgileri, branş, öğretmen ve ücret</div>
+          <div className="sub">Grup/özel ders bilgileri, branş, eğitmen ve ücret</div>
         </div>
       </div>
 
@@ -214,7 +214,7 @@ export default function GroupForm() {
                 ))}
               </select>
             </Field>
-            <Field label="Öğretmen" required error={errors.ogretmenId?.message}>
+            <Field label="Eğitmen" required error={errors.ogretmenId?.message}>
               <select
                 className={inputClass}
                 {...register('ogretmenId', { setValueAs: (v) => (v ? Number(v) : 0) })}

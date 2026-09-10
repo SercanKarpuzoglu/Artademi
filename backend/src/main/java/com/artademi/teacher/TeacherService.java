@@ -103,6 +103,6 @@ public class TeacherService {
         // ONEMLI: findById (PK find) Hibernate tenant filtresine TABI DEGILDIR; baska
         // tenant'in kaydini sizdirir. Bu yuzden filtreli JPQL sorgusu kullanilir -> 404.
         return repository.findScopedById(id)
-                .orElseThrow(() -> new NotFoundException("Öğretmen bulunamadı: " + id));
+                .orElseThrow(() -> new NotFoundException("Eğitmen bulunamadı: " + id));
     }
 }

@@ -50,3 +50,16 @@ export async function setProductStock(id: number, stokAdedi: number): Promise<Pr
   });
   return res.data.data;
 }
+
+/** Stok giriş (+miktar) / çıkış (−miktar). Negatife düşürme 400. YALNIZCA ADMIN. */
+export async function stokHareket(
+  id: number,
+  miktar: number,
+  aciklama?: string,
+): Promise<ProductResponse> {
+  const res = await api.patch<ApiResponse<ProductResponse>>(`/api/products/${id}/stok-hareket`, {
+    miktar,
+    aciklama,
+  });
+  return res.data.data;
+}

@@ -25,7 +25,7 @@ export function useStudentBalances(params: GetStudentBalancesParams) {
   });
 }
 
-/** Öğretmen hakediş raporu — dönem girilince calisir. ADMIN. */
+/** Eğitmen hakediş raporu — dönem girilince calisir. ADMIN. */
 export function useTeacherPayouts(donem: string) {
   return useQuery({
     queryKey: ['report', 'teacherPayouts', donem],

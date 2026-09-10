@@ -83,7 +83,7 @@ public class AttendanceAccessGuard {
     private Teacher resolveTeacherOrDeny() {
         // sub -> Teacher.keycloakUserId tek mekanizma (CurrentTeacherResolver); eslesme yoksa 403.
         return currentTeacherResolver.current()
-                .orElseThrow(() -> new AccessDeniedException("Öğretmen bulunamadı"));
+                .orElseThrow(() -> new AccessDeniedException("Eğitmen bulunamadı"));
     }
 
     private static boolean hasAnyRole(Authentication auth, String... roles) {

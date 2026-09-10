@@ -52,8 +52,8 @@ export default function TeacherListPage() {
     <>
       <div className="topbar">
         <div>
-          <h1>Öğretmenler</h1>
-          <div className="sub">Öğretmen kayıtları, branşlar ve hakediş</div>
+          <h1>Eğitmenler</h1>
+          <div className="sub">Eğitmen kayıtları, branşlar ve hakediş</div>
         </div>
         <div className="top-actions">
           <select
@@ -74,12 +74,12 @@ export default function TeacherListPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Ad veya soyad ara…"
-            aria-label="Öğretmen ara"
+            aria-label="Eğitmen ara"
             className="rounded-[10px] border border-line bg-card px-3 py-2 text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-rasp"
           />
           {isAdmin && (
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/ogretmenler/yeni')}>
-              + Yeni Öğretmen
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/egitmenler/yeni')}>
+              + Yeni Eğitmen
             </button>
           )}
         </div>
@@ -106,7 +106,7 @@ export default function TeacherListPage() {
         </div>
       ) : teachers.length === 0 ? (
         <div className="card text-center text-ink-soft">
-          {filtered ? 'Sonuç bulunamadı' : 'Henüz öğretmen yok'}
+          {filtered ? 'Sonuç bulunamadı' : 'Henüz eğitmen yok'}
         </div>
       ) : (
         <>
@@ -164,7 +164,7 @@ export default function TeacherListPage() {
                     {isAdmin && (
                       <td className="t-right">
                         <div className="inline-flex gap-2">
-                          <Link to={`/ogretmenler/${t.id}/duzenle`} className="btn btn-ghost">
+                          <Link to={`/egitmenler/${t.id}/duzenle`} className="btn btn-ghost">
                             Düzenle
                           </Link>
                           <button

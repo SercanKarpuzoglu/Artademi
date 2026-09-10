@@ -107,7 +107,7 @@ export default function TeacherForm() {
       } else {
         await createMut.mutateAsync(payload);
       }
-      navigate('/ogretmenler');
+      navigate('/egitmenler');
     } catch (e) {
       if (e instanceof ApiException) {
         if (e.code === 'VALIDATION_ERROR' && e.fields) {
@@ -133,7 +133,7 @@ export default function TeacherForm() {
       <p className="py-12 text-center text-red-700">
         {teacherQuery.error instanceof ApiException
           ? teacherQuery.error.message
-          : 'Öğretmen yüklenemedi'}
+          : 'Eğitmen yüklenemedi'}
       </p>
     );
   }
@@ -142,8 +142,8 @@ export default function TeacherForm() {
     <div className="mx-auto max-w-3xl">
       <div className="topbar">
         <div>
-          <h1>{isEdit ? 'Öğretmen Düzenle' : 'Yeni Öğretmen'}</h1>
-          <div className="sub">Öğretmen bilgileri, branşlar ve hakediş</div>
+          <h1>{isEdit ? 'Eğitmen Düzenle' : 'Yeni Eğitmen'}</h1>
+          <div className="sub">Eğitmen bilgileri, branşlar ve hakediş</div>
         </div>
       </div>
 
@@ -196,7 +196,7 @@ export default function TeacherForm() {
             )}
           </div>
           <p className="text-[13px] text-ink-soft">
-            Öğretmen birden çok hakediş tipi tanımlayabilir; hangi tipin uygulanacağını grup belirler.
+            Eğitmen birden çok hakediş tipi tanımlayabilir; hangi tipin uygulanacağını grup belirler.
           </p>
 
           {listError && <p className="text-xs text-red-600">{listError}</p>}
@@ -311,7 +311,7 @@ export default function TeacherForm() {
         </section>
 
         <div className="flex justify-end gap-3">
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/ogretmenler')}>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/egitmenler')}>
             İptal
           </button>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting}>

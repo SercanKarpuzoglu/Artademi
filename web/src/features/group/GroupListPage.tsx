@@ -55,7 +55,7 @@ export default function GroupListPage() {
       <div className="topbar">
         <div>
           <h1>Gruplar</h1>
-          <div className="sub">Grup ve özel ders kayıtları, branş, öğretmen ve ücret</div>
+          <div className="sub">Grup ve özel ders kayıtları, branş, eğitmen ve ücret</div>
         </div>
         <div className="top-actions">
           <input
@@ -119,7 +119,7 @@ export default function GroupListPage() {
                   <th>Ad</th>
                   <th>Tip</th>
                   <th>Branş</th>
-                  <th>Öğretmen</th>
+                  <th>Eğitmen</th>
                   <th>Salon</th>
                   <th className="t-right">Ücret</th>
                   <th>Aktif</th>

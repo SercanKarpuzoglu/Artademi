@@ -1,15 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import amblem from '../assets/artademi-amblem.png';
 import { changePassword } from '../api/me';
 import { ApiException } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useMe } from '../auth/useMe';
-import { MENU } from '../routes/menu';
+import { GRUP_IKON, MENU, type MenuItem } from '../routes/menu';
 import RoleBadge from './RoleBadge';
 
 /**
@@ -51,31 +52,7 @@ export default function AppShell() {
           </div>
         </div>
 
-        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-          {gorunur.map((m, i) => {
-            const Icon = m.icon;
-            const yeniBolum = i === 0 || gorunur[i - 1].section !== m.section;
-            return (
-              <div key={m.path}>
-                {yeniBolum && <div className="nav-label">{m.section}</div>}
-                <NavLink
-                  to={m.path}
-                  className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
-                >
-                  <span className="ico">
-                    <Icon size={17} strokeWidth={1.75} />
-                  </span>
-                  <span className="flex-1">{m.label}</span>
-                  {!m.hazir && (
-                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-normal text-white/55">
-                      Yakında
-                    </span>
-                  )}
-                </NavLink>
-              </div>
-            );
-          })}
-        </nav>
+        <SidebarNav items={gorunur} />
       </aside>
 
       <div className="flex min-h-screen flex-col">
@@ -106,6 +83,95 @@ export default function AppShell() {
         </main>
       </div>
     </div>
+  );
+}
+
+const ACIK_ANAHTAR = 'artademi.menu.acik';
+
+function okuAcik(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(ACIK_ANAHTAR) ?? '{}') as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Sol menü. Düz öğeler bölüm etiketiyle; {@code grup} taşıyan ardışık öğeler açılır bir başlık
+ * altında (Yönetici Paneli). Grup içindeki sayfa aktifse başlık kendiliğinden açık; kullanıcı
+ * tercihi localStorage'da tutulur.
+ */
+function SidebarNav({ items }: { items: readonly MenuItem[] }) {
+  const { pathname } = useLocation();
+  const [acik, setAcik] = useState<Record<string, boolean>>(okuAcik);
+
+  function toggle(grup: string) {
+    setAcik((prev) => {
+      const next = { ...prev, [grup]: !(prev[grup] ?? false) };
+      try {
+        localStorage.setItem(ACIK_ANAHTAR, JSON.stringify(next));
+      } catch {
+        /* depolama kapalıysa tercih tutulmaz */
+      }
+      return next;
+    });
+  }
+
+  const gruptaAktif = (grup: string) =>
+    items.some((m) => m.grup === grup && pathname.startsWith(m.path));
+
+  return (
+    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+      {items.map((m, i) => {
+        const Icon = m.icon;
+        const onceki = i > 0 ? items[i - 1] : null;
+        const yeniBolum = !m.grup && (onceki === null || onceki.section !== m.section);
+        const yeniGrup = m.grup !== undefined && onceki?.grup !== m.grup;
+        const grupAcik = m.grup !== undefined && ((acik[m.grup] ?? false) || gruptaAktif(m.grup));
+        const GrupIkon = m.grup ? GRUP_IKON[m.grup] : undefined;
+        return (
+          <div key={m.path}>
+            {yeniBolum && <div className="nav-label">{m.section}</div>}
+            {yeniGrup && m.grup && (
+              <button
+                type="button"
+                className={`nav-btn${gruptaAktif(m.grup) ? ' text-white' : ''}`}
+                aria-expanded={grupAcik}
+                onClick={() => toggle(m.grup as string)}
+              >
+                <span className="ico">
+                  {GrupIkon && <GrupIkon size={17} strokeWidth={1.75} />}
+                </span>
+                <span className="flex-1">{m.grup}</span>
+                <ChevronDown
+                  size={15}
+                  strokeWidth={2}
+                  className={`transition-transform${grupAcik ? ' rotate-180' : ''}`}
+                />
+              </button>
+            )}
+            {(!m.grup || grupAcik) && (
+              <NavLink
+                to={m.path}
+                className={({ isActive }) =>
+                  `nav-btn${isActive ? ' active' : ''}${m.grup ? ' pl-9 text-[13px]' : ''}`
+                }
+              >
+                <span className="ico">
+                  <Icon size={m.grup ? 15 : 17} strokeWidth={1.75} />
+                </span>
+                <span className="flex-1">{m.label}</span>
+                {!m.hazir && (
+                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-normal text-white/55">
+                    Yakında
+                  </span>
+                )}
+              </NavLink>
+            )}
+          </div>
+        );
+      })}
+    </nav>
   );
 }
 

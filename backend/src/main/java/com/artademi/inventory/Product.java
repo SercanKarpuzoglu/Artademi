@@ -39,6 +39,10 @@ public class Product extends TenantAware {
     @Column(name = "satis_fiyati", precision = 12, scale = 2, nullable = false)
     private BigDecimal satisFiyati;
 
+    /** Alis (maliyet) fiyati; opsiyonel (V30). Kar marji saklanmaz, ekranda satis - alis. */
+    @Column(name = "alis_fiyati", precision = 12, scale = 2)
+    private BigDecimal alisFiyati;
+
     @Column(name = "stok_adedi", nullable = false)
     private int stokAdedi;
 
@@ -83,6 +87,14 @@ public class Product extends TenantAware {
 
     public void setSatisFiyati(BigDecimal satisFiyati) {
         this.satisFiyati = satisFiyati;
+    }
+
+    public BigDecimal getAlisFiyati() {
+        return alisFiyati;
+    }
+
+    public void setAlisFiyati(BigDecimal alisFiyati) {
+        this.alisFiyati = alisFiyati;
     }
 
     public int getStokAdedi() {

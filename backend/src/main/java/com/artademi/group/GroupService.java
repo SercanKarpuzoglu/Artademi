@@ -143,7 +143,7 @@ public class GroupService {
 
     private Teacher resolveTeacher(Long ogretmenId) {
         return teacherRepository.findScopedById(ogretmenId)
-                .orElseThrow(() -> new NotFoundException("Öğretmen bulunamadı: " + ogretmenId));
+                .orElseThrow(() -> new NotFoundException("Eğitmen bulunamadı: " + ogretmenId));
     }
 
     /** salonId doluysa tenant-guvenli cozer (yoksa 404); null ise salon yok (OZEL'de gecerli). */

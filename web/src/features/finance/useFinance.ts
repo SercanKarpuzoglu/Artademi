@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAccrual, getAccruals, uret, uretOnizle, type GetAccrualsParams } from '../../api/accruals';
 import { createExpense, getExpenses, type GetExpensesParams } from '../../api/expenses';
-import { getStudentBalance, getStudentFinance } from '../../api/finance';
+import { getGelirOzeti, getStudentBalance, getStudentFinance } from '../../api/finance';
 import { createPayment, getPayments, type GetPaymentsParams } from '../../api/payments';
 import type {
   AccrualGenerationResult,
@@ -116,5 +116,16 @@ export function useUret() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accruals'] });
     },
+  });
+}
+
+// --- Gelirler ---
+
+/** Seçilen tarih aralığının gelir özeti (öğrenci ödemeleri + ürün satışları). */
+export function useGelirOzeti(from: string, to: string) {
+  return useQuery({
+    queryKey: ['gelir-ozeti', from, to],
+    queryFn: () => getGelirOzeti(from, to),
+    placeholderData: keepPreviousData,
   });
 }

@@ -20,6 +20,8 @@ public record CreateProductRequest(
         @NotNull(message = "Satış fiyatı zorunludur")
         @Positive(message = "Satış fiyatı pozitif olmalıdır")
         BigDecimal satisFiyati,
+        @PositiveOrZero(message = "Alış fiyatı negatif olamaz")
+        BigDecimal alisFiyati,
 
         @PositiveOrZero(message = "Stok adedi negatif olamaz")
         Integer stokAdedi,

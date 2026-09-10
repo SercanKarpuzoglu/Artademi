@@ -24,7 +24,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'Yönetici',
   FRONTDESK: 'Ön Büro',
   FRONTDESK_ACCOUNTING: 'Ön Büro / Muhasebe',
-  TEACHER: 'Öğretmen',
+  TEACHER: 'Eğitmen',
   SUPER_ADMIN: 'Platform Yöneticisi',
 };
 

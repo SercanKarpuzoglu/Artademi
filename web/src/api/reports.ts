@@ -35,7 +35,7 @@ export async function getStudentBalances(
   return res.data;
 }
 
-/** Öğretmen hakediş raporu (toplam + kalemler) — tekil yanit. YALNIZCA ADMIN. */
+/** Eğitmen hakediş raporu (toplam + kalemler) — tekil yanit. YALNIZCA ADMIN. */
 export async function getTeacherPayouts(donem: string): Promise<TeacherPayoutsResponse> {
   const res = await api.get<ApiResponse<TeacherPayoutsResponse>>('/api/reports/teacher-payouts', {
     params: { donem },

@@ -4,7 +4,7 @@ import { Role } from '../../auth/roles';
 import GiderTab from './GiderTab';
 import KasaTab from './KasaTab';
 import PaketTab from './PaketTab';
-import OdemeTab from './OdemeTab';
+import GelirTab from './GelirTab';
 import OtomatikTahakkukTab from './OtomatikTahakkukTab';
 import TahakkukTab from './TahakkukTab';
 import TedarikciTab from './TedarikciTab';
@@ -19,7 +19,7 @@ export default function FinancePage() {
   // Otomatik tahakkuk YALNIZCA ADMIN; FRONTDESK_ACCOUNTING bu sekmeyi görmez (backend de 403 verir).
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'tahakkuk', label: 'Tahakkuklar' },
-    { key: 'odeme', label: 'Ödemeler' },
+    { key: 'odeme', label: 'Gelirler' },
     { key: 'gider', label: 'Giderler' },
     { key: 'paket', label: 'Ders Paketleri' },
     { key: 'kasa', label: 'Kasalar' },
@@ -32,7 +32,7 @@ export default function FinancePage() {
       <div className="topbar">
         <div>
           <h1>Finans</h1>
-          <div className="sub">Tahakkuk, ödeme, gider ve öğrenci bakiyeleri</div>
+          <div className="sub">Tahakkuk, gelir, gider ve öğrenci bakiyeleri</div>
         </div>
       </div>
 
@@ -50,7 +50,7 @@ export default function FinancePage() {
       </div>
 
       {tab === 'tahakkuk' && <TahakkukTab />}
-      {tab === 'odeme' && <OdemeTab />}
+      {tab === 'odeme' && <GelirTab />}
       {tab === 'gider' && <GiderTab />}
       {tab === 'paket' && <PaketTab />}
       {tab === 'kasa' && <KasaTab />}

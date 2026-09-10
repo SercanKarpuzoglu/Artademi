@@ -12,7 +12,7 @@ import java.math.BigDecimal;
  * verilmezse serviste varsayilan 20 alinir.
  */
 public record CalculatePayoutRequest(
-        @NotNull(message = "Öğretmen zorunludur")
+        @NotNull(message = "Eğitmen zorunludur")
         Long ogretmenId,
 
         @NotNull(message = "Dönem zorunludur")

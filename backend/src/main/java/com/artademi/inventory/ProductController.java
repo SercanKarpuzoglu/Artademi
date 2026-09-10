@@ -4,6 +4,7 @@ import com.artademi.common.ApiResponse;
 import com.artademi.common.PageMeta;
 import com.artademi.inventory.dto.CreateProductRequest;
 import com.artademi.inventory.dto.ProductResponse;
+import com.artademi.inventory.dto.StokHareketRequest;
 import com.artademi.inventory.dto.UpdateActiveRequest;
 import com.artademi.inventory.dto.UpdateProductRequest;
 import com.artademi.inventory.dto.UpdateStockRequest;
@@ -88,6 +89,15 @@ public class ProductController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateStockRequest request) {
         return ApiResponse.ok(service.updateStock(id, request.stokAdedi()));
+    }
+
+    /** Stok giris/cikis: miktar +N giris, -N cikis; negatife dusurme 400. */
+    @PatchMapping("/{id}/stok-hareket")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<ProductResponse> stokHareket(
+            @PathVariable Long id,
+            @Valid @RequestBody StokHareketRequest request) {
+        return ApiResponse.ok(service.stokHareket(id, request.miktar()));
     }
 
     /** Filtreli/sayfali liste: ?aktif=&q=&page=0&size=20 (q = ad icinde ara; ad'a gore artan). */

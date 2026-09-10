@@ -3,6 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { indirKayitFormu } from '../../api/students';
 import type { StudentResponse } from '../../api/types';
+import { useDebounce } from '../../lib/useDebounce';
+import { DURUM_BADGE, DURUM_LABEL, TIP_BADGE, TIP_LABEL } from '../group/groupDisplay';
+import { useGroups } from '../group/useGroups';
+import { useEnrollStudent, useLeaveFromStudent, useStudentEnrollments } from './useStudentEnrollments';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
 import StatusBadge from '../../components/StatusBadge';
@@ -93,6 +97,11 @@ export default function StudentDetailPage() {
           </dl>
         </Section>
 
+        {/* Gruplar / kayıtlar — öğrenci sayfasından gruba atama (Dalga A) */}
+        <Section title="Gruplar / Kayıtlar">
+          <KayitPaneli student={s} />
+        </Section>
+
         {/* Finans — yalnizca ADMIN / FRONTDESK_ACCOUNTING (para hassas) */}
         {canSeeFinance && id !== undefined && <StudentFinanceCard studentId={id} />}
 
@@ -145,6 +154,162 @@ export default function StudentDetailPage() {
           )}
         </Section>
       </div>
+    </div>
+  );
+}
+
+const pickerClass =
+  'w-full rounded-[10px] border border-line bg-card px-3 py-2 text-[13.5px] focus:border-rasp focus:outline-none focus:ring-1 focus:ring-rasp';
+
+/** Öğrencinin grup kayıtları + "Gruba ekle" arama kutusu. Aynı iş grup sayfasından da yapılabilir. */
+function KayitPaneli({ student }: { student: StudentResponse }) {
+  const kayitlar = useStudentEnrollments(student.id);
+  const ekleMut = useEnrollStudent(student.id);
+  const cikarMut = useLeaveFromStudent(student.id);
+  const [q, setQ] = useState('');
+  const debouncedQ = useDebounce(q, 300);
+  const [hata, setHata] = useState<string | null>(null);
+  const [eklendi, setEklendi] = useState<string | null>(null);
+  const gruplar = useGroups({ q: debouncedQ.trim() || undefined, aktif: true, size: 10 });
+  const adaylar = debouncedQ.trim() ? gruplar.data?.data ?? [] : [];
+  const liste = [...(kayitlar.data?.data ?? [])].sort((a, b) =>
+    a.durum === b.durum ? b.id - a.id : a.durum === 'AKTIF' ? -1 : 1,
+  );
+  const yazilabilir = student.status === 'AKTIF' || student.status === 'DENEME';
+
+  async function ekle(grupId: number, grupAd: string) {
+    setHata(null);
+    setEklendi(null);
+    try {
+      await ekleMut.mutateAsync({ ogrenciId: student.id, grupId });
+      setQ('');
+      setEklendi(grupAd);
+    } catch (e) {
+      if (e instanceof ApiException) {
+        setHata(e.code === 'CONFLICT' ? 'Bu öğrenci gruba zaten kayıtlı' : e.message);
+      } else {
+        setHata('Beklenmeyen bir hata oluştu.');
+      }
+    }
+  }
+
+  function cikar(id: number) {
+    if (!window.confirm('Öğrenciyi gruptan çıkar?')) return;
+    cikarMut.mutate(id);
+  }
+
+  return (
+    <div className="space-y-3">
+      {yazilabilir ? (
+        <div className="relative">
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setHata(null);
+            }}
+            placeholder="Gruba ekle: grup adı ara…"
+            aria-label="Grup ara ve ekle"
+            className={pickerClass}
+            disabled={ekleMut.isPending}
+          />
+          {adaylar.length > 0 && (
+            <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-[10px] border border-line bg-card shadow-lg">
+              {adaylar.map((g) => (
+                <li key={g.id}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-[13.5px] hover:bg-gray-50"
+                    disabled={ekleMut.isPending}
+                    onClick={() => ekle(g.id, g.ad)}
+                  >
+                    <span className="flex items-center gap-2">
+                      {g.ad}
+                      <span className={`badge ${TIP_BADGE[g.tip]}`}>{TIP_LABEL[g.tip]}</span>
+                    </span>
+                    <span className="text-xs text-ink-soft">
+                      {g.brans?.ad ?? ''}
+                      {g.ogretmen ? ` · ${g.ogretmen.ad} ${g.ogretmen.soyad}` : ''}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {hata && <p className="mt-1 text-xs text-red">{hata}</p>}
+        </div>
+      ) : (
+        <p className="text-[13px] text-ink-soft">
+          Pasif veya dondurulmuş öğrenci gruba yazılamaz; önce statüyü değiştirin.
+        </p>
+      )}
+
+      {eklendi && student.status === 'DENEME' && (
+        <div role="status" className="rounded-[12px] border border-amber/40 bg-amber-soft px-4 py-3 text-[13px]">
+          <p className="font-semibold text-amber">{eklendi} grubuna Deneme statüsünde yazıldı</p>
+          <p className="mt-1 text-ink-soft">
+            Statü kendiliğinden değişmez: öğrenci Aktif listesinde görünmez ve aylık aidat tahakkuku
+            üretilmez. Gerçek kayıtsa{' '}
+            <Link to={`/ogrenciler/${student.id}/duzenle`} className="text-rasp underline">
+              statüyü Aktif yapın
+            </Link>
+            .
+          </p>
+        </div>
+      )}
+
+      {kayitlar.isLoading ? (
+        <p className="text-sm text-ink-soft">Yükleniyor…</p>
+      ) : kayitlar.isError ? (
+        <p className="text-sm text-red">
+          {kayitlar.error instanceof ApiException ? kayitlar.error.message : 'Kayıtlar yüklenemedi'}
+        </p>
+      ) : liste.length === 0 ? (
+        <p className="text-sm text-ink-soft">Henüz bir gruba kayıtlı değil</p>
+      ) : (
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Grup</th>
+              <th>Kayıt Tarihi</th>
+              <th>Durum</th>
+              <th className="t-right">Aksiyon</th>
+            </tr>
+          </thead>
+          <tbody>
+            {liste.map((e) => (
+              <tr key={e.id}>
+                <td>
+                  <Link to={`/gruplar/${e.grup.id}`} className="font-semibold hover:underline">
+                    {e.grup.ad}
+                  </Link>{' '}
+                  <span className={`badge ${TIP_BADGE[e.grup.tip]}`}>{TIP_LABEL[e.grup.tip]}</span>
+                </td>
+                <td className="text-ink-soft">{formatDate(e.kayitTarihi)}</td>
+                <td>
+                  <span className={`badge ${DURUM_BADGE[e.durum]}`}>{DURUM_LABEL[e.durum]}</span>
+                  {e.ayrilmaTarihi && (
+                    <span className="ml-2 text-xs text-ink-soft">{formatDate(e.ayrilmaTarihi)}</span>
+                  )}
+                </td>
+                <td className="t-right">
+                  {e.durum === 'AKTIF' && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      disabled={cikarMut.isPending}
+                      onClick={() => cikar(e.id)}
+                    >
+                      Çıkar
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

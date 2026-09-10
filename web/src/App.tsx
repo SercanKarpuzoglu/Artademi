@@ -24,6 +24,7 @@ import BorcHatirlatmaPage from './features/reminder/BorcHatirlatmaPage';
 import ProfilePage from './features/profile/ProfilePage';
 import ReportsPage from './features/report/ReportsPage';
 import TelafiPage from './features/telafi/TelafiPage';
+import ProgramPage from './features/schedule/ProgramPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
 import StudentDetailPage from './features/student/StudentDetailPage';
@@ -197,7 +198,7 @@ export default function App() {
             </RoleRoute>
           }
         />
-        {/* Tanımlar — Şube / Branş / Salon / Öğretmen CRUD.
+        {/* Tanımlar — Şube / Branş / Salon / Eğitmen CRUD.
             NOT: Şube = fiziksel lokasyon, Branş = ders dalı. Ayrı kavramlar. */}
         <Route
           path="subeler"
@@ -272,7 +273,7 @@ export default function App() {
           }
         />
         <Route
-          path="ogretmenler"
+          path="egitmenler"
           element={
             <RoleRoute requiredRoles={OFIS}>
               <TeacherListPage />
@@ -280,7 +281,7 @@ export default function App() {
           }
         />
         <Route
-          path="ogretmenler/yeni"
+          path="egitmenler/yeni"
           element={
             <RoleRoute requiredRoles={OFIS}>
               <TeacherForm />
@@ -288,13 +289,15 @@ export default function App() {
           }
         />
         <Route
-          path="ogretmenler/:id/duzenle"
+          path="egitmenler/:id/duzenle"
           element={
             <RoleRoute requiredRoles={OFIS}>
               <TeacherForm />
             </RoleRoute>
           }
         />
+        {/* Eski bağlantılar: "Eğitmenler" → "Eğitmenler" yeniden adlandırması (Dalga A). */}
+        <Route path="ogretmenler/*" element={<Navigate to="/egitmenler" replace />} />
 
         <Route
           path="yoklama"
@@ -303,6 +306,15 @@ export default function App() {
               requiredRoles={[Role.ADMIN, Role.FRONTDESK, Role.FRONTDESK_ACCOUNTING, Role.TEACHER]}
             >
               <AttendancePage />
+            </RoleRoute>
+          }
+        />
+        {/* Haftalık program — ofis tüm aktif grupları, eğitmen yalnız kendi derslerini görür */}
+        <Route
+          path="program"
+          element={
+            <RoleRoute requiredRoles={[...OFIS, Role.TEACHER]}>
+              <ProgramPage />
             </RoleRoute>
           }
         />

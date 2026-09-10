@@ -20,7 +20,7 @@ export default function PayoutPage() {
       <div className="topbar">
         <div>
           <h1>Hakediş</h1>
-          <div className="sub">Öğretmen hakediş hesaplama ve ödeme takibi</div>
+          <div className="sub">Eğitmen hakediş hesaplama ve ödeme takibi</div>
         </div>
       </div>
 
@@ -65,7 +65,7 @@ function HesaplaCard() {
       const data = await onizlePayout(buildPayload());
       setOnizleme(data);
       if (data.length === 0) {
-        setError('Bu öğretmen için bu dönemde hesaplanacak grup/hakediş bulunamadı.');
+        setError('Bu eğitmen için bu dönemde hesaplanacak grup/hakediş bulunamadı.');
       }
     } catch (e) {
       setOnizleme(null);
@@ -89,7 +89,7 @@ function HesaplaCard() {
       if (e instanceof ApiException) {
         setError(
           e.code === 'CONFLICT'
-            ? 'Bu öğretmen için bu dönemde bu hakediş tipi zaten hesaplanmış.'
+            ? 'Bu eğitmen için bu dönemde bu hakediş tipi zaten hesaplanmış.'
             : e.message,
         );
       } else {
@@ -106,12 +106,12 @@ function HesaplaCard() {
       <p className="text-[13px] text-ink-soft">
         <b>Önizle</b> hiçbir kayıt yazmaz; yalnızca hesaplanan hakedişi gösterir.{' '}
         <b>Hesapla ve Kaydet</b> kaydı oluşturur. KDV oranı yalnızca <b>CIRO_ORANI</b> hakedişli
-        öğretmenlerde net ciroyu çıkarmak için kullanılır.
+        eğitmenlerde net ciroyu çıkarmak için kullanılır.
       </p>
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">Öğretmen</span>
+          <span className="mb-1 block text-sm font-medium text-gray-700">Eğitmen</span>
           <select
             className={inputClass}
             value={ogretmenId}
@@ -282,7 +282,7 @@ function PayoutList() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Öğretmen</th>
+                  <th>Eğitmen</th>
                   <th>Dönem</th>
                   <th>Tip</th>
                   <th className="t-right">Tutar</th>

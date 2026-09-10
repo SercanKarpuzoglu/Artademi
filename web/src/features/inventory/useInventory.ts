@@ -5,6 +5,7 @@ import {
   getProducts,
   setProductActive,
   setProductStock,
+  stokHareket,
   updateProduct,
   type GetProductsParams,
 } from '../../api/products';
@@ -69,6 +70,18 @@ export function useSetProductStock() {
   return useMutation({
     mutationFn: ({ id, stokAdedi }: { id: number; stokAdedi: number }) =>
       setProductStock(id, stokAdedi),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+}
+
+/** Stok giriş/çıkış; basarida liste tazelenir. */
+export function useStokHareket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, miktar, aciklama }: { id: number; miktar: number; aciklama?: string }) =>
+      stokHareket(id, miktar, aciklama),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['products'] });
     },

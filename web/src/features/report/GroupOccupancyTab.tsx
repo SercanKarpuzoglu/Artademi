@@ -54,7 +54,7 @@ export default function GroupOccupancyTab() {
               <tr>
                 <th>Grup</th>
                 <th>Tip</th>
-                <th>Öğretmen</th>
+                <th>Eğitmen</th>
                 <th className="t-right">Aktif Öğrenci Sayısı</th>
               </tr>
             </thead>

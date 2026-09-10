@@ -34,8 +34,8 @@ function todayIso(): string {
 export default function AttendancePage() {
   const { hasAnyRole } = useAuth();
   const isOffice = hasAnyRole(OFIS);
-  // Ofis degilse (ve sayfaya eristiyse) öğretmendir. Ofis ile öğretmen grup kaynağı farklı
-  // olduğu icin (öğretmen /api/groups'tan 403 alir) ayrı bileşenlere ayırırız ki yanlış
+  // Ofis degilse (ve sayfaya eristiyse) eğitmendir. Ofis ile eğitmen grup kaynağı farklı
+  // olduğu icin (eğitmen /api/groups'tan 403 alir) ayrı bileşenlere ayırırız ki yanlış
   // uç hiç çağrılmasın.
   return isOffice ? <OfficeAttendance /> : <TeacherAttendance />;
 }
@@ -57,7 +57,7 @@ function OfficeAttendance() {
   );
 }
 
-/** Öğretmen: gruplar kendi oturumlarından turetilir (getSessions otomatik daraltilir). */
+/** Eğitmen: gruplar kendi oturumlarından turetilir (getSessions otomatik daraltilir). */
 function TeacherAttendance() {
   const groupsQuery = useTeacherGroups(true);
   return (
@@ -127,7 +127,7 @@ function AttendanceShell({
 
           {isTeacher && !groupsLoading && groupOptions.length === 0 && (
             <p className="note">
-              Henüz bir grubunuz için oturum yok. (Öğretmen yalnızca daha önce en az bir
+              Henüz bir grubunuz için oturum yok. (Eğitmen yalnızca daha önce en az bir
               oturumu olan grupları görür.)
             </p>
           )}

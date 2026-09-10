@@ -24,7 +24,7 @@ export async function getPayouts(
 
 /**
  * Hakediş onizlemesi — KAYIT YAZMAZ (ADMIN). Model C: tip basina BIR satirdan olusan LISTE doner
- * (öğretmenin gruplari kendi hakediş tipleriyle hesaplanip toplanir).
+ * (eğitmenin gruplari kendi hakediş tipleriyle hesaplanip toplanir).
  */
 export async function onizlePayout({
   ogretmenId,
@@ -39,7 +39,7 @@ export async function onizlePayout({
 
 /**
  * Hakediş hesaplar ve kaydeder (ADMIN). Model C: tip basina BIR satir → LISTE doner. Ayni
- * öğretmen+dönem+tip → 409 CONFLICT.
+ * eğitmen+dönem+tip → 409 CONFLICT.
  */
 export async function hesaplaPayout(payload: CalculatePayoutInput): Promise<PayoutResponse[]> {
   const res = await api.post<ApiResponse<PayoutResponse[]>>('/api/payouts/hesapla', payload);

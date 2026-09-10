@@ -9,7 +9,7 @@ import {
 } from '../../api/teachers';
 import type { TeacherInput } from '../../api/types';
 
-/** Öğretmen listesi sorgusu. Sayfa/filtre degisince onceki veriyi korur. */
+/** Eğitmen listesi sorgusu. Sayfa/filtre degisince onceki veriyi korur. */
 export function useTeachers(params: GetTeachersParams) {
   return useQuery({
     queryKey: ['teachers', params],
@@ -18,7 +18,7 @@ export function useTeachers(params: GetTeachersParams) {
   });
 }
 
-/** Tek öğretmen sorgusu (duzenleme formu). */
+/** Tek eğitmen sorgusu (duzenleme formu). */
 export function useTeacher(id: number | undefined) {
   return useQuery({
     queryKey: ['teacher', id],
@@ -27,7 +27,7 @@ export function useTeacher(id: number | undefined) {
   });
 }
 
-/** Yeni öğretmen; basarida liste tazelenir. */
+/** Yeni eğitmen; basarida liste tazelenir. */
 export function useCreateTeacher() {
   const qc = useQueryClient();
   return useMutation({
@@ -38,7 +38,7 @@ export function useCreateTeacher() {
   });
 }
 
-/** Öğretmen guncelle; basarida liste ve ilgili kayit tazelenir. */
+/** Eğitmen guncelle; basarida liste ve ilgili kayit tazelenir. */
 export function useUpdateTeacher(id: number) {
   const qc = useQueryClient();
   return useMutation({

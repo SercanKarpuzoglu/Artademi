@@ -7,7 +7,7 @@ const POSITIVE_DECIMAL = /^\d+([.,]\d+)?$/;
 const optionalText = z.string().trim().optional();
 
 /**
- * Istemci dogrulamasi backend'i aynalar: ad/tip/branş/öğretmen zorunlu; tipe gore
+ * Istemci dogrulamasi backend'i aynalar: ad/tip/branş/eğitmen zorunlu; tipe gore
  * superRefine ile salon ve para alani zorunlu (hata ilgili alana baglanir, ki server
  * error.fields.salonId/aylikAidat/dersBasiUcret de ayni yere dussun):
  *  - GRUP: salonId zorunlu (>0) + aylikAidat zorunlu pozitif ondalik
@@ -23,9 +23,9 @@ export const groupSchema = z
     }),
     bransId: z.number({ message: 'Branş zorunludur' }).int().positive('Branş zorunludur'),
     ogretmenId: z
-      .number({ message: 'Öğretmen zorunludur' })
+      .number({ message: 'Eğitmen zorunludur' })
       .int()
-      .positive('Öğretmen zorunludur'),
+      .positive('Eğitmen zorunludur'),
     salonId: z.number().int().positive().optional(),
     // Sube OPSIYONEL ve tipten BAGIMSIZ: salonu olmayan OZEL grubun da subesi olabilir.
     subeId: z.number().int().positive().optional(),

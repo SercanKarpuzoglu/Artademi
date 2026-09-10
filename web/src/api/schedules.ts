@@ -17,6 +17,12 @@ export async function getSchedules(
   return res.data;
 }
 
+/** Oturum sahibi eğitmenin haftalık programı (yalnız TEACHER; aktif grupların aktif ders saatleri). */
+export async function getMySchedules(): Promise<ScheduleResponse[]> {
+  const res = await api.get<ApiResponse<ScheduleResponse[]>>('/api/schedules/mine');
+  return res.data.data;
+}
+
 /** Bir grubun program (ders saati) listesi. Zarfin tamamini dondurur. */
 export async function getGroupSchedules(
   groupId: number,

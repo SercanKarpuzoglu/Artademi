@@ -101,7 +101,7 @@ export default function GroupSchedulePanel({
           }
           setFormError('Lütfen işaretli alanları düzeltin.');
         } else {
-          // 409 CONFLICT (salon/öğretmen çakışması) dahil tüm form-düzeyi hatalar.
+          // 409 CONFLICT (salon/eğitmen çakışması) dahil tüm form-düzeyi hatalar.
           setFormError(e.message);
         }
       } else {

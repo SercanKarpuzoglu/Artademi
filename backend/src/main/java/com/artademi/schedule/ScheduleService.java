@@ -95,6 +95,18 @@ public class ScheduleService {
     }
 
     /**
+     * Oturum sahibi egitmenin haftalik programi. Egitmen eslesmesi yoksa (null) BOS liste — hata
+     * degil; baska egitmenin dersi asla donmez (grup->ogretmen atamasindan okunur).
+     */
+    @Transactional(readOnly = true)
+    public List<ScheduleResponse> mine(Long ogretmenId) {
+        if (ogretmenId == null) {
+            return List.of();
+        }
+        return repository.findAktifByOgretmen(ogretmenId).stream().map(ScheduleResponse::from).toList();
+    }
+
+    /**
      * Bir grubun haftalik programi (gun, ardindan baslangic saati sirali). grupId tenant-guvenli
      * ({@code findScopedById}) cozulur; baska tenant'a ait/yok ise -> 404.
      */
@@ -152,8 +164,8 @@ public class ScheduleService {
             // Ogretmen cakismasi: ortusen kaydin grubunun ogretmeni AYNI ise.
             if (ogretmenId != null && mevcutGrup.getOgretmen() != null
                     && ogretmenId.equals(mevcutGrup.getOgretmen().getId())) {
-                throw new ConflictException("Öğretmen çakışması: " + grup.getOgretmen().getAd()
-                        + " " + grup.getOgretmen().getSoyad() + " öğretmeni " + aralik
+                throw new ConflictException("Eğitmen çakışması: " + grup.getOgretmen().getAd()
+                        + " " + grup.getOgretmen().getSoyad() + " eğitmeni " + aralik
                         + " aralığında " + mevcutGrup.getAd() + " grubunda dolu");
             }
         }

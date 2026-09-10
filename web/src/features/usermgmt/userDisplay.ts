@@ -6,7 +6,7 @@ import { ROLE_LABEL, type Role } from '../../auth/roles';
  */
 export const ASSIGNABLE_ROLES = ['ADMIN', 'FRONTDESK', 'FRONTDESK_ACCOUNTING', 'TEACHER'] as const;
 
-// design-reference.html .badge sistemi: ADMIN ahududu, FD gri, FD/Muh mavi, Öğretmen amber.
+// design-reference.html .badge sistemi: ADMIN ahududu, FD gri, FD/Muh mavi, Eğitmen amber.
 const ROLE_BADGE: Record<string, string> = {
   ADMIN: 'b-rasp',
   FRONTDESK: 'b-gray',

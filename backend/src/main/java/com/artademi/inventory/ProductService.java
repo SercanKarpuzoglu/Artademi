@@ -1,5 +1,6 @@
 package com.artademi.inventory;
 
+import com.artademi.common.exception.ValidationException;
 import com.artademi.common.exception.NotFoundException;
 import com.artademi.inventory.dto.CreateProductRequest;
 import com.artademi.inventory.dto.ProductMapper;
@@ -56,6 +57,25 @@ public class ProductService {
     public ProductResponse changeActive(Long id, boolean aktif) {
         Product product = findOrThrow(id);
         product.setAktif(aktif);
+        return ProductResponse.from(product);
+    }
+
+    /**
+     * Stok GIRIS (+) / CIKIS (-): mevcut stoga eklenir. 0 ve negatife dusuren miktar 400. Mutlak atama
+     * icin {@link #updateStock}. Dalga A: "giris cikis daha basit olsun".
+     */
+    @Transactional
+    public ProductResponse stokHareket(Long id, int miktar) {
+        if (miktar == 0) {
+            throw new ValidationException("Miktar 0 olamaz");
+        }
+        Product product = findOrThrow(id);
+        int yeni = product.getStokAdedi() + miktar;
+        if (yeni < 0) {
+            throw new ValidationException("Stok yetersiz: mevcut " + product.getStokAdedi()
+                    + ", çıkış " + (-miktar));
+        }
+        product.setStokAdedi(yeni);
         return ProductResponse.from(product);
     }
 

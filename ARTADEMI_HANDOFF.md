@@ -787,3 +787,32 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
   Sunucuda **SSH deploy key** kurulu (`/root/.ssh/artademi_deploy`, `~/.ssh/config`'te github.com için tanımlı); remote `git@github.com:...`. Anahtar **salt-okunur** ve yalnızca bu depoya kapsamlı — sunucu ele geçirilse bile kod push'lanamaz.
 - ⚠️ **Geçmiş tuzak (çözüldü, tekrarlarsa tanıyın):** HTTPS remote ile sunucu `git pull` yapamıyordu — `GET /info/refs` 200 dönerken nesneleri taşıyan `POST /git-upload-pack` **401** veriyordu (depo public olmasına rağmen); protokol v1'e düşürmek de çözmedi. Çözüm HTTPS'i onarmak değil **SSH'a geçmek** oldu. O dönemde deploy'lar `git bundle` ile yapıldı; artık gerekmiyor. Aynı belirti dönerse önce `ssh -T git@github.com` ile anahtarı doğrulayın.
 - Deploy: compose **`infra/`** altındadır (`/opt/artademi/infra/docker-compose.prod.yml`), repo kökünde DEĞİL. Landing Caddy'den doğrudan servis edilir (pull yeterli), ama **panel ayrı bir `web` konteyneridir** — frontend değişikliği için `up -d --build web` şart.
+
+---
+
+### 7.27 Dalga A — menü/isim/küçük ekranlar (✅ 2026-09-10)
+
+- **Menü** (`routes/menu.ts` + `AppShell.SidebarNav`): `MenuItem.grup` ile açılır alt menü; "Yönetici Paneli" başlığı altında Eğitmenler (`/egitmenler`) ve Ders Ücretleri / Gruplar (`/gruplar`). Açık/kapalı tercihi `localStorage['artademi.menu.acik']`; içindeki sayfa aktifse kendiliğinden açık. Genel Bakış artık TEACHER'a görünmez (eğitmen girişte `/yoklama`'ya düşer; menüde Yoklama + Haftalık Program + Geri Bildirim).
+- **Öğretmen → Eğitmen**: yalnız kullanıcıya görünen metinler (web + backend hata mesajları). Kod tanımlayıcıları (`ogretmen`, `Teacher`, `ROLE TEACHER`, `/api/teachers`) DEĞİŞMEDİ. Rota `/ogretmenler/*` → `/egitmenler` yönlendirmesi App.tsx'te.
+- **Haftalık Program** `/program` (`features/schedule/ProgramPage`): ofis rolleri `GET /api/schedules?aktif=true&size=500`, eğitmen `GET /api/schedules/mine` (yeni; `ScheduleRepository.findAktifByOgretmen`, eşleşme yoksa 200 + []). Salt okunur; ders saati grup detayından düzenlenir. `ScheduleResponse`'a web tipinde `salon`/`ogretmen` eklendi (backend zaten dönüyordu).
+- **Öğrenci detayı → Gruplar / Kayıtlar** (`StudentDetailPage.KayitPaneli`, `useStudentEnrollments.ts`): `GET /api/students/{id}/enrollments`, grup arama (`/api/groups?q&aktif=true`), ekle/çıkar; DENEME öğrencide aynı uyarı (§7.26).
+- **Finans → Gelirler** (`GelirTab`): `GET /api/finance/gelir-ozeti?from&to` (`GelirOzetiService`: `sumTutarByTarihAraligi` + `sumToplamTutarByTarihAraligi`), ay seçici; alt sekmeler Öğrenci Ödemeleri (eski OdemeTab) ve Ürün Satışları (inventory `SalesTab` yeniden kullanılır).
+- **Stok**: V30 `product.alis_fiyati` (nullable); `PATCH /api/products/{id}/stok-hareket {miktar:±N}` (`ProductService.stokHareket`, negatife düşürme/0 → 400); ekranda Alış/Satış sütunları + marj, satırda "+ Giriş / − Çıkış". Mutlak atama ucu (`PATCH /stok`) duruyor ama arayüzden kaldırıldı.
+- Testler: `dalga/DalgaAEndpointTest` (schedules/mine izolasyonu ve 403, alış fiyatı + stok hareketi, gelir özeti + tenant izolasyonu).
+
+## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
+
+Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:
+**yumuşak silme** (SILINDI, geri alınabilir, bağlı kayıt uyarısı) · **dönem/kredi modeli mevcut
+aylık aidat modelinin YERİNE geçer** (grup: dönemlik + aylık ücret, özel derste ders başı; Ders Paketi
+buna gömülür) · **İzinli yalnız yönetici düzeltmesinde** · sıra **A→B→C→D→E→F**, her dalga sonunda deploy.
+"Asistan" = Ön büro rolü (yeni rol yok).
+
+| Dalga | Kapsam | Durum |
+|---|---|---|
+| A | Yönetici Paneli açılır alt menü (Eğitmenler · Ders Ücretleri/Gruplar; Yoklama Listesi C'de eklenecek); Öğretmen→Eğitmen; öğrenci detayından gruba ekle; eğitmen girişi = Yoklama + Haftalık Program; Ödemeler→Gelirler (+ürün satış gelirleri); stok alış fiyatı + basit giriş/çıkış | ✅ 2026-09-10 (bkz. §7.27) |
+| B | Öğrenci listesi sütunları (gruplar, bakiye, statü, devam serisi −N); kara liste (+açıklama, tekrar kayıtta popup); yönetici yumuşak silme her sayfada | ⏳ |
+| C | Yeni yoklama ekranı (dikey liste, renkli Geldi/Gelmedi, Kaydet sonrası eğitmen kilidi, admin düzeltir); Yoklama Listesi sayfası; "yoklama alındı" uygulama içi anlık bildirim (zil + 30 sn sorgu + toast); "yoklama alınmadı" eğitmen bildirimi (e-posta şimdi, kanal soyutlaması WhatsApp'a hazır) | ⏳ |
+| D | İndirim/kampanya tanımı (oran/tutar) + öğrenciye özel atama (grup, tarih aralığı) + tahakkukta brüt−indirim=net, makbuzda görünür | ⏳ |
+| E | Dönem tanımı (branş/grup, 1./2. dönem), grup ücretleri (dönemlik/aylık), kayıtta dönemlik/aylık seçimi, program × dönem = kredi (örn. 22 / 4), öğrenci detayında kalan kredi, kredi bitince/dönem dışı derse gelince admin+asistan uyarısı. **Önce 1 sayfalık tasarım onayı.** | ⏳ |
+| F | Raporlar grafikli yenileme (pasta/çubuk/trend); eğitmen kalitesi paneli (yük, öğrenci sayısı, katılım oranı) | ⏳ |

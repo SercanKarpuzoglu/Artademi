@@ -24,6 +24,18 @@ export async function getGroupEnrollments(
   return res.data;
 }
 
+/** Bir öğrencinin kayıtları (sayfali; durum filtresi opsiyonel). Zarfin tamamini dondurur. */
+export async function getStudentEnrollments(
+  studentId: number,
+  params: GetGroupEnrollmentsParams = {},
+): Promise<ApiResponse<EnrollmentResponse[]>> {
+  const res = await api.get<ApiResponse<EnrollmentResponse[]>>(
+    `/api/students/${studentId}/enrollments`,
+    { params },
+  );
+  return res.data;
+}
+
 /** Yeni kayıt olusturur (öğrenciyi gruba ekler). kayitTarihi gonderilmezse backend bugunu kullanir. */
 export async function createEnrollment(payload: EnrollmentInput): Promise<EnrollmentResponse> {
   const res = await api.post<ApiResponse<EnrollmentResponse>>('/api/enrollments', payload);

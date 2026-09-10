@@ -1311,3 +1311,26 @@ export interface GelirOzetiResponse {
   satisToplam: string | number;
   toplam: string | number;
 }
+
+/** Eğitmen kalitesi satırı — backend TeacherQualityRow (Dalga F). */
+export interface TeacherQualityRow {
+  ogretmenId: number;
+  ad: string;
+  soyad: string;
+  aktifGrup: number;
+  ogrenciSayisi: number;
+  haftalikDersSaati: string | number;
+  planlananDers: number;
+  oturumSayisi: number;
+  alinmayanYoklama: number;
+  kaydedilmemisOturum: number;
+  geldi: number;
+  gelmedi: number;
+  izinli: number;
+  katilimOrani: string | number;
+}
+export interface TeacherQualityResponse {
+  baslangic: string;
+  bitis: string;
+  satirlar: TeacherQualityRow[];
+}

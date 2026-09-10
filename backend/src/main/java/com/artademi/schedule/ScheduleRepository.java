@@ -61,4 +61,8 @@ public interface ScheduleRepository
     @Query("SELECT s FROM Schedule s WHERE s.grup.ogretmen.id = :ogretmenId AND s.aktif = true "
             + "AND s.grup.aktif = true ORDER BY s.gun ASC, s.baslangicSaati ASC")
     List<Schedule> findAktifByOgretmen(@Param("ogretmenId") Long ogretmenId);
+
+    /** Tum aktif ders saatleri, grup FETCH (egitmen yuku raporu). Tenant filtreli. */
+    @Query("SELECT s FROM Schedule s JOIN FETCH s.grup g WHERE s.aktif = true AND g.aktif = true")
+    List<Schedule> findAktifHepsi();
 }

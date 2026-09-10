@@ -39,6 +39,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.teacher.Teacher;
+import com.artademi.teacher.TeacherRepository;
+import com.artademi.schedule.Schedule;
+import com.artademi.schedule.ScheduleRepository;
+import com.artademi.attendance.AttendanceSessionRepository;
+import com.artademi.kredi.KrediService;
+import com.artademi.report.dto.TeacherQualityResponse;
+import com.artademi.report.dto.TeacherQualityRow;
 
 /**
  * Rapor (RAPOR) is kurallari — SALT OKUNUR aggregate'ler. Hicbir kayit OLUSTURMAZ/DEGISTIRMEZ.
@@ -64,11 +72,18 @@ public class ReportService {
     private final EnrollmentRepository enrollmentRepository;
     private final com.artademi.attendance.AttendanceEntryRepository attendanceEntryRepository;
 
+    private final TeacherRepository teacherRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final AttendanceSessionRepository attendanceSessionRepository;
+    private final KrediService krediService;
+
     public ReportService(PaymentRepository paymentRepository, SaleRepository saleRepository,
             ExpenseRepository expenseRepository, PayoutRepository payoutRepository,
             AccrualRepository accrualRepository, StudentRepository studentRepository,
             GroupRepository groupRepository, EnrollmentRepository enrollmentRepository,
-            com.artademi.attendance.AttendanceEntryRepository attendanceEntryRepository) {
+            com.artademi.attendance.AttendanceEntryRepository attendanceEntryRepository,
+            TeacherRepository teacherRepository, ScheduleRepository scheduleRepository,
+            AttendanceSessionRepository attendanceSessionRepository, KrediService krediService) {
         this.paymentRepository = paymentRepository;
         this.saleRepository = saleRepository;
         this.expenseRepository = expenseRepository;
@@ -78,6 +93,10 @@ public class ReportService {
         this.groupRepository = groupRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.attendanceEntryRepository = attendanceEntryRepository;
+        this.teacherRepository = teacherRepository;
+        this.scheduleRepository = scheduleRepository;
+        this.attendanceSessionRepository = attendanceSessionRepository;
+        this.krediService = krediService;
     }
 
     /**
@@ -264,5 +283,60 @@ public class ReportService {
 
         return new AttendanceReportResponse(baslangic, bitis,
                 attendanceEntryRepository.oturumSayisi(baslangic, bitis, grupId), satirlar);
+    }
+
+    /**
+     * EGITMEN KALITESI (Dalga F): her aktif egitmen icin yuk (aktif grup, ogrenci, haftalik ders saati) ve
+     * tarih araliginda planlanan ders (program x takvim) vs alinan yoklama, kaydedilmemis oturum, katilim orani.
+     * Satirlar katilim orani ARTAN — once dikkat gerektiren egitmen. Ogrencisi/oturumu olmayan egitmen de listelenir.
+     */
+    public TeacherQualityResponse teacherQuality(LocalDate baslangic, LocalDate bitis) {
+        if (bitis.isBefore(baslangic)) {
+            throw new ValidationException("Bitiş tarihi başlangıçtan önce olamaz");
+        }
+        Map<Long, Long> ogrenciSayilari = toCountMap(enrollmentRepository.countAktifGroupByGrup());
+        Map<Long, Long> oturumlar = toCountMap(attendanceSessionRepository.oturumSayimlariOgretmen(baslangic, bitis));
+        Map<Long, Long> kaydedilmemisler = toCountMap(attendanceSessionRepository.kaydedilmemisSayimlariOgretmen(baslangic, bitis));
+        Map<Long, long[]> sayimlar = new HashMap<>(); // [geldi, gelmedi, izinli]
+        for (Object[] r : attendanceEntryRepository.katilimSayimlariOgretmen(baslangic, bitis)) {
+            long[] s = sayimlar.computeIfAbsent((Long) r[0], k -> new long[3]);
+            s[((YoklamaDurumu) r[1]).ordinal()] += ((Number) r[2]).longValue();
+        }
+        // Egitmen -> aktif gruplari (program uzerinden: yalniz ders saati olan gruplar yuk uretir)
+        Map<Long, List<Group>> gruplar = new HashMap<>();
+        Map<Long, BigDecimal> haftalikSaat = new HashMap<>();
+        for (Schedule s : scheduleRepository.findAktifHepsi()) {
+            Group g = s.getGrup();
+            if (g == null || g.getOgretmen() == null) {
+                continue;
+            }
+            Long oid = g.getOgretmen().getId();
+            List<Group> liste = gruplar.computeIfAbsent(oid, k -> new ArrayList<>());
+            if (liste.stream().noneMatch(x -> x.getId().equals(g.getId()))) {
+                liste.add(g);
+            }
+            long dakika = java.time.Duration.between(s.getBaslangicSaati(), s.getBitisSaati()).toMinutes();
+            haftalikSaat.merge(oid, BigDecimal.valueOf(dakika).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP), BigDecimal::add);
+        }
+        List<TeacherQualityRow> satirlar = new ArrayList<>();
+        for (Teacher t : teacherRepository.findAll()) {
+            if (!t.isAktif()) {
+                continue;
+            }
+            List<Group> tg = gruplar.getOrDefault(t.getId(), List.of());
+            long ogrenci = tg.stream().mapToLong(g -> ogrenciSayilari.getOrDefault(g.getId(), 0L)).sum();
+            int planlanan = tg.stream().mapToInt(g -> krediService.dersSayisi(g.getId(), baslangic, bitis)).sum();
+            long oturum = oturumlar.getOrDefault(t.getId(), 0L);
+            long[] s = sayimlar.getOrDefault(t.getId(), new long[3]);
+            long payda = s[0] + s[1];
+            BigDecimal oran = payda == 0 ? BigDecimal.ZERO
+                    : BigDecimal.valueOf(s[0] * 100.0 / payda).setScale(2, RoundingMode.HALF_UP);
+            satirlar.add(new TeacherQualityRow(t.getId(), t.getAd(), t.getSoyad(), tg.size(), ogrenci,
+                    haftalikSaat.getOrDefault(t.getId(), BigDecimal.ZERO.setScale(2)), planlanan, oturum,
+                    Math.max(0, planlanan - oturum), kaydedilmemisler.getOrDefault(t.getId(), 0L),
+                    s[0], s[1], s[2], oran));
+        }
+        satirlar.sort(Comparator.comparing(TeacherQualityRow::katilimOrani).thenComparing(TeacherQualityRow::ad));
+        return new TeacherQualityResponse(baslangic, bitis, satirlar);
     }
 }

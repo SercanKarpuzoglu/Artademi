@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { Halka, RENK, YatayCubuk } from './charts';
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
 import {
@@ -111,6 +112,31 @@ export default function AttendanceReportTab() {
             öğrenciden başlar.
           </p>
           <div className="overflow-x-auto">
+            <div className="mb-3 grid gap-4 lg:grid-cols-[1fr_260px]">
+              <div>
+                <h3 className="mb-1">Öğrenci bazında (en düşük katılım önce)</h3>
+                <YatayCubuk
+                  data={q.data.satirlar.slice(0, 15).map((r) => ({ name: r.ogrenciAdSoyad, geldi: r.geldi, gelmedi: r.gelmedi, izinli: r.izinli }))}
+                  seriler={[
+                    { key: 'geldi', name: 'Geldi', renk: RENK.green },
+                    { key: 'gelmedi', name: 'Gelmedi', renk: RENK.red },
+                    { key: 'izinli', name: 'İzinli', renk: RENK.amber },
+                  ]}
+                  yigin
+                />
+              </div>
+              <div>
+                <h3 className="mb-1">Toplam</h3>
+                <Halka
+                  data={[
+                    { name: 'Geldi', value: q.data.satirlar.reduce((s, r) => s + r.geldi, 0), renk: RENK.green },
+                    { name: 'Gelmedi', value: q.data.satirlar.reduce((s, r) => s + r.gelmedi, 0), renk: RENK.red },
+                    { name: 'İzinli', value: q.data.satirlar.reduce((s, r) => s + r.izinli, 0), renk: RENK.amber },
+                  ]}
+                  yukseklik={200}
+                />
+              </div>
+            </div>
             <table className="data-table">
               <thead>
                 <tr>

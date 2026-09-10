@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.artademi.report.dto.TeacherQualityResponse;
 
 /**
  * Rapor (RAPOR) ucu — SALT OKUNUR aggregate'ler. Hicbir kayit OLUSTURMAZ/DEGISTIRMEZ; yeni entity,
@@ -123,5 +124,14 @@ public class ReportController {
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + dosya + "\"")
                 .body(c.baytlar());
+    }
+
+    /** Egitmen kalitesi paneli — YALNIZCA ADMIN (yuk ve katilim; egitmen degerlendirmesi yonetim isidir). */
+    @GetMapping("/teacher-quality")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<TeacherQualityResponse> teacherQuality(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate baslangic,
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate bitis) {
+        return ApiResponse.ok(service.teacherQuality(baslangic, bitis));
     }
 }

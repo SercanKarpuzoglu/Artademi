@@ -909,6 +909,22 @@ bozulmaz (`DalgaBSilmeTest` bunu sabitler). Geri alınabilir.
 - ⚠️ Bilinçli sınırlar: elle tahakkuk/paket satışı/transfer farkı plan bilmez; dönemlik ücret orantılanmaz (dönem
   ortasında kayıt tam ücret, kredi kalan derslere göre); tatil günleri düşülmez.
 
+### 7.33 Dalga F — raporlar grafikli + eğitmen kalitesi paneli (✅ 2026-09-10)
+
+- **Grafikler** (`features/report/charts.tsx`, recharts — TrendChart paletiyle aynı hex'ler): `Halka` (halka/pasta),
+  `YatayCubuk` (yatay çubuk, isteğe bağlı yığın). Finansal Özet: gelir/gider halkaları + gelir·gider·net çubuğu;
+  Öğrenci Borç: sayfadaki en yüksek 10 borç; Eğitmen Hakediş: eğitmen başına çubuk; Grup Doluluk: grup başına aktif
+  öğrenci; Devamsızlık: öğrenci bazında yığın (ilk 15) + toplam halka. Tablolar aynen duruyor (grafik tablonun üstünde).
+- **Eğitmen Kalitesi** `GET /api/reports/teacher-quality?baslangic&bitis` (YALNIZ ADMIN; `ReportService.teacherQuality`):
+  aktif eğitmen başına aktif grup, öğrenci (aktif kayıt), haftalık ders saati (aktif program süreleri), planlanan ders
+  (`KrediService.dersSayisi`, program × takvim), alınan yoklama (oturum), alınmayan (planlanan − oturum), kaydedilmemiş
+  oturum (`kaydedildi_tarihi IS NULL`), geldi/gelmedi/izinli ve katılım oranı (GELDİ/(GELDİ+GELMEDİ); kaydedilmemiş
+  oturumun varsayılan GELMEDİ satırları sayılır — bilinçli: yoklama alınmayan ders "gelmedi" görünür). Satırlar katılım
+  oranı ARTAN. Yeni sorgular: `AttendanceEntryRepository.katilimSayimlariOgretmen`, `AttendanceSessionRepository.
+  oturumSayimlariOgretmen/kaydedilmemisSayimlariOgretmen`, `ScheduleRepository.findAktifHepsi`.
+- Web: Raporlar → **Eğitmen Kalitesi** sekmesi (`TeacherQualityTab`: devamlılık ve yük çubukları + tablo).
+- Testler: `dalga/DalgaFTest` (yük, planlanan vs alınan, kaydedilmemiş, katılım, yetki, tenant).
+
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 
 Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:
@@ -924,4 +940,4 @@ buna gömülür) · **İzinli yalnız yönetici düzeltmesinde** · sıra **A→
 | C | Yeni yoklama ekranı (dikey liste, renkli Geldi/Gelmedi, Kaydet sonrası eğitmen kilidi, admin düzeltir); Yoklama Listesi sayfası; "yoklama alındı" uygulama içi anlık bildirim (zil + 30 sn sorgu + toast); "yoklama alınmadı" eğitmen bildirimi (e-posta şimdi, kanal soyutlaması WhatsApp'a hazır) | ✅ 2026-09-10 (§7.30) |
 | D | İndirim/kampanya tanımı (oran/tutar) + öğrenciye özel atama (grup, tarih aralığı) + tahakkukta brüt−indirim=net (Tahakkuklar listesinde ve önizlemede görünür) | ✅ 2026-09-10 (§7.31) |
 | E | Dönem tanımı, grup ücretleri (dönemlik/aylık), kayıtta dönemlik/aylık seçimi, program × dönem = kredi, öğrenci detayında kalan kredi, kredi bitince/dönem dışı derse gelince ofise uyarı | ✅ 2026-09-10 (§7.32; tasarım onaylandı) |
-| F | Raporlar grafikli yenileme (pasta/çubuk/trend); eğitmen kalitesi paneli (yük, öğrenci sayısı, katılım oranı) | ⏳ |
+| F | Raporlar grafikli yenileme (pasta/çubuk/trend); eğitmen kalitesi paneli (yük, öğrenci sayısı, katılım oranı) | ✅ 2026-09-10 (§7.33) |

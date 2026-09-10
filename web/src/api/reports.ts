@@ -5,6 +5,7 @@ import type {
   GroupOccupancyRow,
   StudentBalanceRow,
   TeacherPayoutsResponse,
+  TeacherQualityResponse,
 } from './types';
 
 /** Finansal özet (gelir/gider/net) — tekil yanit. Tenant JWT'den. YALNIZCA ADMIN. */
@@ -97,4 +98,10 @@ export async function indirDevamsizlikCsv(params: {
   const disposition = String(res.headers['content-disposition'] ?? '');
   const eslesme = disposition.match(/filename="?([^"]+)"?/);
   return { blob: res.data as Blob, dosyaAdi: eslesme?.[1] ?? 'devamsizlik.csv' };
+}
+
+/** Eğitmen kalitesi paneli — YALNIZCA ADMIN. */
+export async function getTeacherQuality(params: { baslangic: string; bitis: string }): Promise<TeacherQualityResponse> {
+  const res = await api.get<ApiResponse<TeacherQualityResponse>>('/api/reports/teacher-quality', { params });
+  return res.data.data;
 }

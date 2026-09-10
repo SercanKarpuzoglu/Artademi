@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
 import { formatMoney } from '../../lib/format';
+import { Halka, RENK, YatayCubuk } from './charts';
 import { currentMonth, useFinancialSummary } from './useReports';
 
 const inputClass =
@@ -57,6 +58,42 @@ export default function FinancialSummaryTab() {
                 <span className="amount">{formatMoney(data.net)} ₺</span>
               </div>
             </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="card space-y-2">
+              <h3>Gelir dağılımı</h3>
+              <Halka
+                data={[
+                  { name: 'Öğrenci tahsilatı', value: Number(data.gelir.tahsilat), renk: RENK.green },
+                  { name: 'Ürün satışı', value: Number(data.gelir.urunSatis), renk: RENK.blue },
+                ]}
+                format={(v) => `${formatMoney(v)} ₺`}
+              />
+            </div>
+            <div className="card space-y-2">
+              <h3>Gider dağılımı</h3>
+              <Halka
+                data={[
+                  { name: 'Ofis gideri', value: Number(data.gider.ofisGideri), renk: RENK.red },
+                  { name: 'Hakediş', value: Number(data.gider.hakedis), renk: RENK.amber },
+                ]}
+                format={(v) => `${formatMoney(v)} ₺`}
+              />
+            </div>
+          </div>
+          <div className="card space-y-2">
+            <h3>Gelir · Gider · Net</h3>
+            <YatayCubuk
+              data={[
+                { name: 'Gelir', tutar: Number(data.gelir.toplamGelir) },
+                { name: 'Gider', tutar: Number(data.gider.toplamGider) },
+                { name: 'Net', tutar: Number(data.net) },
+              ]}
+              seriler={[{ key: 'tutar', name: '₺', renk: RENK.rasp }]}
+              format={(v) => `${formatMoney(v)} ₺`}
+              yukseklik={150}
+            />
           </div>
 
           <div className="card space-y-2">

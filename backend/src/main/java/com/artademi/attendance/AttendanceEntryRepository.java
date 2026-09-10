@@ -104,4 +104,19 @@ public interface AttendanceEntryRepository extends JpaRepository<AttendanceEntry
     @Query("SELECT COUNT(e) FROM AttendanceEntry e WHERE e.ogrenci.id = :id")
     long countByOgrenci(@Param("id") Long id);
 
+
+    /**
+     * Egitmen kalitesi raporu: tarih araliginda egitmen bazinda durum sayimlari. Kaydedilmemis oturumun
+     * varsayilan GELMEDI satirlari da sayilir (yoklama alinmamis ders "gelmedi" olarak gorunur — bilincli).
+     *
+     * @return satirlar: [ogretmenId, durum, adet]
+     */
+    @Query("""
+            SELECT e.session.grup.ogretmen.id, e.durum, COUNT(e)
+            FROM AttendanceEntry e
+            WHERE e.session.tarih BETWEEN :baslangic AND :bitis
+            GROUP BY e.session.grup.ogretmen.id, e.durum
+            """)
+    List<Object[]> katilimSayimlariOgretmen(@Param("baslangic") java.time.LocalDate baslangic,
+            @Param("bitis") java.time.LocalDate bitis);
 }

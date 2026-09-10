@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RENK, YatayCubuk } from './charts';
 import { ApiException } from '../../api/client';
 import { TIP_BADGE, TIP_LABEL } from '../group/groupDisplay';
 import { useGroupOccupancy } from './useReports';
@@ -49,6 +50,12 @@ export default function GroupOccupancyTab() {
         <div className="card text-center text-ink-soft">Grup bulunamadı</div>
       ) : (
         <div className="card">
+          <div className="mb-3">
+            <YatayCubuk
+              data={rows.map((r) => ({ name: r.ad, ogrenci: r.aktifOgrenciSayisi }))}
+              seriler={[{ key: 'ogrenci', name: 'Aktif öğrenci', renk: RENK.blue }]}
+            />
+          </div>
           <table className="data-table">
             <thead>
               <tr>

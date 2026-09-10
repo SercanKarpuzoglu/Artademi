@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RENK, YatayCubuk } from './charts';
 import { ApiException } from '../../api/client';
 import { formatMoney } from '../../lib/format';
 import { useStudentBalances } from './useReports';
@@ -39,6 +40,14 @@ export default function StudentBalancesTab() {
       ) : (
         <>
           <div className="card">
+            <div className="mb-3">
+              <h3 className="mb-1">En yüksek borçlar (bu sayfa)</h3>
+              <YatayCubuk
+                data={rows.filter((r) => Number(r.bakiye) > 0).slice(0, 10).map((r) => ({ name: `${r.ad} ${r.soyad}`, bakiye: Number(r.bakiye) }))}
+                seriler={[{ key: 'bakiye', name: 'Borç', renk: RENK.red }]}
+                format={(v) => `${formatMoney(v)} ₺`}
+              />
+            </div>
             <table className="data-table">
               <thead>
                 <tr>

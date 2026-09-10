@@ -6,8 +6,9 @@ import FinancialSummaryTab from './FinancialSummaryTab';
 import GroupOccupancyTab from './GroupOccupancyTab';
 import StudentBalancesTab from './StudentBalancesTab';
 import TeacherPayoutsTab from './TeacherPayoutsTab';
+import TeacherQualityTab from './TeacherQualityTab';
 
-type TabKey = 'financial' | 'balances' | 'payouts' | 'occupancy' | 'attendance';
+type TabKey = 'financial' | 'balances' | 'payouts' | 'quality' | 'occupancy' | 'attendance';
 
 interface TabDef {
   key: TabKey;
@@ -24,6 +25,7 @@ const TAB_DEFS: readonly TabDef[] = [
   { key: 'financial', label: 'Finansal Özet', roles: [Role.ADMIN] },
   { key: 'balances', label: 'Öğrenci Borç', roles: [Role.ADMIN, Role.FRONTDESK_ACCOUNTING] },
   { key: 'payouts', label: 'Eğitmen Hakediş', roles: [Role.ADMIN] },
+  { key: 'quality', label: 'Eğitmen Kalitesi', roles: [Role.ADMIN] },
   {
     key: 'occupancy',
     label: 'Grup Doluluk',
@@ -49,7 +51,7 @@ export default function ReportsPage() {
       <div className="topbar">
         <div>
           <h1>Raporlar</h1>
-          <div className="sub">Finansal özet, öğrenci borç, eğitmen hakediş ve grup doluluk</div>
+          <div className="sub">Finansal özet, öğrenci borç, eğitmen hakediş ve kalitesi, grup doluluk, devamsızlık</div>
         </div>
       </div>
 
@@ -69,6 +71,7 @@ export default function ReportsPage() {
       {active === 'financial' && <FinancialSummaryTab />}
       {active === 'balances' && <StudentBalancesTab />}
       {active === 'payouts' && <TeacherPayoutsTab />}
+      {active === 'quality' && <TeacherQualityTab />}
       {active === 'occupancy' && <GroupOccupancyTab />}
       {active === 'attendance' && <AttendanceReportTab />}
     </>

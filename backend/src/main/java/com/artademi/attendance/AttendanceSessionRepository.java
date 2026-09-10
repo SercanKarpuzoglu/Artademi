@@ -64,4 +64,14 @@ public interface AttendanceSessionRepository
     @Query("SELECT COUNT(s) FROM AttendanceSession s WHERE s.grup.id = :id")
     long countByGrup(@Param("id") Long id);
 
+
+    /** Egitmen kalitesi: tarih araliginda egitmen bazinda oturum sayisi. [ogretmenId, adet] */
+    @Query("SELECT s.grup.ogretmen.id, COUNT(s) FROM AttendanceSession s "
+            + "WHERE s.tarih BETWEEN :from AND :to GROUP BY s.grup.ogretmen.id")
+    List<Object[]> oturumSayimlariOgretmen(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /** Egitmen kalitesi: acilmis ama Kaydet'e basilmamis oturumlar. [ogretmenId, adet] */
+    @Query("SELECT s.grup.ogretmen.id, COUNT(s) FROM AttendanceSession s "
+            + "WHERE s.tarih BETWEEN :from AND :to AND s.kaydedildiTarihi IS NULL GROUP BY s.grup.ogretmen.id")
+    List<Object[]> kaydedilmemisSayimlariOgretmen(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

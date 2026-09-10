@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RENK, YatayCubuk } from './charts';
 import { ApiException } from '../../api/client';
 import { formatMoney } from '../../lib/format';
 import { HAKEDIS_BADGE, HAKEDIS_LABEL } from '../teacher/teacherDisplay';
@@ -46,6 +47,13 @@ export default function TeacherPayoutsTab() {
             <span className="amount font-semibold">{formatMoney(data.toplamHakedis)} ₺</span>
           </div>
           <div className="card">
+            <div className="mb-3">
+              <YatayCubuk
+                data={kalemler.map((k) => ({ name: `${k.ad} ${k.soyad}`, tutar: Number(k.hesaplananTutar) }))}
+                seriler={[{ key: 'tutar', name: 'Hakediş', renk: RENK.amber }]}
+                format={(v) => `${formatMoney(v)} ₺`}
+              />
+            </div>
             <table className="data-table">
               <thead>
                 <tr>

@@ -77,10 +77,12 @@ public class AttendanceController {
     public ApiResponse<List<SessionResponse>> list(
             @RequestParam(required = false) Long grupId,
             @RequestParam(required = false) LocalDate tarih,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("tarih").descending());
-        Page<SessionResponse> result = service.search(grupId, tarih, pageable);
+        Page<SessionResponse> result = service.search(grupId, tarih, from, to, pageable);
         return ApiResponse.ok(result.getContent(), PageMeta.of(result));
     }
 }

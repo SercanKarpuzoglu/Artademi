@@ -22,6 +22,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.bildirim.UygulamaBildirimService;
+import com.artademi.bildirim.UygulamaBildirimTipi;
 
 /**
  * Yoklama is kurallari. {@code @Transactional} oldugundan cagrildiginda global tenant filtresi aktif
@@ -58,6 +60,8 @@ public class AttendanceService {
     private final AttendanceAccessGuard accessGuard;
     private final com.artademi.paket.PaketService paketService;
 
+    private final UygulamaBildirimService uygulamaBildirimi;
+
     public AttendanceService(
             AttendanceSessionRepository sessionRepository,
             AttendanceEntryRepository entryRepository,
@@ -65,7 +69,8 @@ public class AttendanceService {
             ScheduleRepository scheduleRepository,
             EnrollmentRepository enrollmentRepository,
             AttendanceAccessGuard accessGuard,
-            com.artademi.paket.PaketService paketService) {
+            com.artademi.paket.PaketService paketService,
+            UygulamaBildirimService uygulamaBildirimi) {
         this.sessionRepository = sessionRepository;
         this.entryRepository = entryRepository;
         this.groupRepository = groupRepository;
@@ -73,6 +78,7 @@ public class AttendanceService {
         this.enrollmentRepository = enrollmentRepository;
         this.accessGuard = accessGuard;
         this.paketService = paketService;
+        this.uygulamaBildirimi = uygulamaBildirimi;
     }
 
     /**
@@ -136,6 +142,14 @@ public class AttendanceService {
         AttendanceSession session = findSessionOrThrow(sessionId);
         accessGuard.assertCanAccessGroup(session.getGrup());
 
+        // Dalga C: egitmen bir kez kaydeder; sonrasi KILITLI (yonetici/ofis duzeltir). IZINLI yalniz ofis.
+        boolean egitmen = accessGuard.yalnizEgitmen();
+        if (egitmen && session.getKaydedildiTarihi() != null) {
+            throw new ConflictException(
+                    "Yoklama kaydedilmiş; düzeltme için yöneticinize başvurun", "KILITLI");
+        }
+        boolean ilkKayit = session.getKaydedildiTarihi() == null;
+
         if (items != null) {
             for (UpdateEntryItem item : items) {
                 if (item == null || item.ogrenciId() == null) {
@@ -143,6 +157,9 @@ public class AttendanceService {
                 }
                 if (item.durum() == null) {
                     throw new ValidationException("Durum zorunludur");
+                }
+                if (egitmen && item.durum() == YoklamaDurumu.IZINLI) {
+                    throw new ValidationException("İzinli durumunu yalnız yönetici işaretleyebilir");
                 }
                 AttendanceEntry entry = entryRepository
                         .findBySessionIdAndOgrenciId(session.getId(), item.ogrenciId())
@@ -160,7 +177,23 @@ public class AttendanceService {
             }
         }
 
-        return SessionResponse.from(session, entryRepository.findBySessionId(session.getId()));
+        String kim = accessGuard.kullaniciAdi();
+        session.setKaydedildiTarihi(java.time.Instant.now());
+        session.setKaydeden(kim);
+        List<AttendanceEntry> guncel = entryRepository.findBySessionId(session.getId());
+
+        // Egitmenin ILK kaydi ofise "yoklama alindi" bildirimi uretir (yonetici duzeltmesi uretmez).
+        if (egitmen && ilkKayit) {
+            long geldi = guncel.stream().filter(e -> e.getDurum() == YoklamaDurumu.GELDI).count();
+            String grupAd = session.getGrup() != null ? session.getGrup().getAd() : "Grup";
+            uygulamaBildirimi.gonder(UygulamaBildirimTipi.YOKLAMA_ALINDI, UygulamaBildirimService.OFIS, null,
+                    grupAd + " yoklaması alındı",
+                    geldi + "/" + guncel.size() + " öğrenci geldi · " + session.getTarih() + " · " + kim,
+                    "/yoklama-listesi?grupId=" + (session.getGrup() != null ? session.getGrup().getId() : "")
+                            + "&tarih=" + session.getTarih());
+        }
+
+        return SessionResponse.from(session, guncel);
     }
 
     /**
@@ -169,10 +202,19 @@ public class AttendanceService {
      */
     @Transactional(readOnly = true)
     public Page<SessionResponse> search(Long grupId, LocalDate tarih, Pageable pageable) {
+        return search(grupId, tarih, null, null, pageable);
+    }
+
+    /** Yoklama Listesi (Dalga C): grup + [from,to] araligi; TEACHER yine kendi gruplarina daraltilir. */
+    @Transactional(readOnly = true)
+    public Page<SessionResponse> search(Long grupId, LocalDate tarih, LocalDate from, LocalDate to,
+            Pageable pageable) {
         Long ogretmenId = accessGuard.teacherScopeOgretmenId();
         Specification<AttendanceSession> spec = Specification
                 .where(AttendanceSessionSpecifications.hasGrup(grupId))
                 .and(AttendanceSessionSpecifications.hasTarih(tarih))
+                .and(AttendanceSessionSpecifications.tarihGte(from))
+                .and(AttendanceSessionSpecifications.tarihLte(to))
                 .and(AttendanceSessionSpecifications.grupOgretmenId(ogretmenId));
         return sessionRepository.findAll(spec, pageable)
                 .map(s -> SessionResponse.from(s, entryRepository.findBySessionId(s.getId())));

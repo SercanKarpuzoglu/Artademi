@@ -18,6 +18,13 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.schedule.Schedule;
+import com.artademi.schedule.ScheduleRepository;
+import com.artademi.schedule.HaftaGunu;
+import com.artademi.attendance.AttendanceSessionRepository;
+import com.artademi.group.Group;
+import com.artademi.teacher.Teacher;
+import com.artademi.bildirim.kanal.EpostaKanali;
 
 /**
  * Otomatik bildirimler: devamsizlik ve haftalik ozet.
@@ -46,11 +53,18 @@ public class OtomatikBildirimService {
     private final String from;
     private final String smtpUsername;
 
+    private final ScheduleRepository schedules;
+    private final AttendanceSessionRepository sessions;
+    private final UygulamaBildirimService uygulamaBildirimi;
+    private final EpostaKanali eposta;
+
     public OtomatikBildirimService(AttendanceEntryRepository entries,
             DevamsizlikBildirimiRepository izler, ReportService reportService,
             TenantService tenantService, UserService users, JavaMailSender mailSender,
             @Value("${artademi.mail.from}") String from,
-            @Value("${spring.mail.username:}") String smtpUsername) {
+            @Value("${spring.mail.username:}") String smtpUsername,
+            ScheduleRepository schedules, AttendanceSessionRepository sessions,
+            UygulamaBildirimService uygulamaBildirimi, EpostaKanali eposta) {
         this.entries = entries;
         this.izler = izler;
         this.reportService = reportService;
@@ -59,6 +73,10 @@ public class OtomatikBildirimService {
         this.mailSender = mailSender;
         this.from = from;
         this.smtpUsername = smtpUsername;
+        this.schedules = schedules;
+        this.sessions = sessions;
+        this.uygulamaBildirimi = uygulamaBildirimi;
+        this.eposta = eposta;
     }
 
     /**
@@ -208,6 +226,44 @@ public class OtomatikBildirimService {
                 o.gider().toplamGider().toPlainString(),
                 o.net().toPlainString()));
         return mail;
+    }
+
+    /**
+     * "Yoklama alinmadi" (Dalga C): o gunun aktif ders saatlerinden oturumu ACILMAMIS olanlar icin
+     * egitmene uygulama ici bildirim (+ tercihe bagli e-posta) ve ofise bilgi. Gunde bir kez calisir;
+     * ayni ders icin ikinci bildirim yalniz job tekrar tetiklenirse olusur.
+     *
+     * @return bildirim uretilen ders saati sayisi
+     */
+    @Transactional
+    public int yoklamaAlinmadi(LocalDate gun, boolean epostaGonder) {
+        HaftaGunu haftaGunu = HaftaGunu.values()[gun.getDayOfWeek().getValue() - 1];
+        String kurum = tenantService.currentName();
+        int n = 0;
+        for (Schedule s : schedules.findAktifByGun(haftaGunu)) {
+            Group g = s.getGrup();
+            if (g == null || sessions.existsByGrupAndTarih(g.getId(), gun)) {
+                continue;
+            }
+            String saat = s.getBaslangicSaati() + "–" + s.getBitisSaati();
+            Teacher egitmen = g.getOgretmen();
+            String egitmenAd = egitmen == null ? "Eğitmen" : egitmen.getAd() + " " + egitmen.getSoyad();
+            String baglanti = "/yoklama";
+            if (egitmen != null && egitmen.getKeycloakUserId() != null && !egitmen.getKeycloakUserId().isBlank()) {
+                uygulamaBildirimi.gonder(UygulamaBildirimTipi.YOKLAMA_ALINMADI, "TEACHER",
+                        egitmen.getKeycloakUserId(), g.getAd() + " dersinin yoklaması alınmadı",
+                        gun + " " + saat + " — yoklamayı şimdi alabilirsiniz", baglanti);
+            }
+            uygulamaBildirimi.gonder(UygulamaBildirimTipi.YOKLAMA_ALINMADI, UygulamaBildirimService.OFIS, null,
+                    egitmenAd + " — " + g.getAd() + " yoklaması alınmadı", gun + " " + saat, baglanti);
+            if (epostaGonder && egitmen != null) {
+                eposta.gonder(egitmen.getEmail(), "[" + kurum + "] " + g.getAd() + " yoklaması alınmadı",
+                        "Merhaba " + egitmenAd + ",\n\n" + gun + " " + saat + " " + g.getAd()
+                                + " dersinin yoklaması alınmadı. Panelden alabilirsiniz.\n\n" + kurum);
+            }
+            n++;
+        }
+        return n;
     }
 
     private List<String> adminAdresleri() {

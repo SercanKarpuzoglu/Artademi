@@ -839,6 +839,27 @@ bozulmaz (`DalgaBSilmeTest` bunu sabitler). Geri alınabilir.
   satır (ad ifadesi native SQL) — yoksa "Sil" görünmez, sorun değil; ama başka bir silinebilirin blokeri olacaksa
   `SilmeService.hesapla`'ya sayaç ekleyin.
 
+### 7.30 Dalga C — yoklama ekranı, yoklama listesi, anlık bildirim, "yoklama alınmadı" (✅ 2026-09-10)
+
+- **V33**: `attendance_session.kaydedildi_tarihi/kaydeden` (eğitmen kilidi), `bildirim_ayari.yoklama_alinmadi_eposta`,
+  tablo `uygulama_bildirimi` (tip, hedef_roller virgüllü, hedef_kullanici = Keycloak sub, başlık/metin/bağlantı, okundu).
+- **Kilit kuralı** (`AttendanceService.updateEntries`): yalnız-eğitmen (`AttendanceAccessGuard.yalnizEgitmen`) bir kez
+  kaydeder; sonraki PUT → **409 `KILITLI`**; ofis/yönetici her zaman düzeltir. Eğitmen **İZİNLİ** işaretleyemez (400).
+  Her başarılı kayıt `kaydedildi_tarihi/kaydeden` yazar; `SessionResponse.kaydedildi/kaydedildiTarihi/kaydeden`.
+- **"Yoklama alındı" bildirimi**: eğitmenin İLK kaydında ofise (`UygulamaBildirimService.OFIS` = ADMIN,FRONTDESK,
+  FRONTDESK_ACCOUNTING) `YOKLAMA_ALINDI` üretilir; yönetici düzeltmesi üretmez.
+- **Zil** `GET /api/bildirimler` (tüm iş rolleri) → `{okunmamis, bildirimler[≤30]}`; `POST /{id}/okundu`, `POST /okundu-hepsi`.
+  Süzme: `hedef_kullanici` doluysa yalnız o sub, yoksa rol kesişimi (son 100 satır bellekte). Okunma satır bazlı (küçük kurum).
+  Web `components/BildirimZili`: 30 sn'de bir sorgu, yeni id → sağ üstte toast, açılır liste, tıklayınca okundu + bağlantı.
+- **"Yoklama alınmadı"** `BildirimScheduler.yoklamaAlinmadiJobu` 21:00 TR → `OtomatikBildirimService.yoklamaAlinmadi(gün, epostaMi)`:
+  günün aktif ders saatleri (`ScheduleRepository.findAktifByGun`) içinde oturumu olmayanlar → eğitmene (sub ile) ve ofise
+  uygulama içi bildirim; e-posta kurum ayarıyla (`yoklamaAlinmadiEposta`, varsayılan kapalı) `bildirim/kanal/EpostaKanali`
+  üzerinden. **`BildirimKanali` arayüzü** WhatsApp için hazır (aynı imza).
+- **Web**: `attendance/RollPanel` (dikey liste, Geldi/Gelmedi/İzinli radyo düğmeleri, kilit uyarısı, "Düzeltmeyi Kaydet");
+  `YoklamaListesiPage` `/yoklama-listesi` (grup + tarih aralığı, satırda gömülü panel; Yönetici Paneli grubunda, eğitmen de
+  görür); `GET /api/attendance-sessions?from&to` eklendi. Bildirim Ayarları'na toggle.
+- Testler: `dalga/DalgaCTest` (kilit, İZİNLİ kısıtı, bildirim hedefleme + tenant, yoklama alınmadı işi).
+
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 
 Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:
@@ -851,7 +872,7 @@ buna gömülür) · **İzinli yalnız yönetici düzeltmesinde** · sıra **A→
 |---|---|---|
 | A | Yönetici Paneli açılır alt menü (Eğitmenler · Ders Ücretleri/Gruplar; Yoklama Listesi C'de eklenecek); Öğretmen→Eğitmen; öğrenci detayından gruba ekle; eğitmen girişi = Yoklama + Haftalık Program; Ödemeler→Gelirler (+ürün satış gelirleri); stok alış fiyatı + basit giriş/çıkış | ✅ 2026-09-10 (bkz. §7.27) |
 | B | Öğrenci listesi sütunları (gruplar, bakiye, statü, devam serisi −N); kara liste (+açıklama, tekrar kayıtta popup); yönetici yumuşak silme her sayfada | ✅ 2026-09-10 (§7.28, §7.29) |
-| C | Yeni yoklama ekranı (dikey liste, renkli Geldi/Gelmedi, Kaydet sonrası eğitmen kilidi, admin düzeltir); Yoklama Listesi sayfası; "yoklama alındı" uygulama içi anlık bildirim (zil + 30 sn sorgu + toast); "yoklama alınmadı" eğitmen bildirimi (e-posta şimdi, kanal soyutlaması WhatsApp'a hazır) | ⏳ |
+| C | Yeni yoklama ekranı (dikey liste, renkli Geldi/Gelmedi, Kaydet sonrası eğitmen kilidi, admin düzeltir); Yoklama Listesi sayfası; "yoklama alındı" uygulama içi anlık bildirim (zil + 30 sn sorgu + toast); "yoklama alınmadı" eğitmen bildirimi (e-posta şimdi, kanal soyutlaması WhatsApp'a hazır) | ✅ 2026-09-10 (§7.30) |
 | D | İndirim/kampanya tanımı (oran/tutar) + öğrenciye özel atama (grup, tarih aralığı) + tahakkukta brüt−indirim=net, makbuzda görünür | ⏳ |
 | E | Dönem tanımı (branş/grup, 1./2. dönem), grup ücretleri (dönemlik/aylık), kayıtta dönemlik/aylık seçimi, program × dönem = kredi (örn. 22 / 4), öğrenci detayında kalan kredi, kredi bitince/dönem dışı derse gelince admin+asistan uyarısı. **Önce 1 sayfalık tasarım onayı.** | ⏳ |
 | F | Raporlar grafikli yenileme (pasta/çubuk/trend); eğitmen kalitesi paneli (yük, öğrenci sayısı, katılım oranı) | ⏳ |

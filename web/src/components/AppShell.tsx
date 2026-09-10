@@ -11,6 +11,7 @@ import { ApiException } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useMe } from '../auth/useMe';
 import { GRUP_IKON, MENU, type MenuItem } from '../routes/menu';
+import BildirimZili from './BildirimZili';
 import RoleBadge from './RoleBadge';
 
 /**
@@ -67,6 +68,7 @@ export default function AppShell() {
             <span />
           )}
           <div className="flex items-center gap-3">
+            <BildirimZili />
             <span className="text-[13px] font-semibold text-ink">{username}</span>
             {primary && <RoleBadge role={primary} />}
             <Link to="/profil" className="btn btn-ghost">

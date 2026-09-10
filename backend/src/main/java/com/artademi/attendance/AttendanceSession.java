@@ -148,4 +148,27 @@ public class AttendanceSession extends TenantAware implements SoftDeletable {
     public void setSilen(String silen) {
         this.silen = silen;
     }
+
+    // --- Dalga C: egitmen "Kaydet" deyince kilit (ofis/yonetici duzeltir). NULL = henuz kaydedilmedi. ---
+    @Column(name = "kaydedildi_tarihi")
+    private Instant kaydedildiTarihi;
+
+    @Column(name = "kaydeden", length = 100)
+    private String kaydeden;
+
+    public Instant getKaydedildiTarihi() {
+        return kaydedildiTarihi;
+    }
+
+    public void setKaydedildiTarihi(Instant kaydedildiTarihi) {
+        this.kaydedildiTarihi = kaydedildiTarihi;
+    }
+
+    public String getKaydeden() {
+        return kaydeden;
+    }
+
+    public void setKaydeden(String kaydeden) {
+        this.kaydeden = kaydeden;
+    }
 }

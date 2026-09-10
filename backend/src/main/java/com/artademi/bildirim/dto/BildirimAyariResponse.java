@@ -11,10 +11,11 @@ public record BildirimAyariResponse(
         boolean borcHatirlatmaOtomatik,
         boolean devamsizlikBildirimi,
         boolean haftalikOzet,
-        short haftalikOzetGunu) {
+        short haftalikOzetGunu,
+        boolean yoklamaAlinmadiEposta) {
 
     public static BildirimAyariResponse from(BildirimAyari a) {
         return new BildirimAyariResponse(a.isBorcHatirlatmaOtomatik(), a.isDevamsizlikBildirimi(),
-                a.isHaftalikOzet(), a.getHaftalikOzetGunu());
+                a.isHaftalikOzet(), a.getHaftalikOzetGunu(), a.isYoklamaAlinmadiEposta());
     }
 }

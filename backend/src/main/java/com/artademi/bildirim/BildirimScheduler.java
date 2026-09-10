@@ -121,6 +121,23 @@ public class BildirimScheduler {
     }
 
     /**
+     * Her aksam 21:00 — o gunun yoklamasi alinmamis dersleri (Dalga C). Devamsizlik isinden (20:00)
+     * sonra: egitmen 20:00'e kadar almamissa ofis de haberdar olsun. Uygulama ici bildirim her zaman;
+     * e-posta kurum tercihiyle.
+     */
+    @Scheduled(cron = "0 0 21 * * *", zone = "Europe/Istanbul")
+    public void yoklamaAlinmadiJobu() {
+        LocalDate bugun = LocalDate.now(TURKIYE);
+        int toplam = kurumlariDolas(tenant -> {
+            int n = bildirimler.yoklamaAlinmadi(bugun, ayarlar.aktifAyar().isYoklamaAlinmadiEposta());
+            if (n > 0) {
+                log.info("Yoklama alınmadı bildirimi (tenant={}, ders={})", tenant.getId(), n);
+            }
+        });
+        log.info("Yoklama alınmadı işi bitti: {} kurum işlendi", toplam);
+    }
+
+    /**
      * AKTIF kurumlari dolasir; her biri icin {@link TenantContext}'i kurar, isi calistirir ve
      * baglami TEMIZLER.
      *

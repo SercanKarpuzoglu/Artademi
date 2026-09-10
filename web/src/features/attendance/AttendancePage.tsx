@@ -1,22 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { formatDate } from '../../lib/format';
-import SilButonu from '../../components/SilButonu';
+import { useState } from 'react';
 import { ApiException } from '../../api/client';
-import type {
-  AttendanceGroupRef,
-  SessionResponse,
-  YoklamaDurumu,
-} from '../../api/types';
+import type { AttendanceGroupRef } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
 import { useGroups } from '../group/useGroups';
-import { DURUM_CHIP, DURUM_LABEL, nextDurum } from './attendanceDisplay';
-import {
-  useCreateSession,
-  useSessions,
-  useTeacherGroups,
-  useUpdateEntries,
-} from './useAttendance';
+import RollPanel from './RollPanel';
+import { useCreateSession, useSessions, useTeacherGroups } from './useAttendance';
 
 const inputClass =
   'rounded-[10px] border border-line bg-card px-3 py-2 text-[13.5px] focus:border-rasp focus:outline-none focus:ring-1 focus:ring-rasp';
@@ -91,7 +80,7 @@ function AttendanceShell({
       <div className="topbar">
         <div>
           <h1>Yoklama</h1>
-          <div className="sub">Grup ve tarih seçip oturum yoklamasını alın</div>
+          <div className="sub">Grup ve tarih seçip oturumu açın; her öğrenci için Geldi / Gelmedi işaretleyip kaydedin</div>
         </div>
       </div>
 
@@ -227,134 +216,5 @@ function SessionPanel({
     );
   }
 
-  return <RollPanel session={existing} canWrite={canWrite} />;
-}
-
-function RollPanel({
-  session,
-  canWrite,
-}: {
-  session: SessionResponse;
-  canWrite: boolean;
-}) {
-  const updateMut = useUpdateEntries();
-  const [feedback, setFeedback] = useState<
-    { tone: 'ok' | 'err'; text: string } | null
-  >(null);
-
-  // Yerel durum: ogrenciId -> durum. Yuklenen oturumdan baslatilir.
-  const [durumlar, setDurumlar] = useState<Record<number, YoklamaDurumu>>(() =>
-    Object.fromEntries(session.entries.map((e) => [e.ogrenci.id, e.durum])),
-  );
-
-  // Oturum (id veya girisler) degisince yerel durumu tazele.
-  useEffect(() => {
-    setDurumlar(Object.fromEntries(session.entries.map((e) => [e.ogrenci.id, e.durum])));
-    setFeedback(null);
-  }, [session.id, session.entries]);
-
-  function cycle(ogrenciId: number) {
-    if (!canWrite) return;
-    setFeedback(null);
-    setDurumlar((prev) => ({
-      ...prev,
-      [ogrenciId]: nextDurum(prev[ogrenciId] ?? 'GELMEDI'),
-    }));
-  }
-
-  const counts = useMemo(() => {
-    let geldi = 0;
-    let gelmedi = 0;
-    let izinli = 0;
-    for (const d of Object.values(durumlar)) {
-      if (d === 'GELDI') geldi++;
-      else if (d === 'GELMEDI') gelmedi++;
-      else izinli++;
-    }
-    return { geldi, gelmedi, izinli };
-  }, [durumlar]);
-
-  async function onSave() {
-    setFeedback(null);
-    const items = session.entries.map((e) => ({
-      ogrenciId: e.ogrenci.id,
-      durum: durumlar[e.ogrenci.id] ?? 'GELMEDI',
-    }));
-    try {
-      await updateMut.mutateAsync({ sessionId: session.id, items });
-      setFeedback({ tone: 'ok', text: 'Yoklama kaydedildi.' });
-    } catch (e) {
-      const text =
-        e instanceof ApiException ? e.message : 'Beklenmeyen bir hata oluştu.';
-      setFeedback({ tone: 'err', text });
-    }
-  }
-
-  return (
-    <section className="card space-y-2">
-      <h3>Yoklama</h3>
-
-      <div className="roll-legend">
-        <span>
-          <i style={{ background: 'var(--green)' }} /> Geldi
-        </span>
-        <span>
-          <i style={{ background: 'var(--red)' }} /> Gelmedi
-        </span>
-        <span>
-          <i style={{ background: 'var(--amber)' }} /> İzinli
-        </span>
-        {canWrite && <span>İsme tıklayarak durum değiştirin</span>}
-      </div>
-
-      {session.entries.length === 0 ? (
-        <p className="text-sm text-ink-soft">Bu oturumda kayıtlı öğrenci yok.</p>
-      ) : (
-        <div className="roll">
-          {session.entries.map((e) => {
-            const d = durumlar[e.ogrenci.id] ?? 'GELMEDI';
-            return (
-              <button
-                key={e.ogrenci.id}
-                type="button"
-                className={`chip ${DURUM_CHIP[d]}`}
-                disabled={!canWrite}
-                aria-label={`${e.ogrenci.ad} ${e.ogrenci.soyad}: ${DURUM_LABEL[d]}`}
-                onClick={() => cycle(e.ogrenci.id)}
-              >
-                <span className="dot" />
-                {e.ogrenci.ad} {e.ogrenci.soyad}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between pt-2">
-        <div className="text-[13px] font-bold text-ink-soft">
-          {counts.geldi} geldi · {counts.gelmedi} gelmedi · {counts.izinli} izinli
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Yanlış tarihe açılan oturum: yönetici siler (paket kontörü düşülmüşse engellenir). */}
-          <SilButonu tur="yoklama-oturumu" id={session.id} ad={`Yoklama ${formatDate(session.tarih)}`} />
-          {canWrite && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={updateMut.isPending || session.entries.length === 0}
-              onClick={onSave}
-            >
-              {updateMut.isPending ? 'Kaydediliyor…' : 'Kaydet'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {feedback && (
-        <p className={`text-[13px] font-semibold ${feedback.tone === 'ok' ? 'text-green' : 'text-red'}`}>
-          {feedback.text}
-        </p>
-      )}
-    </section>
-  );
+  return <RollPanel session={existing} />;
 }

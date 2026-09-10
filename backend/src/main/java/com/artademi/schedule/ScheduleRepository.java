@@ -50,6 +50,10 @@ public interface ScheduleRepository
     @Query("SELECT s FROM Schedule s WHERE s.grup.id = :grupId")
     List<Schedule> findByGrupId(@Param("grupId") Long grupId);
 
+    /** Gunun aktif dersleri (aktif grup) — "yoklama alinmadi" isi icin. Tenant filtreli. */
+    @Query("SELECT s FROM Schedule s WHERE s.gun = :gun AND s.aktif = true AND s.grup.aktif = true")
+    List<Schedule> findAktifByGun(@Param("gun") HaftaGunu gun);
+
     /**
      * Bir egitmenin AKTIF gruplarinin AKTIF ders saatleri — egitmen haftalik programi
      * (GET /api/schedules/mine). JPQL oldugu icin tenant filtreli. Gun + baslangic sirali.

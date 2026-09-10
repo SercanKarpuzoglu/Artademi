@@ -9,6 +9,8 @@ import type {
 export interface GetSessionsParams {
   grupId?: number;
   tarih?: string; // YYYY-MM-DD
+  from?: string; // YYYY-MM-DD (Yoklama Listesi aralığı)
+  to?: string; // YYYY-MM-DD
   page?: number;
   size?: number;
 }

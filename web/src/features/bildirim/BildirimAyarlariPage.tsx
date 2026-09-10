@@ -118,6 +118,13 @@ export default function BildirimAyarlariPage() {
             </label>
           </Secenek>
 
+          <Secenek
+            baslik="Yoklama alınmadı e-postası"
+            aciklama="Günün dersi bittiği halde yoklaması alınmamışsa eğitmene her akşam 21:00'de e-posta gider. Uygulama içi bildirim (zil) bu ayardan bağımsız olarak eğitmene ve ofise her zaman düşer."
+            acik={form.yoklamaAlinmadiEposta}
+            onDegis={(v) => degistir('yoklamaAlinmadiEposta', v)}
+          />
+
           <div className="card">
             <p className="text-[12.5px] text-ink-soft">
               Mailler kurumunuzun adıyla gönderilir; veli sizi tanır. Gönderim hızı bilinçli olarak

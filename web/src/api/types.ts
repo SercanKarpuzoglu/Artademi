@@ -509,6 +509,26 @@ export interface SessionResponse {
   notu: string | null;
   grup: AttendanceGroupRef | null;
   entries: AttendanceEntryView[];
+  /** Kaydet'e basıldı mı; eğitmen için true = kilitli (yönetici düzeltir). */
+  kaydedildi: boolean;
+  kaydedildiTarihi: string | null;
+  kaydeden: string | null;
+}
+
+/** Uygulama içi bildirim (zil) — backend UygulamaBildirimiResponse. */
+export type UygulamaBildirimTipi = 'YOKLAMA_ALINDI' | 'YOKLAMA_ALINMADI' | 'KREDI_BITTI' | 'GENEL';
+export interface UygulamaBildirimi {
+  id: number;
+  tip: UygulamaBildirimTipi;
+  baslik: string;
+  metin: string | null;
+  baglanti: string | null;
+  okundu: boolean;
+  olusturulmaTarihi: string;
+}
+export interface UygulamaBildirimZili {
+  okunmamis: number;
+  bildirimler: UygulamaBildirimi[];
 }
 
 /** Yoklama oturumu olusturma govdesi. Backend aktif kayitlar icin GELMEDI girisleri uretir. */
@@ -1048,6 +1068,8 @@ export interface BildirimAyari {
   haftalikOzet: boolean;
   /** ISO-8601: 1=Pazartesi … 7=Pazar */
   haftalikOzetGunu: number;
+  /** Eğitmene "bugün yoklama almadın" e-postası (uygulama içi bildirim her zaman gider). */
+  yoklamaAlinmadiEposta: boolean;
 }
 
 // --- Kasa ve tedarikçi — backend com.artademi.kasa / com.artademi.tedarikci ---

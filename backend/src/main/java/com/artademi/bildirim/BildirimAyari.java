@@ -91,4 +91,16 @@ public class BildirimAyari extends TenantAware {
     public void setHaftalikOzetGunu(short v) {
         this.haftalikOzetGunu = v;
     }
+
+    /** Egitmene "bugun yoklama almadin" E-POSTASI (uygulama ici bildirim her zaman gider). */
+    @Column(name = "yoklama_alinmadi_eposta", nullable = false)
+    private boolean yoklamaAlinmadiEposta = false;
+
+    public boolean isYoklamaAlinmadiEposta() {
+        return yoklamaAlinmadiEposta;
+    }
+
+    public void setYoklamaAlinmadiEposta(boolean v) {
+        this.yoklamaAlinmadiEposta = v;
+    }
 }

@@ -104,6 +104,15 @@ export const MENU: readonly MenuItem[] = [
     hazir: true,
   },
   {
+    label: 'Yoklama Listesi',
+    path: '/yoklama-listesi',
+    icon: ClipboardList,
+    section: YONETICI_PANELI,
+    grup: YONETICI_PANELI,
+    roles: OFIS_VE_EGITMEN,
+    hazir: true,
+  },
+  {
     label: 'Ders Ücretleri / Gruplar',
     path: '/gruplar',
     icon: GraduationCap,

@@ -62,6 +62,25 @@ public class AttendanceAccessGuard {
         throw new AccessDeniedException("Yetki yok");
     }
 
+    /** Caller yalnizca egitmen mi (hicbir ofis rolu yok)? Kilit ve IZINLI kisitlari buna bakar. */
+    public boolean yalnizEgitmen() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && hasAnyRole(auth, ROLE_TEACHER)
+                && !hasAnyRole(auth, ROLE_ADMIN, ROLE_FRONTDESK, ROLE_FRONTDESK_ACCOUNTING);
+    }
+
+    /** JWT preferred_username; yoksa "sistem". */
+    public String kullaniciAdi() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            String u = jwt.getClaimAsString("preferred_username");
+            if (u != null && !u.isBlank()) {
+                return u;
+            }
+        }
+        return "sistem";
+    }
+
     /**
      * Caller TEACHER ise yalnizca kendi gruplariyla sinirlandirmak icin ogretmen id'sini doner;
      * ofis rolu varsa null (kisitlama yok) doner. TEACHER olup ogretmen eslesmezse 403.

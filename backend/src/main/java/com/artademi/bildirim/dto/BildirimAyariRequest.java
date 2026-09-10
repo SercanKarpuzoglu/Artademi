@@ -14,5 +14,6 @@ public record BildirimAyariRequest(
         boolean haftalikOzet,
         @Min(value = 1, message = "Gün 1-7 arasında olmalıdır")
         @Max(value = 7, message = "Gün 1-7 arasında olmalıdır")
-        short haftalikOzetGunu) {
+        short haftalikOzetGunu,
+        boolean yoklamaAlinmadiEposta) {
 }

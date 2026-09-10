@@ -39,6 +39,7 @@ public class BildirimAyariService {
         ayar.setDevamsizlikBildirimi(req.devamsizlikBildirimi());
         ayar.setHaftalikOzet(req.haftalikOzet());
         ayar.setHaftalikOzetGunu(req.haftalikOzetGunu());
+        ayar.setYoklamaAlinmadiEposta(req.yoklamaAlinmadiEposta());
         return BildirimAyariResponse.from(repository.save(ayar));
     }
 }

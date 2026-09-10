@@ -6,6 +6,7 @@ import com.artademi.attendance.YoklamaDurumu;
 import com.artademi.group.Group;
 import com.artademi.group.GrupTipi;
 import com.artademi.student.Student;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
@@ -24,7 +25,11 @@ public record SessionResponse(
         LocalDate tarih,
         String notu,
         GrupOzet grup,
-        List<EntryView> entries) {
+        List<EntryView> entries,
+        /** Egitmen (ya da ofis) Kaydet'e basti mi; true ise egitmen icin KILITLI. */
+        boolean kaydedildi,
+        Instant kaydedildiTarihi,
+        String kaydeden) {
 
     /** Grup ozeti (id + ad + tip). */
     public record GrupOzet(Long id, String ad, GrupTipi tip) {
@@ -57,7 +62,10 @@ public record SessionResponse(
                 session.getTarih(),
                 session.getNotu(),
                 grup,
-                views);
+                views,
+                session.getKaydedildiTarihi() != null,
+                session.getKaydedildiTarihi(),
+                session.getKaydeden());
     }
 
     private static EntryView toEntryView(AttendanceEntry e) {

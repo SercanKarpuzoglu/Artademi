@@ -31,4 +31,8 @@ public interface BranchRepository
      * uygulanir. Public basvuru formundaki brans acilir listesini besler.
      */
     java.util.List<Branch> findByAktifTrueOrderByAdAsc();
+
+    /** Bir doneme bagli brans sayisi (donem silme engeli). */
+    @Query("SELECT COUNT(b) FROM Branch b WHERE b.donem.id = :id")
+    long countByDonem(@Param("id") Long id);
 }

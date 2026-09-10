@@ -41,5 +41,10 @@ public record CreateStudentRequest(
         String babaTelefon,
         String veliMeslek,
         String evAdresi,
-        String veliMail) implements VeliBilgisi {
+        String veliMail,
+        /**
+         * Ayni TC kara listedeyken "yine de kaydet" onayi. Onaysiz istek 409 KARA_LISTE (sebep mesajda)
+         * doner; istemci pop-up gosterir, kullanici onaylarsa true ile tekrar gonderir.
+         */
+        Boolean karaListeOnayi) implements VeliBilgisi {
 }

@@ -4,13 +4,14 @@ import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { BranchResponse } from '../../api/types';
+import { useDonemler } from '../donem/useDonemler';
 import { BranchFormValues, branchSchema, toPayload } from './branchSchema';
 import { useBranch, useCreateBranch, useUpdateBranch } from './useBranches';
 
-const EMPTY: BranchFormValues = { ad: '', aciklama: '' };
+const EMPTY: BranchFormValues = { ad: '', aciklama: '', donemId: undefined };
 
 function toFormValues(b: BranchResponse): BranchFormValues {
-  return { ad: b.ad, aciklama: b.aciklama ?? '' };
+  return { ad: b.ad, aciklama: b.aciklama ?? '', donemId: b.donem?.id ?? undefined };
 }
 
 const inputClass =
@@ -27,6 +28,9 @@ export default function BranchForm() {
   const branchQuery = useBranch(id);
   const createMut = useCreateBranch();
   const updateMut = useUpdateBranch(id ?? 0);
+  const donemQuery = useDonemler(true);
+  const donemList = donemQuery.data ?? [];
+
 
   const {
     register,
@@ -106,6 +110,22 @@ export default function BranchForm() {
             </Field>
             <Field label="Açıklama" error={errors.aciklama?.message}>
               <textarea className={inputClass} rows={3} {...register('aciklama')} />
+            </Field>
+            <Field label="Varsayılan Dönem" error={errors.donemId?.message}>
+              <select
+                className={inputClass}
+                {...register('donemId', { setValueAs: (v) => (v ? Number(v) : undefined) })}
+              >
+                <option value="">Dönem yok</option>
+                {donemList.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.ad}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-ink-soft">
+                Bu branşta yeni grup açarken dönem ön-dolu gelir; grupta değiştirilebilir.
+              </span>
             </Field>
           </div>
         </section>

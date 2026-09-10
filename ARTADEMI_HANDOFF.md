@@ -925,6 +925,24 @@ bozulmaz (`DalgaBSilmeTest` bunu sabitler). Geri alınabilir.
 - Web: Raporlar → **Eğitmen Kalitesi** sekmesi (`TeacherQualityTab`: devamlılık ve yük çubukları + tablo).
 - Testler: `dalga/DalgaFTest` (yük, planlanan vs alınan, kaydedilmemiş, katılım, yetki, tenant).
 
+### 7.34 Kapanış eksikleri (✅ 2026-09-10)
+
+Talep listesi koda karşı denetlendi; üç eksik kapatıldı.
+
+- **Kara liste, TC ile yeni kayıt açılarak atlanamaz** (kusurdu: TC benzersiz DEĞİL, kişi ikinci kez kaydedilince
+  uyarı çıkmıyordu). `StudentRepository.findKaraListedekilerByTc` + `StudentService.karaListeKalkani(tc, onay)`:
+  `POST /api/students` ve **başvuru → öğrenciye dönüştür** akışında aynı TC kara listedeyse **409 `KARA_LISTE`**
+  (sebep mesajda); `karaListeOnayi: true` ile geçilir. Web: yeni öğrenci formu ve `DonusturModal` aynı
+  `KaraListeUyariModal`'ı gösteriyor. Gruba yazarken çıkan uyarı (§7.28) aynen duruyor.
+- **Branşa varsayılan dönem** V36 (`branches.donem_id`): branş formunda seçilir, listede sütun olarak görünür;
+  **yeni grup formunda branş seçilince dönem ön-dolu gelir** (grupta değiştirilebilir; kredi hesabı her zaman
+  GRUBUN dönemine bakar). Dönem silme engeli artık branşları da sayar ("N grup ve M branş bu döneme bağlı").
+- **Yeni öğrenci kaydından sonra "gruba da yaz" adımı** (`student/KayitSonrasiGrup`): kayıt açılınca grup arama
+  kutusu çıkar; GRUP tipinde plan modalı (Aylık/Dönemlik) sorulur, sonra öğrenci detayına gidilir. "Atla" ile
+  geçilebilir — kayıt zaten açılmıştır.
+- Testler: `dalga/EksiklerTest` (yeni kayıt + başvuru dönüştürmede kara liste kalkanı ve onay, branş dönemi,
+  dönem silme engelinin branşı sayması).
+
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 
 Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:

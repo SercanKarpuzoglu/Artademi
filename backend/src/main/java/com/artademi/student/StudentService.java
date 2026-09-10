@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.common.exception.ConflictException;
 
 /**
  * Ogrenci is kurallari. {@code @Transactional} oldugundan cagrildiginda global tenant
@@ -34,11 +35,33 @@ public class StudentService {
         this.repository = repository;
     }
 
-    /** Yeni ogrenci olusturur; statu DENEME ile baslar. */
+    /**
+     * Yeni ogrenci olusturur; statu DENEME ile baslar.
+     *
+     * <p>KARA LISTE KALKANI: ayni TC ile kara listedeki bir kayit varsa ve {@code karaListeOnayi} true
+     * DEGILSE 409 KARA_LISTE doner (sebep mesajda). TC benzersiz olmadigi icin bu kontrol olmadan kisi
+     * yeni bir kayit acilarak kara listeyi atlayabilirdi. Engel degil UYARI: onaylanirsa kayit acilir.
+     */
     @Transactional
     public StudentResponse create(CreateStudentRequest req) {
+        karaListeKalkani(req.tcKimlikNo(), req.karaListeOnayi());
         Student saved = repository.save(StudentMapper.toNewEntity(req));
         return StudentResponse.from(saved);
+    }
+
+    /** Ayni TC kara listedeyse ve onay yoksa 409 KARA_LISTE. Public: basvuru donusturmesi de kullanir. */
+    public void karaListeKalkani(String tcKimlikNo, Boolean onay) {
+        if (tcKimlikNo == null || Boolean.TRUE.equals(onay)) {
+            return;
+        }
+        List<Student> eskiler = repository.findKaraListedekilerByTc(tcKimlikNo);
+        if (eskiler.isEmpty()) {
+            return;
+        }
+        Student e = eskiler.get(0);
+        throw new ConflictException("Bu TC daha önce kara listeye alınmış (" + e.getAd() + " " + e.getSoyad()
+                + "): " + (e.getKaraListeAciklama() == null ? "sebep girilmemiş" : e.getKaraListeAciklama()),
+                "KARA_LISTE");
     }
 
     @Transactional(readOnly = true)

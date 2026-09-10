@@ -32,5 +32,7 @@ public record OgrenciyeDonusturRequest(
         String babaAd,
         String babaTcKimlikNo,
         String babaTelefon,
-        String evAdresi) implements VeliBilgisi {
+        String evAdresi,
+        /** Ayni TC kara listedeyse "yine de dönüştür" onayi (409 KARA_LISTE sonrasi). */
+        Boolean karaListeOnayi) implements VeliBilgisi {
 }

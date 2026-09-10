@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import KaraListeUyariModal from '../student/KaraListeUyariModal';
 import { ApiException } from '../../api/client';
 import type { BasvuruResponse } from '../../api/types';
 import { useOgrenciyeDonustur } from './useBasvurular';
@@ -35,13 +36,16 @@ export default function DonusturModal({
   const [babaAd, setBabaAd] = useState('');
   const [babaTc, setBabaTc] = useState('');
 
-  const gonder = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [karaSebep, setKaraSebep] = useState<string | null>(null);
+
+  const gonder = (e?: React.FormEvent, karaListeOnayi?: boolean) => {
+    e?.preventDefault();
     setHata(null);
     mutation.mutate(
       {
         id: basvuru.id,
         payload: {
+          karaListeOnayi,
           tcKimlikNo,
           dogumTarihi,
           yetiskinMi,
@@ -57,13 +61,20 @@ export default function DonusturModal({
           if (sonuc.ogrenciId) onTamam(sonuc.ogrenciId);
           else onKapat();
         },
-        onError: (e) =>
-          setHata(e instanceof ApiException ? e.message : 'Öğrenci kaydı oluşturulamadı'),
+        onError: (e) => {
+          // Aynı TC kara listedeyse engel değil uyarı: sebep gösterilir, onaylanırsa tekrar denenir.
+          if (e instanceof ApiException && e.code === 'KARA_LISTE') {
+            setKaraSebep(e.message);
+            return;
+          }
+          setHata(e instanceof ApiException ? e.message : 'Öğrenci kaydı oluşturulamadı');
+        },
       },
     );
   };
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
       role="dialog"
@@ -181,5 +192,19 @@ export default function DonusturModal({
         </form>
       </div>
     </div>
+
+    {karaSebep && (
+      <KaraListeUyariModal
+        ogrenciAd={`${basvuru.ad} ${basvuru.soyad}`}
+        sebep={karaSebep}
+        pending={mutation.isPending}
+        onVazgec={() => setKaraSebep(null)}
+        onYineDeEkle={() => {
+          setKaraSebep(null);
+          gonder(undefined, true);
+        }}
+      />
+    )}
+    </>
   );
 }

@@ -245,7 +245,7 @@ class DalgaETest {
         long donemliGrup = grup(t, "Keman", donem);
         mockMvc.perform(delete("/api/silme/donem/{id}", donem).with(admin(t)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.message").value(containsString("1 grup bu döneme bağlı")));
+                .andExpect(jsonPath("$.error.message").value(containsString("1 grup ve 0 branş bu döneme bağlı")));
         mockMvc.perform(get("/api/groups/{id}", donemliGrup).with(admin(UUID.randomUUID().toString())))
                 .andExpect(status().isNotFound());
     }

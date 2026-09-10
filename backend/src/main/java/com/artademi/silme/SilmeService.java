@@ -307,8 +307,9 @@ public class SilmeService {
                 Donem d = bul(tur, donemler.findScopedById(id));
                 ad = d.getAd();
                 long grup = groups.countByDonem(id);
-                if (grup > 0) {
-                    engel = grup + " grup bu döneme bağlı; önce grupların dönemini değiştirin";
+                long brans = branches.countByDonem(id);
+                if (grup + brans > 0) {
+                    engel = grup + " grup ve " + brans + " branş bu döneme bağlı; önce onların dönemini değiştirin";
                 }
             }
             case INDIRIM -> {

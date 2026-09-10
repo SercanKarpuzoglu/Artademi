@@ -44,4 +44,12 @@ public interface StudentRepository
             @Param("selfId") Long selfId,
             @Param("anneTc") String anneTc,
             @Param("babaTc") String babaTc);
+
+    /**
+     * Ayni TC ile KARA LISTEDEKI ogrenci(ler). Yeni kayitta kalkan: kara listeye alinan kisi, yeni bir
+     * ogrenci kaydi acilarak listeyi atlayamasin (TC benzersiz DEGIL — ayni kisi ikinci kez kaydedilebilir).
+     * Tenant filtreli.
+     */
+    @Query("SELECT s FROM Student s WHERE s.tcKimlikNo = :tc AND s.karaListe = true ORDER BY s.id DESC")
+    List<Student> findKaraListedekilerByTc(@Param("tc") String tc);
 }

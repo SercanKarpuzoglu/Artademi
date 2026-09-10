@@ -10,5 +10,7 @@ public record CreateBranchRequest(
         @NotBlank(message = "Ad zorunludur")
         String ad,
 
-        String aciklama) {
+        String aciklama,
+        /** Bransin varsayilan donemi (opsiyonel); yeni grup acilirken on-doldurulur. */
+        Long donemId) {
 }

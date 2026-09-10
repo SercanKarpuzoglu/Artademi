@@ -5,6 +5,8 @@ import type { BranchInput } from '../../api/types';
 export const branchSchema = z.object({
   ad: z.string().trim().min(1, 'Ad zorunludur'),
   aciklama: z.string().trim().optional(),
+  // Dönem opsiyonel: yalnız yeni grup açarken ön-doldurma içindir (kredi hesabı grubun dönemine bakar).
+  donemId: z.number().int().positive().optional(),
 });
 
 export type BranchFormValues = z.infer<typeof branchSchema>;
@@ -15,5 +17,6 @@ export function toPayload(values: BranchFormValues): BranchInput {
   return {
     ad: values.ad.trim(),
     aciklama: aciklama ? aciklama : undefined,
+    donemId: values.donemId || undefined,
   };
 }

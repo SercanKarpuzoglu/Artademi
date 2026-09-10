@@ -1,6 +1,7 @@
 package com.artademi.branch.dto;
 
 import com.artademi.branch.Branch;
+import com.artademi.donem.Donem;
 
 /**
  * Request DTO'larini Branch entity'sine yansitir. tenant_id ve aktif BURADA ELLE
@@ -13,17 +14,19 @@ public final class BranchMapper {
     }
 
     /** Yeni brans olusturur; aktif true ile baslar (entity varsayilani). */
-    public static Branch toNewEntity(CreateBranchRequest req) {
+    public static Branch toNewEntity(CreateBranchRequest req, Donem donem) {
         Branch b = Branch.create();
         b.setAd(req.ad());
         b.setAciklama(req.aciklama());
+        b.setDonem(donem);
         b.setAktif(true);
         return b;
     }
 
     /** Mevcut bransin alanlarini gunceller; aktif'e DOKUNMAZ. */
-    public static void applyUpdate(Branch b, UpdateBranchRequest req) {
+    public static void applyUpdate(Branch b, UpdateBranchRequest req, Donem donem) {
         b.setAd(req.ad());
         b.setAciklama(req.aciklama());
+        b.setDonem(donem);
     }
 }

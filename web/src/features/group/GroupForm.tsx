@@ -128,6 +128,17 @@ export default function GroupForm() {
   const donemQuery = useDonemler(true);
   const donemList = donemQuery.data ?? [];
 
+  // Dalga E/eksik kapatma: branş seçilince, dönem henüz seçilmediyse branşın varsayılan dönemini öner.
+  const secilenBransId = watch('bransId');
+  const secilenDonemId = watch('donemId');
+  useEffect(() => {
+    if (isEdit || !secilenBransId || secilenDonemId) return;
+    const brans = branchOptions.find((b) => b.id === Number(secilenBransId));
+    if (brans?.donem?.id) {
+      setValue('donemId', brans.donem.id);
+    }
+  }, [secilenBransId, secilenDonemId, branchOptions, isEdit, setValue]);
+
   async function onSubmit(values: GroupFormValues) {
     setFormError(null);
     try {

@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.donem.Donem;
+import com.artademi.donem.DonemRepository;
 
 /**
  * Brans is kurallari. {@code @Transactional} oldugundan cagrildiginda global tenant
@@ -23,14 +25,26 @@ public class BranchService {
 
     private final BranchRepository repository;
 
-    public BranchService(BranchRepository repository) {
+    private final DonemRepository donemRepository;
+
+    public BranchService(BranchRepository repository, DonemRepository donemRepository) {
         this.repository = repository;
+        this.donemRepository = donemRepository;
+    }
+
+    /** Donem opsiyonel; verildiyse tenant-guvenli cozulur (yoksa 404). */
+    private Donem resolveDonem(Long donemId) {
+        if (donemId == null) {
+            return null;
+        }
+        return donemRepository.findScopedById(donemId)
+                .orElseThrow(() -> new NotFoundException("Dönem bulunamadı: " + donemId));
     }
 
     /** Yeni brans olusturur; aktif true ile baslar. */
     @Transactional
     public BranchResponse create(CreateBranchRequest req) {
-        Branch saved = repository.save(BranchMapper.toNewEntity(req));
+        Branch saved = repository.save(BranchMapper.toNewEntity(req, resolveDonem(req.donemId())));
         return BranchResponse.from(saved);
     }
 
@@ -42,7 +56,7 @@ public class BranchService {
     @Transactional
     public BranchResponse update(Long id, UpdateBranchRequest req) {
         Branch branch = findOrThrow(id);
-        BranchMapper.applyUpdate(branch, req);
+        BranchMapper.applyUpdate(branch, req, resolveDonem(req.donemId()));
         return BranchResponse.from(branch);
     }
 

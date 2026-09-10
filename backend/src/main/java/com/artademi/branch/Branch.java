@@ -12,6 +12,10 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.Filter;
 import com.artademi.common.silme.SoftDeletable;
+import com.artademi.donem.Donem;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 /**
  * Brans tanim entity'si. {@link TenantAware}'den turedigi icin {@code tenant_id}
@@ -115,5 +119,19 @@ public class Branch extends TenantAware implements SoftDeletable {
     @Override
     public void setSilen(String silen) {
         this.silen = silen;
+    }
+
+    // --- V36: bransin VARSAYILAN donemi. Kredi hesabi GRUBUN donemine bakar; bu alan yeni grup
+    // acilirken on-doldurma icindir (grupta degistirilebilir). ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "donem_id")
+    private Donem donem;
+
+    public Donem getDonem() {
+        return donem;
+    }
+
+    public void setDonem(Donem donem) {
+        this.donem = donem;
     }
 }

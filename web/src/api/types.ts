@@ -157,6 +157,8 @@ export type StudentStatus = 'AKTIF' | 'PASIF' | 'DENEME' | 'DONDURULMUS';
  * Opsiyonel alanlar bos ise gonderilmez (undefined) — backend @Pattern bos string'i reddeder.
  */
 export interface StudentInput {
+  /** Aynı TC kara listedeyse "yine de kaydet" onayı (409 KARA_LISTE sonrası). */
+  karaListeOnayi?: boolean;
   ad: string;
   soyad: string;
   tcKimlikNo: string;
@@ -245,6 +247,8 @@ export interface SubeInput {
 
 /** Branş yaniti — backend BranchResponse. */
 export interface BranchResponse {
+  /** Branşın varsayılan dönemi (yoksa null) — yeni grup formunda ön-doldurma için. */
+  donem?: { id: number; ad: string } | null;
   id: number;
   ad: string;
   aciklama: string | null;
@@ -255,6 +259,8 @@ export interface BranchResponse {
 
 /** Branş olusturma/guncelleme govdesi. Bos opsiyonel alanlar gonderilmez. */
 export interface BranchInput {
+  /** Branşın varsayılan dönemi; yeni grup açarken ön-doldurulur. */
+  donemId?: number;
   ad: string;
   aciklama?: string;
 }
@@ -1133,6 +1139,8 @@ export interface BasvuruGonderInput {
  * öğrenci yetişkin değilse anne VEYA baba için ad+TC zorunludur (öğrenci formuyla aynı kural).
  */
 export interface OgrenciyeDonusturInput {
+  /** Aynı TC kara listedeyse "yine de dönüştür" onayı (409 KARA_LISTE sonrası). */
+  karaListeOnayi?: boolean;
   tcKimlikNo: string;
   dogumTarihi: string;
   yetiskinMi: boolean;

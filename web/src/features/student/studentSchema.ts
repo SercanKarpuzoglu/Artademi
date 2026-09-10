@@ -49,12 +49,13 @@ export const studentSchema = z
 export type StudentFormValues = z.infer<typeof studentSchema>;
 
 /** Form degerlerini API govdesine cevirir: bos opsiyonel alanlar gonderilmez (undefined). */
-export function toPayload(values: StudentFormValues): StudentInput {
+export function toPayload(values: StudentFormValues, karaListeOnayi?: boolean): StudentInput {
   const clean = (v?: string) => {
     const t = v?.trim();
     return t ? t : undefined;
   };
   return {
+    karaListeOnayi,
     ad: values.ad.trim(),
     soyad: values.soyad.trim(),
     tcKimlikNo: values.tcKimlikNo.trim(),

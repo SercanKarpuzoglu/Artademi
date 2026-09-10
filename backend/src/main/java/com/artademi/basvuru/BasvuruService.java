@@ -24,10 +24,13 @@ public class BasvuruService {
 
     private final BasvuruRepository repository;
     private final StudentRepository students;
+    private final com.artademi.student.StudentService studentService;
 
-    public BasvuruService(BasvuruRepository repository, StudentRepository students) {
+    public BasvuruService(BasvuruRepository repository, StudentRepository students,
+            com.artademi.student.StudentService studentService) {
         this.repository = repository;
         this.students = students;
+        this.studentService = studentService;
     }
 
     /** Basvuru listesi; {@code durum} verilirse ona gore filtreler. En yeni once. */
@@ -87,6 +90,8 @@ public class BasvuruService {
         // ⚠️ Ogrenci ELLE kurulmaz: StudentMapper kullanilir ki olusturma degismezleri
         // (ornegin baslangic statusu DENEME) TEK YERDE kalsin. Elle kurdugumuzda status
         // bos kaliyor ve NOT NULL kisitina takiliyordu.
+        // Kara liste kalkani: basvuru yoluyla da atlanamaz (ayni TC kara listedeyse onay istenir).
+        studentService.karaListeKalkani(req.tcKimlikNo(), req.karaListeOnayi());
         CreateStudentRequest istek = new CreateStudentRequest(
                 b.getAd(),
                 b.getSoyad(),
@@ -103,7 +108,8 @@ public class BasvuruService {
                 null,
                 req.evAdresi(),
                 // Basvurudaki e-posta veli adresi olarak tasinir: borc hatirlatma buradan gider.
-                b.getEmail());
+                b.getEmail(),
+                Boolean.TRUE);  // kalkan yukarida calisti; mapper'a onayli gecilir
         Student kayitli = students.save(StudentMapper.toNewEntity(istek));
 
         b.setOgrenci(kayitli);

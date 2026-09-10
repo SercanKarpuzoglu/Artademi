@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { StudentResponse } from '../../api/types';
+import KaraListeUyariModal from './KaraListeUyariModal';
+import KayitSonrasiGrup from './KayitSonrasiGrup';
 import { StudentFormValues, studentSchema, toPayload } from './studentSchema';
 import { useCreateStudent, useStudent, useUpdateStudent } from './useStudentMutations';
 
@@ -57,6 +59,10 @@ export default function StudentForm() {
   const navigate = useNavigate();
 
   const [formError, setFormError] = useState<string | null>(null);
+  // 409 KARA_LISTE: aynı TC daha önce kara listeye alınmış — uyarı gösterilir, onaylanırsa tekrar denenir.
+  const [karaUyari, setKaraUyari] = useState<{ sebep: string; values: StudentFormValues } | null>(null);
+  // Kayıt açıldıktan sonra "gruba da yaz" adımı (yalnız yeni öğrencide).
+  const [yeniOgrenci, setYeniOgrenci] = useState<{ id: number; ad: string } | null>(null);
 
   const studentQuery = useStudent(id);
   const createMut = useCreateStudent();
@@ -85,19 +91,24 @@ export default function StudentForm() {
   // superRefine 'veli' yoluna hata baglar; FieldErrors tipinde olmadigi icin cast ile okunur.
   const veliError = (errors as Record<string, { message?: string } | undefined>).veli?.message;
 
-  async function onSubmit(values: StudentFormValues) {
+  async function onSubmit(values: StudentFormValues, karaListeOnayi?: boolean) {
     setFormError(null);
     try {
-      const payload = toPayload(values);
+      const payload = toPayload(values, karaListeOnayi);
       if (isEdit) {
         await updateMut.mutateAsync(payload);
-      } else {
-        await createMut.mutateAsync(payload);
+        navigate('/ogrenciler');
+        return;
       }
-      navigate('/ogrenciler');
+      const olusan = await createMut.mutateAsync(payload);
+      setKaraUyari(null);
+      // Listeye dönmek yerine isteğe bağlı "gruba da yaz" adımı.
+      setYeniOgrenci({ id: olusan.id, ad: `${olusan.ad} ${olusan.soyad}` });
     } catch (e) {
       if (e instanceof ApiException) {
-        if (e.code === 'VALIDATION_ERROR' && e.fields) {
+        if (e.code === 'KARA_LISTE') {
+          setKaraUyari({ sebep: e.message, values });
+        } else if (e.code === 'VALIDATION_ERROR' && e.fields) {
           // Sunucu alan hatalarini ilgili input'a bagla (backend alan adlari form ile ayni).
           for (const [field, message] of Object.entries(e.fields)) {
             setError(field as keyof StudentFormValues, { message });
@@ -124,6 +135,7 @@ export default function StudentForm() {
   }
 
   return (
+    <>
     <div className="mx-auto max-w-3xl">
       <div className="topbar">
         <div>
@@ -132,7 +144,7 @@ export default function StudentForm() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <form onSubmit={handleSubmit((v) => onSubmit(v))} className="space-y-4" noValidate>
           {formError && (
             <div className="rounded-[12px] border border-red/30 bg-red-soft px-4 py-2.5 text-[13px] font-semibold text-red">
               {formError}
@@ -217,6 +229,25 @@ export default function StudentForm() {
           </div>
       </form>
     </div>
+
+    {karaUyari && (
+      <KaraListeUyariModal
+        ogrenciAd={`${karaUyari.values.ad} ${karaUyari.values.soyad}`}
+        sebep={karaUyari.sebep}
+        pending={createMut.isPending}
+        onVazgec={() => setKaraUyari(null)}
+        onYineDeEkle={() => onSubmit(karaUyari.values, true)}
+      />
+    )}
+
+    {yeniOgrenci && (
+      <KayitSonrasiGrup
+        studentId={yeniOgrenci.id}
+        ogrenciAd={yeniOgrenci.ad}
+        onTamam={() => navigate(`/ogrenciler/${yeniOgrenci.id}`)}
+      />
+    )}
+    </>
   );
 }
 

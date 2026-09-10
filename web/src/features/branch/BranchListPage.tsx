@@ -95,6 +95,7 @@ export default function BranchListPage() {
                 <tr>
                   <th>Ad</th>
                   <th>Açıklama</th>
+                  <th>Dönem</th>
                   <th>Aktif</th>
                   {isAdmin && <th className="t-right">Aksiyon</th>}
                 </tr>
@@ -106,6 +107,7 @@ export default function BranchListPage() {
                       <b>{b.ad}</b>
                     </td>
                     <td className="text-ink-soft">{b.aciklama ?? '—'}</td>
+                    <td className="text-ink-soft">{b.donem?.ad ?? '—'}</td>
                     <td>
                       <span className={`badge ${b.aktif ? 'b-green' : 'b-gray'}`}>
                         {b.aktif ? 'Aktif' : 'Pasif'}

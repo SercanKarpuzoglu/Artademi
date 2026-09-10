@@ -152,6 +152,16 @@ public class PaketService {
     }
 
     /**
+     * Bu ders icin kredi var mi (Dalga E uyarisi): bu oturumda zaten dusulmus ya da dusulebilecek paket var.
+     * Yoklamayi ENGELLEMEZ; yalnizca ofise bildirim icin bakilir.
+     */
+    @Transactional(readOnly = true)
+    public boolean dersIcinKrediVar(Long ogrenciId, Long oturumId, Long grupId, LocalDate tarih) {
+        return kullanimlar.findByOgrenciIdAndOturumId(ogrenciId, oturumId).isPresent()
+                || secilecekPaket(ogrenciId, grupId, tarih).isPresent();
+    }
+
+    /**
      * Dusum yapilacak paketi secer.
      *
      * <p>Sira: (1) oturumun grubuna BAGLI paketler, (2) grubu olmayan genel paketler.

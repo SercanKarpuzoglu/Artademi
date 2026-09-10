@@ -373,6 +373,9 @@ export interface GroupResponse {
   seviye: string | null;
   aylikAidat: string | number | null;
   dersBasiUcret: string | number | null;
+  /** Dalga E: grubun dönemi (yoksa null) ve dönemlik ücret. */
+  donem: { id: number; ad: string; baslangic: string; bitis: string } | null;
+  donemlikUcret: string | number | null;
   aktif: boolean;
   olusturulmaTarihi: string;
   guncellenmeTarihi: string;
@@ -394,6 +397,35 @@ export interface GroupInput {
   seviye?: string;
   aylikAidat?: string;
   dersBasiUcret?: string;
+  donemId?: number;
+  donemlikUcret?: string;
+}
+
+// --- Dönem & kredi (Dalga E) — backend com.artademi.donem / com.artademi.kredi ---
+export interface DonemResponse {
+  id: number;
+  ad: string;
+  baslangic: string;
+  bitis: string;
+  aktif: boolean;
+}
+export interface DonemInput {
+  ad: string;
+  baslangic: string;
+  bitis: string;
+}
+export type OdemePlani = 'AYLIK' | 'DONEMLIK';
+export interface KayitOnizleme {
+  plan: OdemePlani;
+  uygun: boolean;
+  neden: string | null;
+  donemId: number | null;
+  donemAd: string | null;
+  baslangic: string | null;
+  bitis: string | null;
+  haftalikDers: number;
+  dersSayisi: number;
+  ucret: string | number | null;
 }
 
 /** Kayıt durumu: grupta aktif ya da ayrılmış. */
@@ -423,6 +455,9 @@ export interface EnrollmentResponse {
   ayrilmaTarihi: string | null;
   ogrenci: EnrollmentStudentRef;
   grup: EnrollmentGroupRef;
+  /** Dalga E: ödeme planı (null = aylık, eski kayıt) ve dönemlik kayıtta dönem. */
+  odemePlani: OdemePlani | null;
+  donem: { id: number; ad: string; bitis: string } | null;
 }
 
 /** Kayıt olusturma govdesi. kayitTarihi gonderilmezse backend bugunu kullanir. */
@@ -432,6 +467,8 @@ export interface EnrollmentInput {
   kayitTarihi?: string;
   /** Kara listedeki öğrenci için "yine de ekle" onayı (409 KARA_LISTE sonrası). */
   karaListeOnayi?: boolean;
+  /** Dalga E: AYLIK (varsayılan) | DONEMLIK. */
+  odemePlani?: OdemePlani;
 }
 
 // --- Program (Schedule) modülü — backend DTO'lari ile birebir aynalanir ---

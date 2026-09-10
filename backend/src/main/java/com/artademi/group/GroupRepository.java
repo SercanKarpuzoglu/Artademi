@@ -47,4 +47,7 @@ public interface GroupRepository
     @Query("SELECT COUNT(g) FROM Group g WHERE g.sube.id = :id")
     long countBySube(@Param("id") Long id);
 
+    @Query("SELECT COUNT(g) FROM Group g WHERE g.donem.id = :id")
+    long countByDonem(@Param("id") Long id);
+
 }

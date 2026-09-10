@@ -880,6 +880,35 @@ bozulmaz (`DalgaBSilmeTest` bunu sabitler). Geri alınabilir.
 - Testler: `dalga/DalgaDTest` (oran+tutar, önizleme=üretim, bitir → sonraki ay, pasif tanım, tarih aralığı, brütü aşma,
   doğrulama, yetki, silme engeli, tenant).
 
+### 7.32 Dalga E — dönem & kredi modeli (✅ 2026-09-10)
+
+**Ürün kararı:** dönem/kredi modeli mevcut aylık aidat modelinin YERİNE geçer; aylık kredi Otomatik Tahakkuk ile
+üretilir; dönemlik kayıt tek tahakkuk; tatil takvimi yok (düz takvim).
+
+- **V35**: `donem` (ad, başlangıç, bitiş; yumuşak silinebilir), `lesson_group.donem_id/donemlik_ucret`,
+  `enrollment.odeme_plani (AYLIK|DONEMLIK, NULL=AYLIK)/donem_id`, `ders_paketi.kaynak (ELLE|KAYIT_DONEMLIK|AYLIK_KREDI)/
+  kaynak_donem`. **Kredi = mevcut Ders Paketi** (kontör düşümü `PaketService.yoklamaDegisti` değişmedi).
+- **Ders sayısı** (`KrediService.dersSayisi`): grubun AKTİF ders saatlerinin [from,to] içindeki gün sayısı.
+- **Kayıt** (`EnrollmentService.create` → `KrediService.kayitSonrasiKredi`): GRUP tipinde plan; DONEMLIK → grubun
+  dönemi zorunlu (400), `dersSayisi(kayıt→dönem sonu)` kadar paket (tutar = dönemlik ücret − öğrenci indirimi,
+  son kullanma = dönem bitişi) + **tek tahakkuk** (dönem = kayıt ayı); AYLIK → içinde bulunulan ayın kredisi (0 TL
+  paket, tahakkuk yok). Program (ders saati) yoksa paket açılmaz, log yazılır.
+- **Otomatik Tahakkuk**: DONEMLIK kayıtlar aylık aidattan ATLANIR; persist modunda
+  `KrediService.aylikKredileriUret(dönem)` AYLIK kayıtlara o ayın kredisini açar ((öğrenci, grup, ay) mükerrer kalkanı).
+- **Plan önizleme** `GET /api/groups/{id}/kayit-onizleme?plan=&tarih=` (ofis) → `KayitOnizleme{uygun, neden, dersSayisi,
+  ucret, donemAd, baslangic, bitis, haftalikDers}`. Web `KayitPlaniModal`: grup sayfası ve öğrenci sayfasındaki
+  ekleme akışı GRUP tipinde önce planı sorar (ÖZEL derste sormaz); kara liste uyarısı planı taşır.
+- **Dönem/ay dışı derse gelen**: `AttendanceService.updateEntries` ilk kayıtta GELDİ + bu ders için kredi yok
+  (`PaketService.dersIcinKrediVar`) → `KrediService.krediUyarisiGerekli` (DONEMLIK: her zaman; AYLIK: o ayın kredileri
+  üretilmişse) → ofise `KREDI_BITTI` bildirimi (zil/popup). Yoklama engellenmez.
+- Web: Tanımlar → **Dönemler** (`features/donem`), grup formunda Aylık Ücret + Dönemlik Ücret + Dönem, grup özetinde
+  dönem, kayıt listelerinde Aylık/Dönemlik rozeti, öğrenci detayında **Kredi** kartı (`KrediKarti`: aktif paketler,
+  kalan/toplam, tutar yalnız para gören rollere). `SilinebilirTur.DONEM` (gruba bağlıysa silinemez).
+- Testler: `dalga/DalgaETest` (önizleme sayıları, dönemlik kredi + tek tahakkuk + aidat atlama + kontör düşümü + dönem
+  dışı uyarı; aylık kredi kayıtta ve sonraki ayda; doğrulama, yetki, silme engeli, tenant).
+- ⚠️ Bilinçli sınırlar: elle tahakkuk/paket satışı/transfer farkı plan bilmez; dönemlik ücret orantılanmaz (dönem
+  ortasında kayıt tam ücret, kredi kalan derslere göre); tatil günleri düşülmez.
+
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 
 Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:
@@ -894,5 +923,5 @@ buna gömülür) · **İzinli yalnız yönetici düzeltmesinde** · sıra **A→
 | B | Öğrenci listesi sütunları (gruplar, bakiye, statü, devam serisi −N); kara liste (+açıklama, tekrar kayıtta popup); yönetici yumuşak silme her sayfada | ✅ 2026-09-10 (§7.28, §7.29) |
 | C | Yeni yoklama ekranı (dikey liste, renkli Geldi/Gelmedi, Kaydet sonrası eğitmen kilidi, admin düzeltir); Yoklama Listesi sayfası; "yoklama alındı" uygulama içi anlık bildirim (zil + 30 sn sorgu + toast); "yoklama alınmadı" eğitmen bildirimi (e-posta şimdi, kanal soyutlaması WhatsApp'a hazır) | ✅ 2026-09-10 (§7.30) |
 | D | İndirim/kampanya tanımı (oran/tutar) + öğrenciye özel atama (grup, tarih aralığı) + tahakkukta brüt−indirim=net (Tahakkuklar listesinde ve önizlemede görünür) | ✅ 2026-09-10 (§7.31) |
-| E | Dönem tanımı (branş/grup, 1./2. dönem), grup ücretleri (dönemlik/aylık), kayıtta dönemlik/aylık seçimi, program × dönem = kredi (örn. 22 / 4), öğrenci detayında kalan kredi, kredi bitince/dönem dışı derse gelince admin+asistan uyarısı. **Önce 1 sayfalık tasarım onayı.** | ⏳ |
+| E | Dönem tanımı, grup ücretleri (dönemlik/aylık), kayıtta dönemlik/aylık seçimi, program × dönem = kredi, öğrenci detayında kalan kredi, kredi bitince/dönem dışı derse gelince ofise uyarı | ✅ 2026-09-10 (§7.32; tasarım onaylandı) |
 | F | Raporlar grafikli yenileme (pasta/çubuk/trend); eğitmen kalitesi paneli (yük, öğrenci sayısı, katılım oranı) | ⏳ |

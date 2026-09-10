@@ -3,11 +3,13 @@ import SilButonu from '../../components/SilButonu';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { indirKayitFormu } from '../../api/students';
-import type { StudentResponse } from '../../api/types';
+import type { OdemePlani, StudentResponse } from '../../api/types';
 import { useDebounce } from '../../lib/useDebounce';
 import { DURUM_BADGE, DURUM_LABEL, TIP_BADGE, TIP_LABEL } from '../group/groupDisplay';
 import { useGroups } from '../group/useGroups';
+import KayitPlaniModal from '../enrollment/KayitPlaniModal';
 import KaraListeModal from './KaraListeModal';
+import KrediKarti from './KrediKarti';
 import KaraListeUyariModal from './KaraListeUyariModal';
 import { useEnrollStudent, useLeaveFromStudent, useStudentEnrollments } from './useStudentEnrollments';
 import { useAuth } from '../../auth/AuthContext';
@@ -127,6 +129,9 @@ export default function StudentDetailPage() {
           <KayitPaneli student={s} />
         </Section>
 
+        {/* Kredi — dönemlik/aylık kayıttan otomatik açılan ders paketleri (Dalga E) */}
+        {id !== undefined && <KrediKarti studentId={id} />}
+
         {/* Finans — yalnizca ADMIN / FRONTDESK_ACCOUNTING (para hassas) */}
         {canSeeFinance && id !== undefined && <StudentFinanceCard studentId={id} />}
 
@@ -211,7 +216,9 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
   const [hata, setHata] = useState<string | null>(null);
   const [eklendi, setEklendi] = useState<string | null>(null);
   // 409 KARA_LISTE: uyarı modalı; "yine de ekle" onayla tekrar dener.
-  const [karaUyari, setKaraUyari] = useState<{ grupId: number; grupAd: string; sebep: string } | null>(null);
+  const [karaUyari, setKaraUyari] = useState<{ grupId: number; grupAd: string; sebep: string; plan?: OdemePlani } | null>(null);
+  // Dalga E: GRUP tipinde önce plan (Aylık / Dönemlik) seçilir.
+  const [planSecim, setPlanSecim] = useState<{ grupId: number; grupAd: string } | null>(null);
   const gruplar = useGroups({ q: debouncedQ.trim() || undefined, aktif: true, size: 10 });
   const adaylar = debouncedQ.trim() ? gruplar.data?.data ?? [] : [];
   const liste = [...(kayitlar.data?.data ?? [])].sort((a, b) =>
@@ -219,19 +226,26 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
   );
   const yazilabilir = student.status === 'AKTIF' || student.status === 'DENEME';
 
-  async function ekle(grupId: number, grupAd: string, karaListeOnayi = false) {
+  async function ekle(grupId: number, grupAd: string, karaListeOnayi = false, odemePlani?: OdemePlani, tip?: string) {
     setHata(null);
     setEklendi(null);
+    if (tip === 'GRUP' && !odemePlani) {
+      setPlanSecim({ grupId, grupAd });
+      return;
+    }
     try {
-      await ekleMut.mutateAsync({ ogrenciId: student.id, grupId, karaListeOnayi });
+      await ekleMut.mutateAsync({ ogrenciId: student.id, grupId, karaListeOnayi, odemePlani });
       setKaraUyari(null);
+      setPlanSecim(null);
       setQ('');
       setEklendi(grupAd);
     } catch (e) {
       if (e instanceof ApiException) {
         if (e.code === 'KARA_LISTE') {
-          setKaraUyari({ grupId, grupAd, sebep: e.message });
+          setPlanSecim(null);
+          setKaraUyari({ grupId, grupAd, sebep: e.message, plan: odemePlani });
         } else {
+          setPlanSecim(null);
           setKaraUyari(null);
           setHata(e.code === 'CONFLICT' ? 'Bu öğrenci gruba zaten kayıtlı' : e.message);
         }
@@ -270,7 +284,7 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
                     type="button"
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-[13.5px] hover:bg-gray-50"
                     disabled={ekleMut.isPending}
-                    onClick={() => ekle(g.id, g.ad)}
+                    onClick={() => ekle(g.id, g.ad, false, undefined, g.tip)}
                   >
                     <span className="flex items-center gap-2">
                       {g.ad}
@@ -299,7 +313,18 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
           sebep={karaUyari.sebep}
           pending={ekleMut.isPending}
           onVazgec={() => setKaraUyari(null)}
-          onYineDeEkle={() => ekle(karaUyari.grupId, karaUyari.grupAd, true)}
+          onYineDeEkle={() => ekle(karaUyari.grupId, karaUyari.grupAd, true, karaUyari.plan)}
+        />
+      )}
+
+      {planSecim && (
+        <KayitPlaniModal
+          grupId={planSecim.grupId}
+          grupAd={planSecim.grupAd}
+          ogrenciAd={`${student.ad} ${student.soyad}`}
+          pending={ekleMut.isPending}
+          onVazgec={() => setPlanSecim(null)}
+          onOnayla={(plan) => ekle(planSecim.grupId, planSecim.grupAd, false, plan)}
         />
       )}
 
@@ -344,7 +369,12 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
                   </Link>{' '}
                   <span className={`badge ${TIP_BADGE[e.grup.tip]}`}>{TIP_LABEL[e.grup.tip]}</span>
                 </td>
-                <td className="text-ink-soft">{formatDate(e.kayitTarihi)}</td>
+                <td className="text-ink-soft">
+                  {formatDate(e.kayitTarihi)}
+                  {e.grup.tip === 'GRUP' && (
+                    <span className="badge b-gray ml-2">{e.odemePlani === 'DONEMLIK' ? `Dönemlik${e.donem ? ` · ${e.donem.ad}` : ''}` : 'Aylık'}</span>
+                  )}
+                </td>
                 <td>
                   <span className={`badge ${DURUM_BADGE[e.durum]}`}>{DURUM_LABEL[e.durum]}</span>
                   {e.ayrilmaTarihi && (

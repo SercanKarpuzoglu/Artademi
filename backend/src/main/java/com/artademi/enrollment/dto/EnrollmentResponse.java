@@ -5,6 +5,7 @@ import com.artademi.enrollment.EnrollmentDurumu;
 import com.artademi.group.GrupTipi;
 import com.artademi.student.StudentStatus;
 import java.time.LocalDate;
+import com.artademi.enrollment.OdemePlani;
 
 /**
  * Kayit yanit DTO'su. Entity disariya dogrudan donmez. tenant_id sizdirilmaz.
@@ -20,7 +21,14 @@ public record EnrollmentResponse(
         LocalDate kayitTarihi,
         LocalDate ayrilmaTarihi,
         OgrenciRef ogrenci,
-        GrupRef grup) {
+        GrupRef grup,
+        /** Dalga E: odeme plani (null = AYLIK, eski kayit) ve donemlik kayitta donem. */
+        OdemePlani odemePlani,
+        DonemRef donem) {
+
+    /** Donem ozeti. */
+    public record DonemRef(Long id, String ad, java.time.LocalDate bitis) {
+    }
 
     /** Ogrenci ozeti (id + ad + soyad + status). */
     public record OgrenciRef(Long id, String ad, String soyad, StudentStatus status) {
@@ -44,6 +52,9 @@ public record EnrollmentResponse(
                 e.getKayitTarihi(),
                 e.getAyrilmaTarihi(),
                 ogrenci,
-                grup);
+                grup,
+                e.getOdemePlani(),
+                e.getDonem() == null ? null
+                        : new DonemRef(e.getDonem().getId(), e.getDonem().getAd(), e.getDonem().getBitis()));
     }
 }

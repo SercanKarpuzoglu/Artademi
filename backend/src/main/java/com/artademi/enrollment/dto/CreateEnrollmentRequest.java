@@ -2,6 +2,7 @@ package com.artademi.enrollment.dto;
 
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
+import com.artademi.enrollment.OdemePlani;
 
 /**
  * Kayit olusturma istegi. tenant_id ve durum ALINMAZ: tenant JWT'den gelir, yeni kayit her zaman
@@ -24,5 +25,7 @@ public record CreateEnrollmentRequest(
          * Kara listedeki ogrenci icin "yine de ekle" onayi. Onaysiz istek 409 KARA_LISTE (sebep
          * mesajda) doner; istemci popup gosterir, kullanici onaylarsa true ile tekrar gonderir.
          */
-        Boolean karaListeOnayi) {
+        Boolean karaListeOnayi,
+        /** Dalga E: AYLIK (varsayilan) | DONEMLIK. GRUP tipinde anlamli; OZEL derste yok sayilir. */
+        OdemePlani odemePlani) {
 }

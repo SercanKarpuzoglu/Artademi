@@ -27,6 +27,8 @@ import TelafiPage from './features/telafi/TelafiPage';
 import ProgramPage from './features/schedule/ProgramPage';
 import YoklamaListesiPage from './features/attendance/YoklamaListesiPage';
 import SilinenlerPage from './features/silinenler/SilinenlerPage';
+import DonemForm from './features/donem/DonemForm';
+import DonemListPage from './features/donem/DonemListPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
 import StudentDetailPage from './features/student/StudentDetailPage';
@@ -223,6 +225,31 @@ export default function App() {
           element={
             <RoleRoute requiredRoles={OFIS}>
               <SubeForm />
+            </RoleRoute>
+          }
+        />
+        {/* Dönemler — Dalga E: grup döneme bağlanır, dönemlik kayıt/kredi buradan hesaplanır */}
+        <Route
+          path="donemler"
+          element={
+            <RoleRoute requiredRoles={OFIS}>
+              <DonemListPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="donemler/yeni"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <DonemForm />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="donemler/:id/duzenle"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <DonemForm />
             </RoleRoute>
           }
         />

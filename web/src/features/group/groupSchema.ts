@@ -32,6 +32,9 @@ export const groupSchema = z
     seviye: optionalText,
     aylikAidat: optionalText,
     dersBasiUcret: optionalText,
+    // Dalga E: dönem (opsiyonel) ve dönemlik ücret (GRUP; boşsa dönemlik kayıt yapılamaz).
+    donemId: z.number().int().positive().optional(),
+    donemlikUcret: optionalText,
   })
   .superRefine((data, ctx) => {
     if (data.tip === 'GRUP') {
@@ -40,6 +43,14 @@ export const groupSchema = z
           code: z.ZodIssueCode.custom,
           path: ['salonId'],
           message: 'Salon zorunludur',
+        });
+      }
+      const d = data.donemlikUcret?.trim() ?? '';
+      if (d && (!POSITIVE_DECIMAL.test(d) || Number(d.replace(',', '.')) <= 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['donemlikUcret'],
+          message: 'Geçerli, pozitif bir tutar giriniz',
         });
       }
       const v = data.aylikAidat?.trim() ?? '';
@@ -102,5 +113,7 @@ export function toPayload(values: GroupFormValues): GroupInput {
     seviye: clean(values.seviye),
     aylikAidat: tip === 'GRUP' ? normalizeMoney(values.aylikAidat) : undefined,
     dersBasiUcret: tip === 'OZEL' ? normalizeMoney(values.dersBasiUcret) : undefined,
+    donemId: values.donemId || undefined,
+    donemlikUcret: tip === 'GRUP' && values.donemlikUcret?.trim() ? normalizeMoney(values.donemlikUcret) : undefined,
   };
 }

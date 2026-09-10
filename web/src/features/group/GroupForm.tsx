@@ -6,6 +6,7 @@ import { ApiException } from '../../api/client';
 import type { GroupResponse } from '../../api/types';
 import { useBranches } from '../branch/useBranches';
 import { useRooms } from '../room/useRooms';
+import { useDonemler } from '../donem/useDonemler';
 import { useAktifSubeler } from '../sube/useSubeler';
 import { useTeachers } from '../teacher/useTeachers';
 import { GroupFormValues, groupSchema, toPayload } from './groupSchema';
@@ -22,6 +23,8 @@ const EMPTY: GroupFormValues = {
   seviye: '',
   aylikAidat: '',
   dersBasiUcret: '',
+  donemId: undefined,
+  donemlikUcret: '',
 };
 
 /** Model C: grup tipinden varsayilan hakediş tipi (GRUP→SAATLIK, OZEL→OZEL_DERS). */
@@ -43,6 +46,8 @@ function toFormValues(g: GroupResponse): GroupFormValues {
     seviye: g.seviye ?? '',
     aylikAidat: money(g.aylikAidat),
     dersBasiUcret: money(g.dersBasiUcret),
+    donemId: g.donem?.id ?? undefined,
+    donemlikUcret: money(g.donemlikUcret),
   };
 }
 
@@ -120,6 +125,8 @@ export default function GroupForm() {
     loaded?.sube && !subeOptions.some((s) => s.id === loaded.sube!.id)
       ? [{ id: loaded.sube.id, ad: loaded.sube.ad }, ...subeOptions]
       : subeOptions;
+  const donemQuery = useDonemler(true);
+  const donemList = donemQuery.data ?? [];
 
   async function onSubmit(values: GroupFormValues) {
     setFormError(null);
@@ -274,9 +281,32 @@ export default function GroupForm() {
           <h2 className="text-sm font-semibold text-gray-700">Ücretlendirme</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {tip === 'GRUP' ? (
-              <Field label="Aylık Aidat (₺)" required error={errors.aylikAidat?.message}>
-                <input className={inputClass} inputMode="decimal" {...register('aylikAidat')} />
-              </Field>
+              <>
+                <Field label="Aylık Ücret (₺)" required error={errors.aylikAidat?.message}>
+                  <input className={inputClass} inputMode="decimal" {...register('aylikAidat')} />
+                </Field>
+                <Field label="Dönemlik Ücret (₺)" error={errors.donemlikUcret?.message}>
+                  <input className={inputClass} inputMode="decimal" placeholder="Dönemlik kayıt için" {...register('donemlikUcret')} />
+                </Field>
+                <Field label="Dönem" error={errors.donemId?.message}>
+                  <select
+                    className={inputClass}
+                    {...register('donemId', {
+                      setValueAs: (v) => (v ? Number(v) : undefined),
+                    })}
+                  >
+                    <option value="">Dönem yok</option>
+                    {donemList.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.ad} ({d.baslangic} – {d.bitis})
+                      </option>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-xs text-ink-soft">
+                    Dönemlik kayıt için zorunlu; kredi (ders sayısı) dönem aralığından hesaplanır.
+                  </span>
+                </Field>
+              </>
             ) : (
               <Field label="Ders Başı Ücret (₺)" required error={errors.dersBasiUcret?.message}>
                 <input className={inputClass} inputMode="decimal" {...register('dersBasiUcret')} />

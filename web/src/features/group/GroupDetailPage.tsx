@@ -2,12 +2,13 @@ import { useState, type ReactNode } from 'react';
 import SilButonu from '../../components/SilButonu';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
-import type { EnrollmentDurumu, GroupResponse } from '../../api/types';
+import type { EnrollmentDurumu, GroupResponse, OdemePlani } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
 import StatusBadge from '../../components/StatusBadge';
 import { formatDate, formatMoney } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
+import KayitPlaniModal from '../enrollment/KayitPlaniModal';
 import KaraListeUyariModal from '../student/KaraListeUyariModal';
 import { useStudents } from '../student/useStudents';
 import GroupSchedulePanel from './GroupSchedulePanel';
@@ -74,6 +75,12 @@ export default function GroupDetailPage() {
         <Section title="Özet">
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
             <Info label="Branş" value={g.brans?.ad} />
+            {g.tip === 'GRUP' && (
+              <Info label="Dönem" value={g.donem ? `${g.donem.ad} (${formatDate(g.donem.baslangic)} – ${formatDate(g.donem.bitis)})` : 'Tanımlı değil'} />
+            )}
+            {g.tip === 'GRUP' && (
+              <Info label="Dönemlik Ücret" value={g.donemlikUcret !== null && g.donemlikUcret !== undefined ? `${formatMoney(g.donemlikUcret)} ₺` : '—'} />
+            )}
             <Info
               label="Eğitmen"
               value={g.ogretmen ? `${g.ogretmen.ad} ${g.ogretmen.soyad}` : null}
@@ -132,7 +139,9 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
   // DENEME öğrenci gruba yazıldı: statü kendiliğinden AKTİF olmaz (ürün kararı) — kurum uyarılır.
   const [denemeUyari, setDenemeUyari] = useState<{ id: number; ad: string } | null>(null);
   // 409 KARA_LISTE: uyarı modalı; "yine de ekle" onayla tekrar dener.
-  const [karaUyari, setKaraUyari] = useState<{ ogrenciId: number; ad: string; sebep: string } | null>(null);
+  const [karaUyari, setKaraUyari] = useState<{ ogrenciId: number; ad: string; sebep: string; plan?: OdemePlani } | null>(null);
+  // Dalga E: GRUP tipinde önce plan seçilir (Aylık / Dönemlik); OZEL derste doğrudan eklenir.
+  const [planSecim, setPlanSecim] = useState<{ ogrenciId: number; ad: string } | null>(null);
   const studentsQuery = useStudents({
     q: debouncedPicker.trim() || undefined,
     size: 10,
@@ -147,12 +156,17 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
   // Aylık aidat yalnız GRUP tipinde üretilir; OZEL derste deneme uyarısının parasal sonucu yok.
   const aidatliGrup = group.tip === 'GRUP';
 
-  async function onAdd(ogrenciId: number, ad = '', karaListeOnayi = false) {
+  async function onAdd(ogrenciId: number, ad = '', karaListeOnayi = false, odemePlani?: OdemePlani) {
     setPickerError(null);
     setDenemeUyari(null);
+    if (group.tip === 'GRUP' && !odemePlani) {
+      setPlanSecim({ ogrenciId, ad });
+      return;
+    }
     try {
-      const kayit = await createMut.mutateAsync({ ogrenciId, grupId: groupId, karaListeOnayi });
+      const kayit = await createMut.mutateAsync({ ogrenciId, grupId: groupId, karaListeOnayi, odemePlani });
       setKaraUyari(null);
+      setPlanSecim(null);
       setPicker('');
       if (kayit.ogrenci.status === 'DENEME') {
         setDenemeUyari({ id: kayit.ogrenci.id, ad: `${kayit.ogrenci.ad} ${kayit.ogrenci.soyad}` });
@@ -160,8 +174,10 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
     } catch (e) {
       if (e instanceof ApiException) {
         if (e.code === 'KARA_LISTE') {
-          setKaraUyari({ ogrenciId, ad, sebep: e.message });
+          setPlanSecim(null);
+          setKaraUyari({ ogrenciId, ad, sebep: e.message, plan: odemePlani });
         } else if (e.code === 'CONFLICT') {
+          setPlanSecim(null);
           setKaraUyari(null);
           setPickerError('Bu öğrenci gruba zaten kayıtlı');
         } else {
@@ -241,7 +257,18 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
           sebep={karaUyari.sebep}
           pending={createMut.isPending}
           onVazgec={() => setKaraUyari(null)}
-          onYineDeEkle={() => onAdd(karaUyari.ogrenciId, karaUyari.ad, true)}
+          onYineDeEkle={() => onAdd(karaUyari.ogrenciId, karaUyari.ad, true, karaUyari.plan)}
+        />
+      )}
+
+      {planSecim && (
+        <KayitPlaniModal
+          grupId={groupId}
+          grupAd={group.ad}
+          ogrenciAd={planSecim.ad}
+          pending={createMut.isPending}
+          onVazgec={() => setPlanSecim(null)}
+          onOnayla={(plan) => onAdd(planSecim.ogrenciId, planSecim.ad, false, plan)}
         />
       )}
 
@@ -308,7 +335,12 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
                     )}
                   </span>
                 </td>
-                <td className="text-ink-soft">{formatDate(e.kayitTarihi)}</td>
+                <td className="text-ink-soft">
+                  {formatDate(e.kayitTarihi)}
+                  {group.tip === 'GRUP' && (
+                    <span className="badge b-gray ml-2">{e.odemePlani === 'DONEMLIK' ? `Dönemlik${e.donem ? ` · ${e.donem.ad}` : ''}` : 'Aylık'}</span>
+                  )}
+                </td>
                 <td>
                   <span className={`badge ${DURUM_BADGE[e.durum]}`}>{DURUM_LABEL[e.durum]}</span>
                 </td>

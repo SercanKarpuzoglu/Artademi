@@ -7,6 +7,7 @@ import com.artademi.room.Room;
 import com.artademi.sube.Sube;
 import com.artademi.teacher.HakedisTipi;
 import com.artademi.teacher.Teacher;
+import com.artademi.donem.Donem;
 
 /**
  * Request DTO'larini Group entity'sine yansitir. tenant_id ve aktif BURADA ELLE yonetilmez:
@@ -26,19 +27,23 @@ public final class GroupMapper {
 
     /** Yeni grup olusturur; aktif true ile baslar (entity varsayilani). */
     public static Group toNewEntity(CreateGroupRequest req, Branch brans, Teacher ogretmen,
-            Room salon, Sube sube) {
+            Room salon, Sube sube, Donem donem) {
         Group g = Group.create();
         apply(g, req.ad(), req.tip(), req.hakedisTipi(), brans, ogretmen, salon, sube, req.seviye(),
                 req.aylikAidat(), req.dersBasiUcret());
+        g.setDonem(donem);
+        g.setDonemlikUcret(req.tip() == GrupTipi.GRUP ? req.donemlikUcret() : null);
         g.setAktif(true);
         return g;
     }
 
     /** Mevcut grubun alanlarini gunceller; aktif'e DOKUNMAZ. */
     public static void applyUpdate(Group g, UpdateGroupRequest req, Branch brans, Teacher ogretmen,
-            Room salon, Sube sube) {
+            Room salon, Sube sube, Donem donem) {
         apply(g, req.ad(), req.tip(), req.hakedisTipi(), brans, ogretmen, salon, sube, req.seviye(),
                 req.aylikAidat(), req.dersBasiUcret());
+        g.setDonem(donem);
+        g.setDonemlikUcret(req.tip() == GrupTipi.GRUP ? req.donemlikUcret() : null);
     }
 
     /**

@@ -20,6 +20,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.donem.Donem;
+import com.artademi.donem.DonemRepository;
 
 /**
  * Grup is kurallari. {@code @Transactional} oldugundan cagrildiginda global tenant filtresi aktif
@@ -41,15 +43,26 @@ public class GroupService {
     private final TeacherRepository teacherRepository;
     private final RoomRepository roomRepository;
     private final SubeRepository subeRepository;
+    private final DonemRepository donemRepository;
 
     public GroupService(GroupRepository repository, BranchRepository branchRepository,
             TeacherRepository teacherRepository, RoomRepository roomRepository,
-            SubeRepository subeRepository) {
+            SubeRepository subeRepository, DonemRepository donemRepository) {
         this.repository = repository;
         this.branchRepository = branchRepository;
         this.teacherRepository = teacherRepository;
         this.roomRepository = roomRepository;
         this.subeRepository = subeRepository;
+        this.donemRepository = donemRepository;
+    }
+
+    /** Donem opsiyonel; verildiyse tenant-guvenli cozulur (yoksa 404). */
+    private Donem resolveDonem(Long donemId) {
+        if (donemId == null) {
+            return null;
+        }
+        return donemRepository.findScopedById(donemId)
+                .orElseThrow(() -> new NotFoundException("Dönem bulunamadı: " + donemId));
     }
 
     /** Yeni grup olusturur; aktif true ile baslar. */
@@ -59,7 +72,8 @@ public class GroupService {
         Teacher ogretmen = resolveTeacher(req.ogretmenId());
         Room salon = resolveRoom(req.salonId());
         Sube sube = resolveSube(req.subeId());
-        Group saved = repository.save(GroupMapper.toNewEntity(req, brans, ogretmen, salon, sube));
+        Donem donem = resolveDonem(req.donemId());
+        Group saved = repository.save(GroupMapper.toNewEntity(req, brans, ogretmen, salon, sube, donem));
         return GroupResponse.from(saved);
     }
 
@@ -75,7 +89,8 @@ public class GroupService {
         Teacher ogretmen = resolveTeacher(req.ogretmenId());
         Room salon = resolveRoom(req.salonId());
         Sube sube = resolveSube(req.subeId());
-        GroupMapper.applyUpdate(group, req, brans, ogretmen, salon, sube);
+        Donem donem = resolveDonem(req.donemId());
+        GroupMapper.applyUpdate(group, req, brans, ogretmen, salon, sube, donem);
         return GroupResponse.from(group);
     }
 

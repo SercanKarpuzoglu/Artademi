@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.artademi.donem.Donem;
 
 /**
  * Kayit (enrollment) is entity'si — ogrenci ile grup arasindaki yazma iliskisi.
@@ -125,5 +126,30 @@ public class Enrollment extends TenantAware {
 
     public Instant getGuncellenmeTarihi() {
         return guncellenmeTarihi;
+    }
+
+    // --- Dalga E: odeme plani (NULL = AYLIK) ve donemlik kayitta grubun donemi. ---
+    @Enumerated(EnumType.STRING)
+    @Column(name = "odeme_plani", length = 10)
+    private OdemePlani odemePlani;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "donem_id")
+    private Donem donem;
+
+    public OdemePlani getOdemePlani() {
+        return odemePlani;
+    }
+
+    public void setOdemePlani(OdemePlani odemePlani) {
+        this.odemePlani = odemePlani;
+    }
+
+    public Donem getDonem() {
+        return donem;
+    }
+
+    public void setDonem(Donem donem) {
+        this.donem = donem;
     }
 }

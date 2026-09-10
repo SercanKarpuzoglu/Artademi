@@ -62,6 +62,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.artademi.indirim.IndirimTanimi;
 import com.artademi.indirim.IndirimTanimiRepository;
 import com.artademi.indirim.OgrenciIndirimiRepository;
+import com.artademi.donem.Donem;
+import com.artademi.donem.DonemRepository;
 
 /**
  * Yumusak silme merkezi (Dalga B-3, urun karari 2026-09-10: "Sil her sayfada, yalniz yonetici, uyari ile,
@@ -105,6 +107,7 @@ public class SilmeService {
     private final EnrollmentRepository enrollments;
     private final IndirimTanimiRepository indirimler;
     private final OgrenciIndirimiRepository ogrenciIndirimleri;
+    private final DonemRepository donemler;
 
     public SilmeService(EntityManager em, StudentRepository students, GroupRepository groups,
             TeacherRepository teachers, RoomRepository rooms, BranchRepository branches,
@@ -115,7 +118,7 @@ public class SilmeService {
             TelafiHakkiRepository telafiler, BasvuruRepository basvurular, ScheduleRepository schedules,
             AttendanceSessionRepository sessions, AttendanceEntryRepository entries,
             EnrollmentRepository enrollments, IndirimTanimiRepository indirimler,
-            OgrenciIndirimiRepository ogrenciIndirimleri) {
+            OgrenciIndirimiRepository ogrenciIndirimleri, DonemRepository donemler) {
         this.em = em;
         this.students = students;
         this.groups = groups;
@@ -141,6 +144,7 @@ public class SilmeService {
         this.enrollments = enrollments;
         this.indirimler = indirimler;
         this.ogrenciIndirimleri = ogrenciIndirimleri;
+        this.donemler = donemler;
     }
 
     // ---------- onizleme ----------
@@ -299,6 +303,14 @@ public class SilmeService {
                     etkiler.add(satir + " yoklama satırı silinecek");
                 }
             }
+            case DONEM -> {
+                Donem d = bul(tur, donemler.findScopedById(id));
+                ad = d.getAd();
+                long grup = groups.countByDonem(id);
+                if (grup > 0) {
+                    engel = grup + " grup bu döneme bağlı; önce grupların dönemini değiştirin";
+                }
+            }
             case INDIRIM -> {
                 IndirimTanimi i = bul(tur, indirimler.findScopedById(id));
                 ad = i.getAd();
@@ -366,6 +378,7 @@ public class SilmeService {
                 damgala(sessions.findScopedById(id), kim);
             }
             case INDIRIM -> damgala(indirimler.findScopedById(id), kim);
+            case DONEM -> damgala(donemler.findScopedById(id), kim);
             default -> throw new NotFoundException("Bilinmeyen kayıt türü");
         }
     }

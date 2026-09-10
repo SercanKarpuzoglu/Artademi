@@ -91,7 +91,7 @@ public class DersPaketi extends TenantAware implements SoftDeletable {
         // JPA icin
     }
 
-    static DersPaketi of(Student ogrenci, String ad, Group grup, int toplamDers,
+    public static DersPaketi of(Student ogrenci, String ad, Group grup, int toplamDers,
             BigDecimal tutar, LocalDate satisTarihi, LocalDate sonKullanma, String aciklama) {
         DersPaketi p = new DersPaketi();
         p.ogrenci = ogrenci;
@@ -119,7 +119,7 @@ public class DersPaketi extends TenantAware implements SoftDeletable {
         this.durum = PaketDurumu.IPTAL;
     }
 
-    void accrualBagla(Accrual accrual) {
+    public void accrualBagla(Accrual accrual) {
         this.accrual = accrual;
     }
 
@@ -191,5 +191,29 @@ public class DersPaketi extends TenantAware implements SoftDeletable {
     @Override
     public void setSilen(String silen) {
         this.silen = silen;
+    }
+
+    // --- Dalga E: paketin kaynagi (elle / donemlik kayit / aylik kredi) ve aylik kredi donemi "YYYY-MM". ---
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kaynak", nullable = false, length = 20)
+    private PaketKaynagi kaynak = PaketKaynagi.ELLE;
+
+    @Column(name = "kaynak_donem", length = 7)
+    private String kaynakDonem;
+
+    public PaketKaynagi getKaynak() {
+        return kaynak;
+    }
+
+    public void setKaynak(PaketKaynagi kaynak) {
+        this.kaynak = kaynak;
+    }
+
+    public String getKaynakDonem() {
+        return kaynakDonem;
+    }
+
+    public void setKaynakDonem(String kaynakDonem) {
+        this.kaynakDonem = kaynakDonem;
     }
 }

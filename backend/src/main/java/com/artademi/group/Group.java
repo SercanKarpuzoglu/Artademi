@@ -23,6 +23,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.Filter;
 import com.artademi.common.silme.SoftDeletable;
+import com.artademi.donem.Donem;
 
 /**
  * Grup/Sinif is entity'si. {@link TenantAware}'den turedigi icin {@code tenant_id} ve global
@@ -237,5 +238,29 @@ public class Group extends TenantAware implements SoftDeletable {
     @Override
     public void setSilen(String silen) {
         this.silen = silen;
+    }
+
+    // --- Dalga E: grubun egitim donemi ve donemlik ucret (aylik_aidat = aylik ucret olarak kalir). ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "donem_id")
+    private Donem donem;
+
+    @Column(name = "donemlik_ucret", precision = 10, scale = 2)
+    private BigDecimal donemlikUcret;
+
+    public Donem getDonem() {
+        return donem;
+    }
+
+    public void setDonem(Donem donem) {
+        this.donem = donem;
+    }
+
+    public BigDecimal getDonemlikUcret() {
+        return donemlikUcret;
+    }
+
+    public void setDonemlikUcret(BigDecimal donemlikUcret) {
+        this.donemlikUcret = donemlikUcret;
     }
 }

@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.artademi.indirim.IndirimService;
 import com.artademi.indirim.IndirimSonucu;
+import com.artademi.enrollment.OdemePlani;
+import com.artademi.kredi.KrediService;
 
 /**
  * Otomatik aylik tahakkuk uretimi. Mevcut {@link Accrual} kayitlari uretilir; YENI ENTITY YOK.
@@ -42,12 +44,14 @@ public class AccrualGenerationService {
     private final EnrollmentRepository enrollmentRepository;
     private final AccrualRepository accrualRepository;
     private final IndirimService indirimService;
+    private final KrediService krediService;
 
     public AccrualGenerationService(EnrollmentRepository enrollmentRepository,
-            AccrualRepository accrualRepository, IndirimService indirimService) {
+            AccrualRepository accrualRepository, IndirimService indirimService, KrediService krediService) {
         this.enrollmentRepository = enrollmentRepository;
         this.accrualRepository = accrualRepository;
         this.indirimService = indirimService;
+        this.krediService = krediService;
     }
 
     /** Donem icin tahakkuklari URETIR ve kaydeder. Ayni donem tekrar calisirsa mukerrer olusmaz. */
@@ -72,6 +76,10 @@ public class AccrualGenerationService {
         int atlanan = 0;
 
         for (Enrollment kayit : enrollmentRepository.findAktifAidatliKayitlar()) {
+            // Dalga E: donemlik kayit donem ucretini kayitta tek kalem odedi; aylik aidat URETILMEZ.
+            if (kayit.getOdemePlani() == OdemePlani.DONEMLIK) {
+                continue;
+            }
             Student ogrenci = kayit.getOgrenci();
             Group grup = kayit.getGrup();
             if (accrualRepository.existsByOgrenciAndGrupAndDonem(ogrenci.getId(), grup.getId(), donem)) {
@@ -108,6 +116,10 @@ public class AccrualGenerationService {
                         k.getOgrenci().getSoyad(), k.getGrup().getId(), k.getGrup().getAd()))
                 .toList();
 
+        if (persist) {
+            // Dalga E: ayin kredileri (0 TL paket, ders sayisi kadar) — aidatla ayni tetikleyici, tek yer.
+            krediService.aylikKredileriUret(donem);
+        }
         return new AccrualGenerationResult(
                 donem, ozet.size(), atlanan, toplamTutar.setScale(2, RoundingMode.HALF_UP), ozet, deneme);
     }

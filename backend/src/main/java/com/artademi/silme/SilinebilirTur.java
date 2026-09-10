@@ -25,7 +25,8 @@ public enum SilinebilirTur {
     BASVURU("basvuru", "basvuru", "ad || ' ' || soyad", "Başvuru"),
     DERS_SAATI("ders-saati", "schedule", "gun || ' ' || baslangic_saati", "Ders saati"),
     YOKLAMA_OTURUMU("yoklama-oturumu", "attendance_session", "'Yoklama ' || tarih", "Yoklama oturumu"),
-    INDIRIM("indirim", "indirim_tanimi", "ad", "İndirim");
+    INDIRIM("indirim", "indirim_tanimi", "ad", "İndirim"),
+    DONEM("donem", "donem", "ad", "Dönem");
 
     private final String yol;
     private final String tablo;

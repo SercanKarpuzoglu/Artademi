@@ -31,6 +31,17 @@ public interface DersPaketiRepository extends JpaRepository<DersPaketi, Long> {
             + "ORDER BY p.satisTarihi ASC, p.id ASC")
     List<DersPaketi> aktifPaketler(@Param("ogrenciId") Long ogrenciId);
 
+    /** Aylik kredi mukerrer kalkani: (ogrenci, grup, ay) icin kredi paketi var mi. */
+    @Query("SELECT (COUNT(p) > 0) FROM DersPaketi p WHERE p.ogrenci.id = :ogrenciId AND p.grup.id = :grupId "
+            + "AND p.kaynak = com.artademi.paket.PaketKaynagi.AYLIK_KREDI AND p.kaynakDonem = :kaynakDonem")
+    boolean existsAylikKredi(@Param("ogrenciId") Long ogrenciId, @Param("grupId") Long grupId,
+            @Param("kaynakDonem") String kaynakDonem);
+
+    /** O ay icin kurumda aylik kredi uretimi calismis mi (kredi uyarisi gurultu kalkani). */
+    @Query("SELECT (COUNT(p) > 0) FROM DersPaketi p WHERE p.kaynak = com.artademi.paket.PaketKaynagi.AYLIK_KREDI "
+            + "AND p.kaynakDonem = :kaynakDonem")
+    boolean existsAylikKrediDonem(@Param("kaynakDonem") String kaynakDonem);
+
     // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
     @Query("SELECT COUNT(d) FROM DersPaketi d WHERE d.ogrenci.id = :id")
     long countByOgrenci(@Param("id") Long id);

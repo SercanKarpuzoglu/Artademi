@@ -23,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.artademi.kredi.KrediService;
 
 /**
  * Kayit (enrollment) is kurallari. {@code @Transactional} oldugundan cagrildiginda global tenant
@@ -55,12 +56,16 @@ public class EnrollmentService {
     private final GroupRepository groupRepository;
     private final AccrualRepository accrualRepository;
 
+    private final KrediService krediService;
+
     public EnrollmentService(EnrollmentRepository repository, StudentRepository studentRepository,
-            GroupRepository groupRepository, AccrualRepository accrualRepository) {
+            GroupRepository groupRepository, AccrualRepository accrualRepository,
+            KrediService krediService) {
         this.repository = repository;
         this.groupRepository = groupRepository;
         this.studentRepository = studentRepository;
         this.accrualRepository = accrualRepository;
+        this.krediService = krediService;
     }
 
     /** Yeni kayit olusturur; durum AKTIF ile baslar. */
@@ -82,8 +87,20 @@ public class EnrollmentService {
                             : ogrenci.getKaraListeAciklama()), "KARA_LISTE");
         }
 
-        Enrollment saved = repository.save(
-                EnrollmentMapper.toNewEntity(ogrenci, grup, req.kayitTarihi()));
+        Enrollment yeni = EnrollmentMapper.toNewEntity(ogrenci, grup, req.kayitTarihi());
+        // Dalga E: plan (GRUP tipinde). DONEMLIK -> grubun donemi kayda yazilir; kredi + tahakkuk KrediService'te.
+        if (grup.getTip() == GrupTipi.GRUP) {
+            OdemePlani plan = req.odemePlani() == null ? OdemePlani.AYLIK : req.odemePlani();
+            yeni.setOdemePlani(plan);
+            if (plan == OdemePlani.DONEMLIK) {
+                if (grup.getDonem() == null) {
+                    throw new ValidationException("Grubun dönemi tanımlı değil; dönemlik kayıt yapılamaz");
+                }
+                yeni.setDonem(grup.getDonem());
+            }
+        }
+        Enrollment saved = repository.save(yeni);
+        krediService.kayitSonrasiKredi(saved);
         return EnrollmentResponse.from(saved);
     }
 

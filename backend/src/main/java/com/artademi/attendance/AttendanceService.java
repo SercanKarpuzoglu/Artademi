@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.artademi.bildirim.UygulamaBildirimService;
 import com.artademi.bildirim.UygulamaBildirimTipi;
+import com.artademi.kredi.KrediService;
 
 /**
  * Yoklama is kurallari. {@code @Transactional} oldugundan cagrildiginda global tenant filtresi aktif
@@ -62,6 +63,8 @@ public class AttendanceService {
 
     private final UygulamaBildirimService uygulamaBildirimi;
 
+    private final KrediService krediService;
+
     public AttendanceService(
             AttendanceSessionRepository sessionRepository,
             AttendanceEntryRepository entryRepository,
@@ -70,7 +73,8 @@ public class AttendanceService {
             EnrollmentRepository enrollmentRepository,
             AttendanceAccessGuard accessGuard,
             com.artademi.paket.PaketService paketService,
-            UygulamaBildirimService uygulamaBildirimi) {
+            UygulamaBildirimService uygulamaBildirimi,
+            KrediService krediService) {
         this.sessionRepository = sessionRepository;
         this.entryRepository = entryRepository;
         this.groupRepository = groupRepository;
@@ -79,6 +83,7 @@ public class AttendanceService {
         this.accessGuard = accessGuard;
         this.paketService = paketService;
         this.uygulamaBildirimi = uygulamaBildirimi;
+        this.krediService = krediService;
     }
 
     /**
@@ -171,8 +176,13 @@ public class AttendanceService {
                 // dusmez (varsa geri alinir). Paketi olmayan ogrencide hicbir sey olmaz.
                 // Bu cagri yoklamayi ASLA engellemez — kontoru bitmis ogrenci de derse
                 // yazilmaya devam eder.
-                paketService.yoklamaDegisti(item.ogrenciId(), session.getId(),
-                        session.getGrup() != null ? session.getGrup().getId() : null,
+                Long grupId = session.getGrup() != null ? session.getGrup().getId() : null;
+                // Dalga E: GELDI ama bu ders icin kredisi yok -> ofise uyari (dusumden ONCE bakilir).
+                if (item.durum() == YoklamaDurumu.GELDI && grupId != null && ilkKayit
+                        && !paketService.dersIcinKrediVar(item.ogrenciId(), session.getId(), grupId, session.getTarih())) {
+                    krediUyarisi(session, item.ogrenciId(), grupId);
+                }
+                paketService.yoklamaDegisti(item.ogrenciId(), session.getId(), grupId,
                         item.durum(), session.getTarih());
             }
         }
@@ -194,6 +204,24 @@ public class AttendanceService {
         }
 
         return SessionResponse.from(session, guncel);
+    }
+
+    /** Kredisi olmayan (donem/ay disi) ogrenci derse geldi: ofise KREDI_BITTI bildirimi (plan gurultu kalkanli). */
+    private void krediUyarisi(AttendanceSession session, Long ogrenciId, Long grupId) {
+        enrollmentRepository.findAktifByOgrenciIds(List.of(ogrenciId)).stream()
+                .filter(e -> e.getGrup() != null && e.getGrup().getId().equals(grupId))
+                .findFirst()
+                .filter(e -> krediService.krediUyarisiGerekli(e, session.getTarih()))
+                .ifPresent(e -> {
+                    String ad = e.getOgrenci().getAd() + " " + e.getOgrenci().getSoyad();
+                    boolean donemlik = e.getOdemePlani() == com.artademi.enrollment.OdemePlani.DONEMLIK;
+                    uygulamaBildirimi.gonder(UygulamaBildirimTipi.KREDI_BITTI, UygulamaBildirimService.OFIS, null,
+                            ad + " — kredisi yok, derse geldi",
+                            session.getGrup().getAd() + " · " + session.getTarih() + " · "
+                                    + (donemlik ? "dönemlik kayıt (dönem doldu / kredi bitti)" : "aylık kayıt (bu ayın kredisi yok)")
+                                    + " — yeni dönem/ay kaydı veya tahsilat gerekebilir",
+                            "/ogrenciler/" + ogrenciId);
+                });
     }
 
     /**

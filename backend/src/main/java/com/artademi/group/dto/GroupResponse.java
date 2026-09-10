@@ -25,6 +25,9 @@ public record GroupResponse(
         String seviye,
         BigDecimal aylikAidat,
         BigDecimal dersBasiUcret,
+        /** Dalga E: donem ozeti (yoksa null) ve donemlik ucret. */
+        DonemRef donem,
+        BigDecimal donemlikUcret,
         boolean aktif,
         Instant olusturulmaTarihi,
         Instant guncellenmeTarihi) {
@@ -43,6 +46,10 @@ public record GroupResponse(
 
     /** Ogretmen ozeti (id + ad + soyad). */
     public record TeacherRef(Long id, String ad, String soyad) {
+    }
+
+    /** Donem ozeti (id + ad + tarih araligi). */
+    public record DonemRef(Long id, String ad, java.time.LocalDate baslangic, java.time.LocalDate bitis) {
     }
 
     public static GroupResponse from(Group g) {
@@ -70,6 +77,9 @@ public record GroupResponse(
                 g.getSeviye(),
                 g.getAylikAidat(),
                 g.getDersBasiUcret(),
+                g.getDonem() == null ? null : new DonemRef(g.getDonem().getId(), g.getDonem().getAd(),
+                        g.getDonem().getBaslangic(), g.getDonem().getBitis()),
+                g.getDonemlikUcret(),
                 g.isAktif(),
                 g.getOlusturulmaTarihi(),
                 g.getGuncellenmeTarihi());

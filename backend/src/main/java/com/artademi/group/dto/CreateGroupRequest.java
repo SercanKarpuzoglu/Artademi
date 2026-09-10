@@ -41,5 +41,8 @@ public record CreateGroupRequest(
         Long subeId,
         String seviye,
         BigDecimal aylikAidat,
-        BigDecimal dersBasiUcret) implements GrupBilgisi {
+        BigDecimal dersBasiUcret,
+        /** Dalga E: grubun donemi (opsiyonel) ve donemlik ucret (GRUP tipinde, donemlik kayit icin). */
+        Long donemId,
+        BigDecimal donemlikUcret) implements GrupBilgisi {
 }

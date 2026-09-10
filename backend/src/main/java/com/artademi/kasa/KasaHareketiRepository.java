@@ -29,4 +29,9 @@ public interface KasaHareketiRepository extends JpaRepository<KasaHareketi, Long
             + "THEN h.tutar ELSE -h.tutar END) "
             + "FROM KasaHareketi h WHERE h.kasa.id = :kasaId")
     BigDecimal netHareket(@Param("kasaId") Long kasaId);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(h) FROM KasaHareketi h WHERE h.kasa.id = :id")
+    long countByKasa(@Param("id") Long id);
+
 }

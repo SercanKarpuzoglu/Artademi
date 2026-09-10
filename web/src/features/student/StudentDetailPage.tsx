@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { indirKayitFormu } from '../../api/students';
@@ -6,12 +7,14 @@ import type { StudentResponse } from '../../api/types';
 import { useDebounce } from '../../lib/useDebounce';
 import { DURUM_BADGE, DURUM_LABEL, TIP_BADGE, TIP_LABEL } from '../group/groupDisplay';
 import { useGroups } from '../group/useGroups';
+import KaraListeModal from './KaraListeModal';
+import KaraListeUyariModal from './KaraListeUyariModal';
 import { useEnrollStudent, useLeaveFromStudent, useStudentEnrollments } from './useStudentEnrollments';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
 import StatusBadge from '../../components/StatusBadge';
 import StudentFinanceCard from '../finance/StudentFinanceCard';
-import { formatDate } from '../../lib/format';
+import { formatDate, formatDateTime } from '../../lib/format';
 import { useSiblings, useStudent } from './useStudentMutations';
 
 export default function StudentDetailPage() {
@@ -23,6 +26,7 @@ export default function StudentDetailPage() {
 
   // ⚠️ Hook'lar kosullu return'lerden ONCE tanimlanmali (React hook kurali).
   const [formIndiriliyor, setFormIndiriliyor] = useState(false);
+  const [karaListeAcik, setKaraListeAcik] = useState(false);
   const kayitFormuIndir = async (id: number) => {
     setFormIndiriliyor(true);
     try {
@@ -67,8 +71,18 @@ export default function StudentDetailPage() {
             {s.ad} {s.soyad}
           </h1>
           <StatusBadge status={s.status} />
+          {s.karaListe && <span className="badge b-red">Kara liste</span>}
         </div>
         <div className="top-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => setKaraListeAcik(true)}>
+            {s.karaListe ? 'Kara listeden çıkar' : 'Kara listeye al'}
+          </button>
+          <SilButonu
+            tur="ogrenci"
+            id={s.id}
+            ad={`${s.ad} ${s.soyad}`}
+            onSilindi={() => navigate('/ogrenciler')}
+          />
           <button
             type="button"
             className="btn btn-ghost"
@@ -87,6 +101,17 @@ export default function StudentDetailPage() {
       </div>
 
       <div className="space-y-4">
+        {s.karaListe && (
+          <div className="rounded-[12px] border border-red/30 bg-red-soft px-4 py-3 text-[13px]">
+            <p className="font-semibold text-red">Kara listede</p>
+            <p className="mt-1">{s.karaListeAciklama ?? '—'}</p>
+            <p className="mt-1 text-ink-soft">
+              {s.karaListeTarihi ? formatDateTime(s.karaListeTarihi) : ''}
+              {s.karaListeEkleyen ? ` · ${s.karaListeEkleyen}` : ''}
+            </p>
+          </div>
+        )}
+
         {/* Kunye */}
         <Section title="Künye">
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
@@ -154,6 +179,21 @@ export default function StudentDetailPage() {
           )}
         </Section>
       </div>
+
+      {karaListeAcik && (
+        <KaraListeModal
+          hedef={{
+            id: s.id,
+            ad: s.ad,
+            soyad: s.soyad,
+            karaListe: s.karaListe,
+            karaListeAciklama: s.karaListeAciklama,
+            karaListeTarihi: s.karaListeTarihi,
+            karaListeEkleyen: s.karaListeEkleyen,
+          }}
+          onClose={() => setKaraListeAcik(false)}
+        />
+      )}
     </div>
   );
 }
@@ -170,6 +210,8 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
   const debouncedQ = useDebounce(q, 300);
   const [hata, setHata] = useState<string | null>(null);
   const [eklendi, setEklendi] = useState<string | null>(null);
+  // 409 KARA_LISTE: uyarı modalı; "yine de ekle" onayla tekrar dener.
+  const [karaUyari, setKaraUyari] = useState<{ grupId: number; grupAd: string; sebep: string } | null>(null);
   const gruplar = useGroups({ q: debouncedQ.trim() || undefined, aktif: true, size: 10 });
   const adaylar = debouncedQ.trim() ? gruplar.data?.data ?? [] : [];
   const liste = [...(kayitlar.data?.data ?? [])].sort((a, b) =>
@@ -177,16 +219,22 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
   );
   const yazilabilir = student.status === 'AKTIF' || student.status === 'DENEME';
 
-  async function ekle(grupId: number, grupAd: string) {
+  async function ekle(grupId: number, grupAd: string, karaListeOnayi = false) {
     setHata(null);
     setEklendi(null);
     try {
-      await ekleMut.mutateAsync({ ogrenciId: student.id, grupId });
+      await ekleMut.mutateAsync({ ogrenciId: student.id, grupId, karaListeOnayi });
+      setKaraUyari(null);
       setQ('');
       setEklendi(grupAd);
     } catch (e) {
       if (e instanceof ApiException) {
-        setHata(e.code === 'CONFLICT' ? 'Bu öğrenci gruba zaten kayıtlı' : e.message);
+        if (e.code === 'KARA_LISTE') {
+          setKaraUyari({ grupId, grupAd, sebep: e.message });
+        } else {
+          setKaraUyari(null);
+          setHata(e.code === 'CONFLICT' ? 'Bu öğrenci gruba zaten kayıtlı' : e.message);
+        }
       } else {
         setHata('Beklenmeyen bir hata oluştu.');
       }
@@ -243,6 +291,16 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
         <p className="text-[13px] text-ink-soft">
           Pasif veya dondurulmuş öğrenci gruba yazılamaz; önce statüyü değiştirin.
         </p>
+      )}
+
+      {karaUyari && (
+        <KaraListeUyariModal
+          ogrenciAd={`${student.ad} ${student.soyad}`}
+          sebep={karaUyari.sebep}
+          pending={ekleMut.isPending}
+          onVazgec={() => setKaraUyari(null)}
+          onYineDeEkle={() => ekle(karaUyari.grupId, karaUyari.grupAd, true)}
+        />
       )}
 
       {eklendi && student.status === 'DENEME' && (

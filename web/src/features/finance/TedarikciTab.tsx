@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import SilButonu from '../../components/SilButonu';
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
 import { createTedarikci, getTedarikciler, tedarikciDurum } from '../../api/tedarikci';
@@ -83,14 +84,17 @@ export default function TedarikciTab() {
                       </span>
                     </td>
                     <td className="t-right">
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        disabled={durum.isPending}
-                        onClick={() => durum.mutate({ id: t.id, aktif: !t.aktif })}
-                      >
-                        {t.aktif ? 'Pasifleştir' : 'Aktifleştir'}
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={durum.isPending}
+                          onClick={() => durum.mutate({ id: t.id, aktif: !t.aktif })}
+                        >
+                          {t.aktif ? 'Pasifleştir' : 'Aktifleştir'}
+                        </button>
+                        <SilButonu tur="tedarikci" id={t.id} ad={t.ad} />
+                      </div>
                     </td>
                   </tr>
                 ))}

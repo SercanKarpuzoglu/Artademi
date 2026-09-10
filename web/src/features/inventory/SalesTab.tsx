@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { ApiException } from '../../api/client';
 import type { ProductResponse, SaleInput, StudentResponse } from '../../api/types';
 import { formatDate, formatMoney } from '../../lib/format';
@@ -102,7 +103,10 @@ export default function SalesTab() {
                       <span className="amount">{formatMoney(s.birimFiyat)} ₺</span>
                     </td>
                     <td className="t-right">
-                      <span className="amount">{formatMoney(s.toplamTutar)} ₺</span>
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="amount">{formatMoney(s.toplamTutar)} ₺</span>
+                        <SilButonu tur="satis" id={s.id} ad={`Satış ${formatDate(s.satisTarihi)} · ${s.urun.ad}`} />
+                      </div>
                     </td>
                   </tr>
                 ))}

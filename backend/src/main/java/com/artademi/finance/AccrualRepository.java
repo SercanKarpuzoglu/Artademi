@@ -58,4 +58,17 @@ public interface AccrualRepository
      */
     @Query("SELECT a.ogrenci.id, COALESCE(SUM(a.tutar), 0) FROM Accrual a GROUP BY a.ogrenci.id")
     List<Object[]> sumTutarGroupByOgrenci();
+
+    /** Verilen ogrenciler icin tahakkuk toplamlari (ogrenci listesi bakiye sutunu). */
+    @Query("SELECT a.ogrenci.id, COALESCE(SUM(a.tutar), 0) FROM Accrual a "
+            + "WHERE a.ogrenci.id IN :ids GROUP BY a.ogrenci.id")
+    List<Object[]> sumTutarGroupByOgrenciIn(@Param("ids") java.util.Collection<Long> ids);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(a) FROM Accrual a WHERE a.ogrenci.id = :id")
+    long countByOgrenci(@Param("id") Long id);
+
+    @Query("SELECT COUNT(a) FROM Accrual a WHERE a.grup.id = :id")
+    long countByGrup(@Param("id") Long id);
+
 }

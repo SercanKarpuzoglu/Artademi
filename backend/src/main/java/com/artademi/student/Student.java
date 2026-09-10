@@ -13,6 +13,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.Filter;
+import com.artademi.common.silme.SoftDeletable;
 
 /**
  * Ogrenci is entity'si (2c-1). {@link TenantAware}'den turedigi icin {@code tenant_id}
@@ -26,7 +28,8 @@ import org.hibernate.annotations.UpdateTimestamp;
  */
 @Entity
 @Table(name = "students")
-public class Student extends TenantAware {
+@Filter(name = SoftDeletable.FILTRE)
+public class Student extends TenantAware implements SoftDeletable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -82,6 +85,19 @@ public class Student extends TenantAware {
 
     @Column(name = "veli_mail", length = 255)
     private String veliMail;
+
+    // --- Kara liste (V31): isaret + sebep; statu/kayitlar degismez. Gruba yazarken uyari cikar. ---
+    @Column(name = "kara_liste", nullable = false)
+    private boolean karaListe;
+
+    @Column(name = "kara_liste_aciklama")
+    private String karaListeAciklama;
+
+    @Column(name = "kara_liste_tarihi")
+    private Instant karaListeTarihi;
+
+    @Column(name = "kara_liste_ekleyen", length = 100)
+    private String karaListeEkleyen;
 
     // --- Sistem alanlari ---
 
@@ -234,11 +250,69 @@ public class Student extends TenantAware {
         this.veliMail = veliMail;
     }
 
+    public boolean isKaraListe() {
+        return karaListe;
+    }
+
+    public void setKaraListe(boolean karaListe) {
+        this.karaListe = karaListe;
+    }
+
+    public String getKaraListeAciklama() {
+        return karaListeAciklama;
+    }
+
+    public void setKaraListeAciklama(String karaListeAciklama) {
+        this.karaListeAciklama = karaListeAciklama;
+    }
+
+    public Instant getKaraListeTarihi() {
+        return karaListeTarihi;
+    }
+
+    public void setKaraListeTarihi(Instant karaListeTarihi) {
+        this.karaListeTarihi = karaListeTarihi;
+    }
+
+    public String getKaraListeEkleyen() {
+        return karaListeEkleyen;
+    }
+
+    public void setKaraListeEkleyen(String karaListeEkleyen) {
+        this.karaListeEkleyen = karaListeEkleyen;
+    }
+
     public Instant getOlusturulmaTarihi() {
         return olusturulmaTarihi;
     }
 
     public Instant getGuncellenmeTarihi() {
         return guncellenmeTarihi;
+    }
+
+    // --- Yumusak silme (V32): bkz. SoftDeletable. Sorgularda @SQLRestriction ile gizlenir. ---
+    @Column(name = "silindi_tarihi")
+    private Instant silindiTarihi;
+
+    @Column(name = "silen", length = 100)
+    private String silen;
+
+    @Override
+    public Instant getSilindiTarihi() {
+        return silindiTarihi;
+    }
+
+    @Override
+    public void setSilindiTarihi(Instant silindiTarihi) {
+        this.silindiTarihi = silindiTarihi;
+    }
+
+    public String getSilen() {
+        return silen;
+    }
+
+    @Override
+    public void setSilen(String silen) {
+        this.silen = silen;
     }
 }

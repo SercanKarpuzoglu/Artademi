@@ -75,6 +75,12 @@ public class EnrollmentService {
         if (repository.existsAktifByOgrenciAndGrup(ogrenci.getId(), grup.getId())) {
             throw new ConflictException("Öğrenci bu gruba zaten aktif olarak kayıtlı");
         }
+        // Kara liste: engel degil, UYARI. Onaysiz istek 409 KARA_LISTE; onaylanirsa kayit acilir.
+        if (ogrenci.isKaraListe() && !Boolean.TRUE.equals(req.karaListeOnayi())) {
+            throw new ConflictException(
+                    "Kara listede: " + (ogrenci.getKaraListeAciklama() == null ? "sebep girilmemiş"
+                            : ogrenci.getKaraListeAciklama()), "KARA_LISTE");
+        }
 
         Enrollment saved = repository.save(
                 EnrollmentMapper.toNewEntity(ogrenci, grup, req.kayitTarihi()));

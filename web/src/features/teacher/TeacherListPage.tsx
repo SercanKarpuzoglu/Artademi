@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
@@ -175,6 +176,7 @@ export default function TeacherListPage() {
                           >
                             {t.aktif ? 'Pasifleştir' : 'Aktifleştir'}
                           </button>
+                          <SilButonu tur="egitmen" id={t.id} ad={`${t.ad} ${t.soyad}`} />
                         </div>
                       </td>
                     )}

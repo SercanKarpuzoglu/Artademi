@@ -34,4 +34,12 @@ public interface SaleRepository
      */
     @Query("SELECT COALESCE(SUM(s.toplamTutar), 0) FROM Sale s WHERE s.satisTarihi BETWEEN :from AND :to")
     BigDecimal sumToplamTutarByTarihAraligi(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(s) FROM Sale s WHERE s.ogrenci.id = :id")
+    long countByOgrenci(@Param("id") Long id);
+
+    @Query("SELECT COUNT(s) FROM Sale s WHERE s.urun.id = :id")
+    long countByUrun(@Param("id") Long id);
+
 }

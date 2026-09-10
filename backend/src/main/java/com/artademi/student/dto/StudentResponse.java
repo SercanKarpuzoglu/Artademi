@@ -26,6 +26,10 @@ public record StudentResponse(
         String veliMeslek,
         String evAdresi,
         String veliMail,
+        boolean karaListe,
+        String karaListeAciklama,
+        Instant karaListeTarihi,
+        String karaListeEkleyen,
         Instant olusturulmaTarihi,
         Instant guncellenmeTarihi) {
 
@@ -48,6 +52,10 @@ public record StudentResponse(
                 s.getVeliMeslek(),
                 s.getEvAdresi(),
                 s.getVeliMail(),
+                s.isKaraListe(),
+                s.getKaraListeAciklama(),
+                s.getKaraListeTarihi(),
+                s.getKaraListeEkleyen(),
                 s.getOlusturulmaTarihi(),
                 s.getGuncellenmeTarihi());
     }

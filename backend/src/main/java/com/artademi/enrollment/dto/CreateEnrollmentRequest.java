@@ -19,5 +19,10 @@ public record CreateEnrollmentRequest(
         @NotNull(message = "Grup zorunludur")
         Long grupId,
 
-        LocalDate kayitTarihi) {
+        LocalDate kayitTarihi,
+        /**
+         * Kara listedeki ogrenci icin "yine de ekle" onayi. Onaysiz istek 409 KARA_LISTE (sebep
+         * mesajda) doner; istemci popup gosterir, kullanici onaylarsa true ile tekrar gonderir.
+         */
+        Boolean karaListeOnayi) {
 }

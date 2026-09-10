@@ -16,6 +16,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.Filter;
+import com.artademi.common.silme.SoftDeletable;
 
 /**
  * Satis (sale) is entity'si — bir urunun satilmasi.
@@ -35,7 +37,8 @@ import org.hibernate.annotations.UpdateTimestamp;
  */
 @Entity
 @Table(name = "sale")
-public class Sale extends TenantAware {
+@Filter(name = SoftDeletable.FILTRE)
+public class Sale extends TenantAware implements SoftDeletable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -147,5 +150,31 @@ public class Sale extends TenantAware {
 
     public Instant getGuncellenmeTarihi() {
         return guncellenmeTarihi;
+    }
+
+    // --- Yumusak silme (V32): bkz. SoftDeletable. Sorgularda @SQLRestriction ile gizlenir. ---
+    @Column(name = "silindi_tarihi")
+    private Instant silindiTarihi;
+
+    @Column(name = "silen", length = 100)
+    private String silen;
+
+    @Override
+    public Instant getSilindiTarihi() {
+        return silindiTarihi;
+    }
+
+    @Override
+    public void setSilindiTarihi(Instant silindiTarihi) {
+        this.silindiTarihi = silindiTarihi;
+    }
+
+    public String getSilen() {
+        return silen;
+    }
+
+    @Override
+    public void setSilen(String silen) {
+        this.silen = silen;
     }
 }

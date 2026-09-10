@@ -773,6 +773,7 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 - Kod değişince backend'i yenile (`./mvnw compile` → devtools restart). "No static resource" = eski kod.
 - Uygulanmış migration düzenlenmez. Para = BigDecimal, asla double.
 - Tenant-aware entity'de `findScopedById`, asla `findById`. **AMA** `Tenant` entity (platform) TenantAware DEĞİL → orada `findById` doğru.
+- **Yumuşak silme (§7.29):** "silindi ama bakiyede duruyor / listede yok ama ödemede adı var" şikâyeti tasarım gereğidir. Silinenler `Sistem → Silinenler`'den geri alınır. Native SQL yazarsanız `silindi_tarihi IS NULL` ve `tenant_id` koşullarını ELLE ekleyin.
 - Kullanıcı/provisioning Keycloak Admin API ile (service account, §4) — frontend'den asla. Keycloak PUT tam-temsil ister (merge şart).
 - **Lina (tenant A) ASKIDA'ya alınmaz** — ana dev tenant; askıya alma testleri Anka/yan tenant'larla.
 - super.admin: tenant'sız, iş uçlarına 400, yalnız `/api/platform/**`; web'de ayrı PlatformApp ağacı (AppShell render edilmez).
@@ -800,6 +801,44 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 - **Stok**: V30 `product.alis_fiyati` (nullable); `PATCH /api/products/{id}/stok-hareket {miktar:±N}` (`ProductService.stokHareket`, negatife düşürme/0 → 400); ekranda Alış/Satış sütunları + marj, satırda "+ Giriş / − Çıkış". Mutlak atama ucu (`PATCH /stok`) duruyor ama arayüzden kaldırıldı.
 - Testler: `dalga/DalgaAEndpointTest` (schedules/mine izolasyonu ve 403, alış fiyatı + stok hareketi, gelir özeti + tenant izolasyonu).
 
+### 7.28 Dalga B-1/2 — öğrenci listesi sütunları + kara liste (✅ 2026-09-10)
+
+- **Zengin liste** `GET /api/students/liste` (`StudentListeService`, `StudentListeSatiri`): sayfa alındıktan sonra o sayfanın id'leri için üç toplu sorgu — `EnrollmentRepository.findAktifByOgrenciIds` (JOIN FETCH grup), `Accrual/PaymentRepository.sumTutarGroupByOgrenciIn`, `AttendanceEntryRepository.sonDurumlar` (son 90 gün, tarih DESC). **Bakiye yalnız ADMIN / FRONTDESK_ACCOUNTING için dolu; ön büroya null (hiç gönderilmez).** `devamsizlikSerisi`: en yeni yoklamadan geriye ardışık GELMEDİ sayısı, negatif (−2 = 2 derstir yok); GELDİ/İZİNLİ seriyi bitirir; yoklama yoksa null. Eski `GET /api/students` (seçiciler için) aynen duruyor.
+- **Kara liste** V31 (`students.kara_liste/_aciklama/_tarihi/_ekleyen`): `PATCH /api/students/{id}/kara-liste {karaListe, aciklama}` — alırken açıklama zorunlu (400), ekleyen `preferred_username`. Ofis rolleri (yeni rol yok). Statü/kayıtlar değişmez.
+- **Gruba yazarken uyarı**: `EnrollmentService.create` → öğrenci kara listedeyse ve `karaListeOnayi != true` → **409 `KARA_LISTE`** (mesaj: "Kara listede: <sebep>"). `ConflictException` artık `code` taşıyor (varsayılan CONFLICT). Web: `KaraListeUyariModal` (grup sayfası + öğrenci sayfası), "Yine de ekle" → `karaListeOnayi: true`.
+- Web: `StudentListPage` yeniden yazıldı (Gruplar chip'leri, Ödeme Durumu rozeti, Devam rozeti, Kara liste düğmesi); `KaraListeModal`, `useKaraListe`; öğrenci detayında rozet + sebep kartı + düğme; grup seçicisinde rozet.
+- Testler: `dalga/DalgaBTest` (liste sütunları, rol bazlı bakiye, seri; kara liste akışı + tenant izolasyonu).
+
+### 7.29 Dalga B-3 — yumuşak silme (✅ 2026-09-10)
+
+**Ürün kararı:** yönetici her sayfada "Sil" görür; kayıt SİLİNMEZ, `silindi_tarihi` + `silen` damgalanır ve
+`@SQLRestriction("silindi_tarihi IS NULL")` ile tüm JPQL/Criteria sorgularından gizlenir. Bire-bir referanslar
+(ödeme → öğrenci) yüklenmeye DEVAM eder: silinmiş öğrencinin ödemeleri Gelirler'de adıyla görünür, para izi
+bozulmaz (`DalgaBSilmeTest` bunu sabitler). Geri alınabilir.
+
+- **V32**: 19 tabloya `silindi_tarihi TIMESTAMPTZ, silen VARCHAR(100)` (students, lesson_group, teachers, rooms,
+  branches, sube, product, tedarikci, kasa, accrual, payment, expense, sale, ders_paketi, telafi_hakki, basvuru,
+  schedule, attendance_session, attendance_entry). Entity'ler `SoftDeletable` (common/silme) uygular.
+- **Tek uç kümesi** `silme/` (`SilmeService`, `SilmeController`, `SilinebilirTur`): YALNIZ ADMIN.
+  `GET /api/silme/{tur}/{id}/onizleme` → `SilmeOnizleme{silinebilir, engel, etkiler[], bagliKayitlar[]}`;
+  `DELETE /api/silme/{tur}/{id}` (engelde 409 `SILINEMEZ`); `GET /api/silme/silinenler?tur=`;
+  `POST /api/silme/{tur}/{id}/geri-al`. tur: ogrenci, grup, egitmen, salon, brans, sube, urun, tedarikci, kasa,
+  tahakkuk, odeme, gider, satis, paket, telafi, basvuru, ders-saati, yoklama-oturumu.
+- **Kurallar:** öğrenci/grup silinince aktif kayıtlar AYRILDI; grup silinince ders saatleri de silinir; eğitmen /
+  salon / branş / şube → hâlâ kullanan grup (şubede salon) varsa SİLİNEMEZ; kasa → hareket/ödeme/gider varsa
+  SİLİNEMEZ (pasifleştirin); tahakkuk → bağlı ödeme varsa SİLİNEMEZ; paket → kullanım varsa; yoklama oturumu →
+  paket kontörü düşülmüşse veya telafi hakkı doğmuşsa SİLİNEMEZ, yoksa satırlarıyla birlikte; satış silinince
+  stok geri eklenir, geri alınınca düşülür (yetersizse 409).
+- **Silinenler / geri alma** native SQL ile (`@SQLRestriction`'ı aşan tek yer): `tenant_id` koşulu ELLE yazılır
+  (native sorgu Hibernate filtresine tabi değil). Geri alınan öğrencinin AYRILDI kayıtları elle yeniden açılır.
+- **Web:** `components/SilButonu` (ADMIN değilse hiç render edilmez) + önizleme/onay modalı; 18 noktaya eklendi
+  (öğrenci/grup detayı, eğitmen/salon/branş/şube listeleri, ürün, tedarikçi, kasa, tahakkuk, ödeme, gider, satış,
+  paket, telafi, başvuru, ders saati, yoklama oturumu). `Sistem → Silinenler` sayfası (`/silinenler`) tür tür
+  liste + "Geri al". İşlem Kaydı DELETE'i "silindi" olarak zaten yakalıyor.
+- ⚠️ Yeni entity eklerken: TenantAware + SoftDeletable + `@SQLRestriction` + V-migration'da iki kolon + `SilinebilirTur`'a
+  satır (ad ifadesi native SQL) — yoksa "Sil" görünmez, sorun değil; ama başka bir silinebilirin blokeri olacaksa
+  `SilmeService.hesapla`'ya sayaç ekleyin.
+
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 
 Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:
@@ -811,7 +850,7 @@ buna gömülür) · **İzinli yalnız yönetici düzeltmesinde** · sıra **A→
 | Dalga | Kapsam | Durum |
 |---|---|---|
 | A | Yönetici Paneli açılır alt menü (Eğitmenler · Ders Ücretleri/Gruplar; Yoklama Listesi C'de eklenecek); Öğretmen→Eğitmen; öğrenci detayından gruba ekle; eğitmen girişi = Yoklama + Haftalık Program; Ödemeler→Gelirler (+ürün satış gelirleri); stok alış fiyatı + basit giriş/çıkış | ✅ 2026-09-10 (bkz. §7.27) |
-| B | Öğrenci listesi sütunları (gruplar, bakiye, statü, devam serisi −N); kara liste (+açıklama, tekrar kayıtta popup); yönetici yumuşak silme her sayfada | ⏳ |
+| B | Öğrenci listesi sütunları (gruplar, bakiye, statü, devam serisi −N); kara liste (+açıklama, tekrar kayıtta popup); yönetici yumuşak silme her sayfada | ✅ 2026-09-10 (§7.28, §7.29) |
 | C | Yeni yoklama ekranı (dikey liste, renkli Geldi/Gelmedi, Kaydet sonrası eğitmen kilidi, admin düzeltir); Yoklama Listesi sayfası; "yoklama alındı" uygulama içi anlık bildirim (zil + 30 sn sorgu + toast); "yoklama alınmadı" eğitmen bildirimi (e-posta şimdi, kanal soyutlaması WhatsApp'a hazır) | ⏳ |
 | D | İndirim/kampanya tanımı (oran/tutar) + öğrenciye özel atama (grup, tarih aralığı) + tahakkukta brüt−indirim=net, makbuzda görünür | ⏳ |
 | E | Dönem tanımı (branş/grup, 1./2. dönem), grup ücretleri (dönemlik/aylık), kayıtta dönemlik/aylık seçimi, program × dönem = kredi (örn. 22 / 4), öğrenci detayında kalan kredi, kredi bitince/dönem dışı derse gelince admin+asistan uyarısı. **Önce 1 sayfalık tasarım onayı.** | ⏳ |

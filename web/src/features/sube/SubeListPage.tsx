@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
@@ -134,6 +135,7 @@ export default function SubeListPage() {
                           >
                             {s.aktif ? 'Pasifleştir' : 'Aktifleştir'}
                           </button>
+                          <SilButonu tur="sube" id={s.id} ad={s.ad} />
                         </div>
                       </td>
                     )}

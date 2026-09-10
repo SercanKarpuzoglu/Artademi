@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import SilButonu from '../../components/SilButonu';
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
 import { getKasalar } from '../../api/kasa';
@@ -162,6 +163,11 @@ export default function OdemeTab() {
                       >
                         {makbuzId === p.id ? 'Hazırlanıyor…' : 'Makbuz (PDF)'}
                       </button>
+                      <SilButonu
+                        tur="odeme"
+                        id={p.id}
+                        ad={`Ödeme ${formatDate(p.odemeTarihi)} · ${p.ogrenci.ad} ${p.ogrenci.soyad}`}
+                      />
                     </td>
                   </tr>
                 ))}

@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import SilButonu from '../../components/SilButonu';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { ApiException } from '../../api/client';
@@ -219,6 +220,11 @@ export default function GroupSchedulePanel({
                   >
                     {s.aktif ? 'Pasifleştir' : 'Aktifleştir'}
                   </button>
+                  <SilButonu
+                    tur="ders-saati"
+                    id={s.id}
+                    ad={`${GUN_LABEL[s.gun]} ${toHm(s.baslangicSaati)} ders saati`}
+                  />
                 </div>
               )}
             </div>

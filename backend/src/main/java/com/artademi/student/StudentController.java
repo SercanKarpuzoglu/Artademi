@@ -1,5 +1,9 @@
 package com.artademi.student;
 
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.Authentication;
+import com.artademi.student.dto.StudentListeSatiri;
+import com.artademi.student.dto.KaraListeRequest;
 import com.artademi.common.ApiResponse;
 import com.artademi.common.PageMeta;
 import com.artademi.student.dto.CreateStudentRequest;
@@ -45,11 +49,41 @@ import org.springframework.web.bind.annotation.RestController;
 public class StudentController {
 
     private final StudentService service;
+    private final StudentListeService listeService;
     private final KayitFormuService kayitFormuService;
 
-    public StudentController(StudentService service, KayitFormuService kayitFormuService) {
+    public StudentController(StudentService service, StudentListeService listeService,
+            KayitFormuService kayitFormuService) {
         this.service = service;
+        this.listeService = listeService;
         this.kayitFormuService = kayitFormuService;
+    }
+
+    /**
+     * Zengin liste (Dalga B): gruplar, statu, odeme durumu, devamsizlik serisi, kara liste.
+     * Bakiye yalnizca ADMIN / FRONTDESK_ACCOUNTING icin doner; on buro icin null (hic gonderilmez).
+     */
+    @GetMapping("/liste")
+    public ApiResponse<List<StudentListeSatiri>> liste(
+            @RequestParam(required = false) StudentStatus status,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication auth) {
+        boolean paraGorebilir = auth != null && auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> a.equals("ROLE_ADMIN") || a.equals("ROLE_FRONTDESK_ACCOUNTING"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Page<StudentListeSatiri> result = listeService.liste(status, q, pageable, paraGorebilir);
+        return ApiResponse.ok(result.getContent(), PageMeta.of(result));
+    }
+
+    /** Kara listeye al (aciklama zorunlu) / cikar. */
+    @PatchMapping("/{id}/kara-liste")
+    public ApiResponse<StudentResponse> karaListe(
+            @PathVariable Long id,
+            @Valid @RequestBody KaraListeRequest request) {
+        return ApiResponse.ok(service.karaListe(id, request.karaListe(), request.aciklama()));
     }
 
     /** Yeni ogrenci olustur (statu DENEME), 201. */

@@ -193,8 +193,29 @@ export interface StudentResponse {
   veliMeslek: string | null;
   evAdresi: string | null;
   veliMail: string | null;
+  /** Kara liste (Dalga B): işaret + sebep; statü/kayıtlar değişmez, gruba yazarken uyarı çıkar. */
+  karaListe: boolean;
+  karaListeAciklama: string | null;
+  karaListeTarihi: string | null;
+  karaListeEkleyen: string | null;
   olusturulmaTarihi: string;
   guncellenmeTarihi: string;
+}
+
+/** Öğrenci LİSTESİ satırı — backend StudentListeSatiri (GET /api/students/liste). */
+export interface StudentListeSatiri {
+  id: number;
+  ad: string;
+  soyad: string;
+  tcKimlikNo: string;
+  status: StudentStatus;
+  karaListe: boolean;
+  karaListeAciklama: string | null;
+  gruplar: { id: number; ad: string }[];
+  /** tahakkuk − ödeme; yalnız ADMIN / muhasebe için gelir, ön büroya null. */
+  bakiye: string | number | null;
+  /** −N = N derstir gelmemiş; 0 son derse geldi; null yoklama yok (son 90 gün). */
+  devamsizlikSerisi: number | null;
 }
 
 // --- Tanımlar modülü (Branş / Salon / Eğitmen) — backend DTO'lari ile birebir aynalanir ---
@@ -409,6 +430,8 @@ export interface EnrollmentInput {
   ogrenciId: number;
   grupId: number;
   kayitTarihi?: string;
+  /** Kara listedeki öğrenci için "yine de ekle" onayı (409 KARA_LISTE sonrası). */
+  karaListeOnayi?: boolean;
 }
 
 // --- Program (Schedule) modülü — backend DTO'lari ile birebir aynalanir ---

@@ -25,6 +25,7 @@ import ProfilePage from './features/profile/ProfilePage';
 import ReportsPage from './features/report/ReportsPage';
 import TelafiPage from './features/telafi/TelafiPage';
 import ProgramPage from './features/schedule/ProgramPage';
+import SilinenlerPage from './features/silinenler/SilinenlerPage';
 import RoomForm from './features/room/RoomForm';
 import RoomListPage from './features/room/RoomListPage';
 import StudentDetailPage from './features/student/StudentDetailPage';
@@ -420,6 +421,16 @@ export default function App() {
           element={
             <RoleRoute requiredRoles={[Role.ADMIN]}>
               <IslemKaydiPage />
+            </RoleRoute>
+          }
+        />
+
+        {/* Silinenler — YALNIZCA ADMIN: yumuşak silinen kayıtları geri alma */}
+        <Route
+          path="silinenler"
+          element={
+            <RoleRoute requiredRoles={[Role.ADMIN]}>
+              <SilinenlerPage />
             </RoleRoute>
           }
         />

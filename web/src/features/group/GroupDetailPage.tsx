@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { EnrollmentDurumu, GroupResponse } from '../../api/types';
@@ -7,6 +8,7 @@ import { Role } from '../../auth/roles';
 import StatusBadge from '../../components/StatusBadge';
 import { formatDate, formatMoney } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
+import KaraListeUyariModal from '../student/KaraListeUyariModal';
 import { useStudents } from '../student/useStudents';
 import GroupSchedulePanel from './GroupSchedulePanel';
 import { DURUM_BADGE, DURUM_LABEL, TIP_BADGE, TIP_LABEL } from './groupDisplay';
@@ -61,6 +63,7 @@ export default function GroupDetailPage() {
               Düzenle
             </Link>
           )}
+          <SilButonu tur="grup" id={g.id} ad={g.ad} onSilindi={() => navigate('/gruplar')} />
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/gruplar')}>
             Listeye dön
           </button>
@@ -128,6 +131,8 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
   const [pickerError, setPickerError] = useState<string | null>(null);
   // DENEME öğrenci gruba yazıldı: statü kendiliğinden AKTİF olmaz (ürün kararı) — kurum uyarılır.
   const [denemeUyari, setDenemeUyari] = useState<{ id: number; ad: string } | null>(null);
+  // 409 KARA_LISTE: uyarı modalı; "yine de ekle" onayla tekrar dener.
+  const [karaUyari, setKaraUyari] = useState<{ ogrenciId: number; ad: string; sebep: string } | null>(null);
   const studentsQuery = useStudents({
     q: debouncedPicker.trim() || undefined,
     size: 10,
@@ -142,20 +147,25 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
   // Aylık aidat yalnız GRUP tipinde üretilir; OZEL derste deneme uyarısının parasal sonucu yok.
   const aidatliGrup = group.tip === 'GRUP';
 
-  async function onAdd(ogrenciId: number) {
+  async function onAdd(ogrenciId: number, ad = '', karaListeOnayi = false) {
     setPickerError(null);
     setDenemeUyari(null);
     try {
-      const kayit = await createMut.mutateAsync({ ogrenciId, grupId: groupId });
+      const kayit = await createMut.mutateAsync({ ogrenciId, grupId: groupId, karaListeOnayi });
+      setKaraUyari(null);
       setPicker('');
       if (kayit.ogrenci.status === 'DENEME') {
         setDenemeUyari({ id: kayit.ogrenci.id, ad: `${kayit.ogrenci.ad} ${kayit.ogrenci.soyad}` });
       }
     } catch (e) {
       if (e instanceof ApiException) {
-        if (e.code === 'CONFLICT') {
+        if (e.code === 'KARA_LISTE') {
+          setKaraUyari({ ogrenciId, ad, sebep: e.message });
+        } else if (e.code === 'CONFLICT') {
+          setKaraUyari(null);
           setPickerError('Bu öğrenci gruba zaten kayıtlı');
         } else {
+          setKaraUyari(null);
           setPickerError(e.message);
         }
       } else {
@@ -208,11 +218,12 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
                     type="button"
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-[13.5px] hover:bg-gray-50"
                     disabled={createMut.isPending}
-                    onClick={() => onAdd(s.id)}
+                    onClick={() => onAdd(s.id, `${s.ad} ${s.soyad}`)}
                   >
                     <span className="flex items-center gap-2">
                       {s.ad} {s.soyad}
                       {s.status !== 'AKTIF' && <StatusBadge status={s.status} />}
+                      {s.karaListe && <span className="badge b-red">Kara liste</span>}
                     </span>
                     <span className="font-mono text-xs text-ink-soft">{s.tcKimlikNo}</span>
                   </button>
@@ -222,6 +233,16 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
           )}
           {pickerError && <p className="mt-1 text-xs text-red">{pickerError}</p>}
         </div>
+      )}
+
+      {karaUyari && (
+        <KaraListeUyariModal
+          ogrenciAd={karaUyari.ad}
+          sebep={karaUyari.sebep}
+          pending={createMut.isPending}
+          onVazgec={() => setKaraUyari(null)}
+          onYineDeEkle={() => onAdd(karaUyari.ogrenciId, karaUyari.ad, true)}
+        />
       )}
 
       {denemeUyari && (

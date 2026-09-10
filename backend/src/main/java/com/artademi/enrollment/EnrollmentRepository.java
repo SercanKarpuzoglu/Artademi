@@ -1,5 +1,6 @@
 package com.artademi.enrollment;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -74,6 +75,14 @@ public interface EnrollmentRepository
             + "AND e.grup.tip = com.artademi.group.GrupTipi.GRUP "
             + "AND e.grup.aylikAidat IS NOT NULL")
     List<Enrollment> findDenemeAidatliKayitlar();
+
+    /**
+     * Bir sayfalik ogrencinin AKTIF kayitlari, grup FETCH ile (ogrenci listesi "Gruplar" sutunu;
+     * ogrenci basina sorgu yok). Tenant filtreli.
+     */
+    @Query("SELECT e FROM Enrollment e JOIN FETCH e.grup WHERE e.ogrenci.id IN :ids "
+            + "AND e.durum = com.artademi.enrollment.EnrollmentDurumu.AKTIF")
+    List<Enrollment> findAktifByOgrenciIds(@Param("ids") Collection<Long> ids);
 
     /**
      * Grup bazinda AKTIF kayit sayisi (RAPOR — grup doluluk). [grupId, COUNT] satirlari doner; N+1

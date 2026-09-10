@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { formatDate } from '../../lib/format';
+import SilButonu from '../../components/SilButonu';
 import { ApiException } from '../../api/client';
 import type {
   AttendanceGroupRef,
@@ -332,16 +334,20 @@ function RollPanel({
         <div className="text-[13px] font-bold text-ink-soft">
           {counts.geldi} geldi · {counts.gelmedi} gelmedi · {counts.izinli} izinli
         </div>
-        {canWrite && (
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={updateMut.isPending || session.entries.length === 0}
-            onClick={onSave}
-          >
-            {updateMut.isPending ? 'Kaydediliyor…' : 'Kaydet'}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Yanlış tarihe açılan oturum: yönetici siler (paket kontörü düşülmüşse engellenir). */}
+          <SilButonu tur="yoklama-oturumu" id={session.id} ad={`Yoklama ${formatDate(session.tarih)}`} />
+          {canWrite && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={updateMut.isPending || session.entries.length === 0}
+              onClick={onSave}
+            >
+              {updateMut.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
+          )}
+        </div>
       </div>
 
       {feedback && (

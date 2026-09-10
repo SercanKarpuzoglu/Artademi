@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
@@ -124,6 +125,7 @@ export default function RoomListPage() {
                           >
                             {r.aktif ? 'Pasifleştir' : 'Aktifleştir'}
                           </button>
+                          <SilButonu tur="salon" id={r.id} ad={r.ad} />
                         </div>
                       </td>
                     )}

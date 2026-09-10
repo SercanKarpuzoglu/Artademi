@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
@@ -124,6 +125,7 @@ export default function BranchListPage() {
                           >
                             {b.aktif ? 'Pasifleştir' : 'Aktifleştir'}
                           </button>
+                          <SilButonu tur="brans" id={b.id} ad={b.ad} />
                         </div>
                       </td>
                     )}

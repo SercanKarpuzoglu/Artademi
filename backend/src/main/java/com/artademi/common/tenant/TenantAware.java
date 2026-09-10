@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
+import com.artademi.common.silme.SoftDeletable;
 
 /**
  * Tum TENANT is entity'lerinin turedigi taban sinif. {@code tenant_id} kolonunu
@@ -31,6 +32,13 @@ import org.hibernate.annotations.ParamDef;
         autoEnabled = true,
         parameters = @ParamDef(name = "tenantId", type = UUID.class, resolver = TenantIdResolver.class))
 @Filter(name = "tenantFilter", condition = "tenant_id = :tenantId")
+// Yumusak silme filtresinin TANIMI burada (alt siniflardan once islenir; Hibernate, entity uzerindeki
+// @FilterDef'i sonraki entity'ler icin gormuyor). Filtre UYGULAMASI (@Filter) yalniz SoftDeletable
+// entity'lerde — bu sinifta degil, cunku her tenant tablosunda silindi_tarihi kolonu yok.
+@FilterDef(
+        name = SoftDeletable.FILTRE,
+        defaultCondition = "silindi_tarihi IS NULL",
+        autoEnabled = true)
 public abstract class TenantAware {
 
     @Column(name = "tenant_id", nullable = false, updatable = false)

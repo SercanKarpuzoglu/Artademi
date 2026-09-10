@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { useQuery } from '@tanstack/react-query';
 import { ApiException } from '../../api/client';
 import { getKasalar } from '../../api/kasa';
@@ -108,7 +109,12 @@ export default function GiderTab() {
                     <td className="t-right">
                       <span className="amount">{formatMoney(x.tutar)} ₺</span>
                     </td>
-                    <td className="text-ink-soft">{x.aciklama ?? '—'}</td>
+                    <td className="text-ink-soft">
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{x.aciklama ?? '—'}</span>
+                        <SilButonu tur="gider" id={x.id} ad={`Gider ${formatDate(x.giderTarihi)}`} />
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

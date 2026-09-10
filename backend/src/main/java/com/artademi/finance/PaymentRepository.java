@@ -87,4 +87,23 @@ public interface PaymentRepository
      */
     @Query("SELECT p.ogrenci.id, COALESCE(SUM(p.tutar), 0) FROM Payment p GROUP BY p.ogrenci.id")
     List<Object[]> sumTutarGroupByOgrenci();
+
+    /** Verilen ogrenciler icin odeme toplamlari (ogrenci listesi bakiye sutunu). */
+    @Query("SELECT p.ogrenci.id, COALESCE(SUM(p.tutar), 0) FROM Payment p "
+            + "WHERE p.ogrenci.id IN :ids GROUP BY p.ogrenci.id")
+    List<Object[]> sumTutarGroupByOgrenciIn(@Param("ids") java.util.Collection<Long> ids);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.accrual.id = :id")
+    long countByAccrual(@Param("id") Long id);
+
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.kasa.id = :id")
+    long countByKasa(@Param("id") Long id);
+
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.ogrenci.id = :id")
+    long countByOgrenci(@Param("id") Long id);
+
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.grup.id = :id")
+    long countByGrup(@Param("id") Long id);
+
 }

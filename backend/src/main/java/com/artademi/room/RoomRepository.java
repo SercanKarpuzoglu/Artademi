@@ -25,4 +25,9 @@ public interface RoomRepository
      */
     @Query("SELECT r FROM Room r WHERE r.id = :id")
     Optional<Room> findScopedById(@Param("id") Long id);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(r) FROM Room r WHERE r.sube.id = :id")
+    long countBySube(@Param("id") Long id);
+
 }

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
-import type { StudentStatus } from '../../api/types';
+import type { StudentListeSatiri, StudentStatus } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
+import { Role } from '../../auth/roles';
 import StatusBadge from '../../components/StatusBadge';
-import { formatDate } from '../../lib/format';
+import { formatMoney } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
-import { useStudents } from './useStudents';
+import KaraListeModal, { type KaraListeHedef } from './KaraListeModal';
+import { useStudentListe } from './useStudents';
 
 const PAGE_SIZE = 20;
 
@@ -17,19 +20,27 @@ const STATUS_TABS: { label: string; value: StudentStatus | undefined }[] = [
   { label: 'Dondurulmuş', value: 'DONDURULMUS' },
 ];
 
+/**
+ * Öğrenci listesi (Dalga B sütunları): ad soyad, gruplar, statü, ödeme durumu (yalnız para
+ * görebilen roller), devam durumu (−N = N derstir gelmemiş), kara liste.
+ */
 export default function StudentListPage() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<StudentStatus | undefined>(undefined);
   const [page, setPage] = useState(0);
+  const [karaListeHedef, setKaraListeHedef] = useState<KaraListeHedef | null>(null);
   const debouncedQ = useDebounce(q, 300);
   const navigate = useNavigate();
+  const { hasAnyRole } = useAuth();
+  // Backend ön büroya bakiyeyi hiç göndermez; sütunu da göstermeyiz.
+  const paraGorebilir = hasAnyRole([Role.ADMIN, Role.FRONTDESK_ACCOUNTING]);
 
   // Arama/filtre degisince ilk sayfaya don.
   useEffect(() => {
     setPage(0);
   }, [debouncedQ, status]);
 
-  const query = useStudents({
+  const query = useStudentListe({
     q: debouncedQ.trim() || undefined,
     status,
     page,
@@ -45,7 +56,7 @@ export default function StudentListPage() {
       <div className="topbar">
         <div>
           <h1>Öğrenciler</h1>
-          <div className="sub">Öğrenci kayıtları, statü ve veli iletişimi</div>
+          <div className="sub">Öğrenci kayıtları, gruplar, ödeme ve devam durumu</div>
         </div>
         <div className="top-actions">
           <input
@@ -92,10 +103,11 @@ export default function StudentListPage() {
               <thead>
                 <tr>
                   <th>Ad Soyad</th>
-                  <th>TC</th>
-                  <th>Doğum Tarihi</th>
+                  <th>Gruplar</th>
                   <th>Statü</th>
-                  <th className="sr-only">İşlem</th>
+                  {paraGorebilir && <th>Ödeme Durumu</th>}
+                  <th>Devam</th>
+                  <th className="t-right">İşlem</th>
                 </tr>
               </thead>
               <tbody>
@@ -106,23 +118,73 @@ export default function StudentListPage() {
                     className="cursor-pointer"
                   >
                     <td>
-                      <b>
-                        {s.ad} {s.soyad}
-                      </b>
+                      <div className="flex items-center gap-2">
+                        <b>
+                          {s.ad} {s.soyad}
+                        </b>
+                        {s.karaListe && (
+                          <span className="badge b-red" title={s.karaListeAciklama ?? undefined}>
+                            Kara liste
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-mono text-[11.5px] text-ink-soft">{s.tcKimlikNo}</div>
                     </td>
-                    <td className="font-mono text-ink-soft">{s.tcKimlikNo}</td>
-                    <td className="text-ink-soft">{formatDate(s.dogumTarihi)}</td>
+                    <td>
+                      {s.gruplar.length === 0 ? (
+                        <span className="text-ink-soft">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {s.gruplar.map((g) => (
+                            <Link
+                              key={g.id}
+                              to={`/gruplar/${g.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="badge b-gray hover:underline"
+                            >
+                              {g.ad}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </td>
                     <td>
                       <StatusBadge status={s.status} />
                     </td>
+                    {paraGorebilir && (
+                      <td>
+                        <OdemeDurumu bakiye={s.bakiye} />
+                      </td>
+                    )}
+                    <td>
+                      <DevamDurumu seri={s.devamsizlikSerisi} />
+                    </td>
                     <td className="t-right">
-                      <Link
-                        to={`/ogrenciler/${s.id}/duzenle`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="btn btn-ghost"
-                      >
-                        Detay
-                      </Link>
+                      <div className="inline-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setKaraListeHedef({
+                              id: s.id,
+                              ad: s.ad,
+                              soyad: s.soyad,
+                              karaListe: s.karaListe,
+                              karaListeAciklama: s.karaListeAciklama,
+                            });
+                          }}
+                        >
+                          {s.karaListe ? 'Kara listeden çıkar' : 'Kara listeye al'}
+                        </button>
+                        <Link
+                          to={`/ogrenciler/${s.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="btn btn-ghost"
+                        >
+                          Detay
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -157,6 +219,43 @@ export default function StudentListPage() {
           )}
         </>
       )}
+
+      {karaListeHedef && (
+        <KaraListeModal hedef={karaListeHedef} onClose={() => setKaraListeHedef(null)} />
+      )}
     </>
+  );
+}
+
+/** Bakiye: pozitif borç (kırmızı), sıfır ödendi (yeşil), negatif alacak (mavi). */
+function OdemeDurumu({ bakiye }: { bakiye: StudentListeSatiri['bakiye'] }) {
+  if (bakiye === null || bakiye === undefined) return <span className="text-ink-soft">—</span>;
+  const n = Number(bakiye);
+  if (n > 0) {
+    return (
+      <span className="badge b-red">
+        Borç <span className="amount">{formatMoney(bakiye)} ₺</span>
+      </span>
+    );
+  }
+  if (n < 0) {
+    return (
+      <span className="badge b-blue">
+        Alacak <span className="amount">{formatMoney(-n)} ₺</span>
+      </span>
+    );
+  }
+  return <span className="badge b-green">Ödendi</span>;
+}
+
+/** Devam: null yoklama yok; 0 son derse geldi; −N N derstir gelmemiş (2+ kırmızı). */
+function DevamDurumu({ seri }: { seri: number | null }) {
+  if (seri === null || seri === undefined) return <span className="text-ink-soft">—</span>;
+  if (seri === 0) return <span className="badge b-green">Geliyor</span>;
+  const n = -seri;
+  return (
+    <span className={`badge ${n >= 2 ? 'b-red' : 'b-amber'}`} title={`${n} derstir gelmemiş`}>
+      {seri} · {n} derstir yok
+    </span>
   );
 }

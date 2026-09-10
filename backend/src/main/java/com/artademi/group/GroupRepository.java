@@ -33,4 +33,18 @@ public interface GroupRepository
      */
     @Query("SELECT g FROM Group g WHERE g.ogretmen.id = :ogretmenId ORDER BY g.id ASC")
     List<Group> findByOgretmenId(@Param("ogretmenId") Long ogretmenId);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(g) FROM Group g WHERE g.ogretmen.id = :id")
+    long countByOgretmen(@Param("id") Long id);
+
+    @Query("SELECT COUNT(g) FROM Group g WHERE g.salon.id = :id")
+    long countBySalon(@Param("id") Long id);
+
+    @Query("SELECT COUNT(g) FROM Group g WHERE g.brans.id = :id")
+    long countByBrans(@Param("id") Long id);
+
+    @Query("SELECT COUNT(g) FROM Group g WHERE g.sube.id = :id")
+    long countBySube(@Param("id") Long id);
+
 }

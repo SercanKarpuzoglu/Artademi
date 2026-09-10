@@ -45,4 +45,12 @@ public interface ExpenseRepository
      */
     @Query("SELECT COALESCE(SUM(e.tutar), 0) FROM Expense e WHERE e.giderTarihi BETWEEN :from AND :to")
     BigDecimal sumTutarByTarihAraligi(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(x) FROM Expense x WHERE x.kasa.id = :id")
+    long countByKasa(@Param("id") Long id);
+
+    @Query("SELECT COUNT(x) FROM Expense x WHERE x.tedarikci.id = :id")
+    long countByTedarikci(@Param("id") Long id);
+
 }

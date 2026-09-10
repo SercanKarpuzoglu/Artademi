@@ -44,4 +44,12 @@ public interface TelafiHakkiRepository extends JpaRepository<TelafiHakki, Long> 
     @Query("SELECT t.ogrenci.id, t.kaynakOturum.id FROM TelafiHakki t "
             + "WHERE t.kaynakOturum.id IS NOT NULL")
     List<Object[]> hakVerilmisCiftler();
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(t) FROM TelafiHakki t WHERE t.kaynakOturum.id = :id")
+    long countByKaynakOturum(@Param("id") Long id);
+
+    @Query("SELECT COUNT(t) FROM TelafiHakki t WHERE t.ogrenci.id = :id")
+    long countByOgrenci(@Param("id") Long id);
+
 }

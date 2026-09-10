@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { useNavigate } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { BasvuruDurumu, BasvuruResponse } from '../../api/types';
@@ -280,6 +281,7 @@ function Satir({
             </button>
           </div>
         )}
+        <SilButonu tur="basvuru" id={b.id} ad={`${b.ad} ${b.soyad}`} />
       </td>
     </tr>
   );

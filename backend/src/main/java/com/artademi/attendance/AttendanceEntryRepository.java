@@ -76,6 +76,20 @@ public interface AttendanceEntryRepository extends JpaRepository<AttendanceEntry
             @Param("bitis") java.time.LocalDate bitis,
             @Param("grupId") Long grupId);
 
+    /**
+     * Ogrenci listesi "devam durumu": verilen ogrencilerin son yoklamalari, EN YENIDEN ESKIYE.
+     * Cagiran ilk kirilmaya kadar sayar (ardisik GELMEDI). Tenant filtreli.
+     *
+     * @return satirlar: [ogrenciId, durum] (tarih DESC, oturum id DESC)
+     */
+    @Query("""
+            SELECT e.ogrenci.id, e.durum FROM AttendanceEntry e
+            WHERE e.ogrenci.id IN :ids AND e.session.tarih >= :baslangic
+            ORDER BY e.session.tarih DESC, e.session.id DESC
+            """)
+    List<Object[]> sonDurumlar(@Param("ids") java.util.Collection<Long> ids,
+            @Param("baslangic") java.time.LocalDate baslangic);
+
     /** Tarih araligindaki oturum sayisi (rapor basligindaki "toplam ders"). */
     @Query("""
             SELECT COUNT(s) FROM AttendanceSession s
@@ -85,4 +99,9 @@ public interface AttendanceEntryRepository extends JpaRepository<AttendanceEntry
     long oturumSayisi(@Param("baslangic") java.time.LocalDate baslangic,
             @Param("bitis") java.time.LocalDate bitis,
             @Param("grupId") Long grupId);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(e) FROM AttendanceEntry e WHERE e.ogrenci.id = :id")
+    long countByOgrenci(@Param("id") Long id);
+
 }

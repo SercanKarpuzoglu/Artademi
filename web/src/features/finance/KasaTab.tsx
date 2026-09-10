@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import SilButonu from '../../components/SilButonu';
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
 import {
@@ -130,6 +131,7 @@ export default function KasaTab() {
                         >
                           {k.aktif ? 'Pasifleştir' : 'Aktifleştir'}
                         </button>
+                        <SilButonu tur="kasa" id={k.id} ad={k.ad} />
                       </div>
                     </td>
                   </tr>

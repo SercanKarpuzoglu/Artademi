@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { ApiException } from '../../api/client';
 import type { ProductInput, ProductResponse, UpdateProductInput } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
@@ -243,6 +244,7 @@ function ProductRow({ product, isAdmin }: { product: ProductResponse; isAdmin: b
               − Çıkış
             </button>
             <ActiveToggle product={product} />
+            <SilButonu tur="urun" id={product.id} ad={product.ad} />
           </div>
         </td>
       )}

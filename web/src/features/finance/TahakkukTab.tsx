@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SilButonu from '../../components/SilButonu';
 import { ApiException } from '../../api/client';
 import type { AccrualInput, StudentResponse } from '../../api/types';
 import { formatMoney } from '../../lib/format';
@@ -78,7 +79,16 @@ export default function TahakkukTab() {
                     <td className="t-right">
                       <span className="amount">{formatMoney(a.tutar)} ₺</span>
                     </td>
-                    <td className="text-ink-soft">{a.aciklama ?? '—'}</td>
+                    <td className="text-ink-soft">
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{a.aciklama ?? '—'}</span>
+                        <SilButonu
+                          tur="tahakkuk"
+                          id={a.id}
+                          ad={`Tahakkuk ${a.donem ?? ''} · ${a.ogrenci.ad} ${a.ogrenci.soyad}`}
+                        />
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

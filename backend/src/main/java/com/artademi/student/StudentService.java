@@ -1,5 +1,10 @@
 package com.artademi.student;
 
+import com.artademi.common.exception.ValidationException;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import java.time.Instant;
 import com.artademi.common.exception.NotFoundException;
 import com.artademi.student.dto.CreateStudentRequest;
 import com.artademi.student.dto.StudentMapper;
@@ -54,6 +59,41 @@ public class StudentService {
         Student student = findOrThrow(id);
         student.setStatus(status);
         return StudentResponse.from(student);
+    }
+
+    /**
+     * Kara listeye al / cikar (Dalga B). Alirken aciklama ZORUNLU (gruba yazarken popup'ta gosterilir);
+     * cikarirken sebep/tarih/ekleyen temizlenir. Ekleyen JWT preferred_username'den okunur.
+     */
+    @Transactional
+    public StudentResponse karaListe(Long id, boolean karaListe, String aciklama) {
+        Student student = findOrThrow(id);
+        if (karaListe) {
+            if (aciklama == null || aciklama.isBlank()) {
+                throw new ValidationException("Kara liste açıklaması zorunludur");
+            }
+            student.setKaraListe(true);
+            student.setKaraListeAciklama(aciklama.trim());
+            student.setKaraListeTarihi(Instant.now());
+            student.setKaraListeEkleyen(kullaniciAdi());
+        } else {
+            student.setKaraListe(false);
+            student.setKaraListeAciklama(null);
+            student.setKaraListeTarihi(null);
+            student.setKaraListeEkleyen(null);
+        }
+        return StudentResponse.from(student);
+    }
+
+    private static String kullaniciAdi() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            String u = jwt.getClaimAsString("preferred_username");
+            if (u != null && !u.isBlank()) {
+                return u;
+            }
+        }
+        return "sistem";
     }
 
     /** Filtreli/sayfali liste; status ve q opsiyonel (null gecilebilir). */

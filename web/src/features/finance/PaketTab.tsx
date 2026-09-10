@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import SilButonu from '../../components/SilButonu';
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
 import { getPaketler, paketIptal, paketSat } from '../../api/paket';
@@ -134,6 +135,7 @@ export default function PaketTab() {
                           İptal
                         </button>
                       )}
+                      <SilButonu tur="paket" id={p.id} ad={p.ad} />
                     </td>
                   </tr>
                 ))}

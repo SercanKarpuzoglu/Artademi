@@ -30,4 +30,9 @@ public interface DersPaketiRepository extends JpaRepository<DersPaketi, Long> {
             + "AND p.durum = com.artademi.paket.PaketDurumu.AKTIF "
             + "ORDER BY p.satisTarihi ASC, p.id ASC")
     List<DersPaketi> aktifPaketler(@Param("ogrenciId") Long ogrenciId);
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(d) FROM DersPaketi d WHERE d.ogrenci.id = :id")
+    long countByOgrenci(@Param("id") Long id);
+
 }

@@ -1,5 +1,11 @@
 import { api } from './client';
-import type { ApiResponse, StudentInput, StudentResponse, StudentStatus } from './types';
+import type {
+  ApiResponse,
+  StudentInput,
+  StudentListeSatiri,
+  StudentResponse,
+  StudentStatus,
+} from './types';
 
 export interface GetStudentsParams {
   status?: StudentStatus;
@@ -17,6 +23,23 @@ export async function getStudents(
 ): Promise<ApiResponse<StudentResponse[]>> {
   const res = await api.get<ApiResponse<StudentResponse[]>>('/api/students', { params });
   return res.data;
+}
+
+/** Zengin liste (gruplar, bakiye, devam, kara liste). Bakiye yalnız para görebilen rollere gelir. */
+export async function getStudentListe(
+  params: GetStudentsParams = {},
+): Promise<ApiResponse<StudentListeSatiri[]>> {
+  const res = await api.get<ApiResponse<StudentListeSatiri[]>>('/api/students/liste', { params });
+  return res.data;
+}
+
+/** Kara listeye al (açıklama zorunlu) / çıkar. */
+export async function setKaraListe(
+  id: number,
+  payload: { karaListe: boolean; aciklama?: string },
+): Promise<StudentResponse> {
+  const res = await api.patch<ApiResponse<StudentResponse>>(`/api/students/${id}/kara-liste`, payload);
+  return res.data.data;
 }
 
 /** Tek ogrenci (detay/duzenleme icin). */

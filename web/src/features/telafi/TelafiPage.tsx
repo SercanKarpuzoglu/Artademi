@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import SilButonu from '../../components/SilButonu';
 import { useState } from 'react';
 import { getSessions } from '../../api/attendance';
 import { ApiException } from '../../api/client';
@@ -194,6 +195,7 @@ export default function TelafiPage() {
                           </button>
                         </div>
                       )}
+                      <SilButonu tur="telafi" id={t.id} ad={`Telafi hakkı · ${t.ogrenciAdSoyad}`} />
                     </td>
                   </tr>
                 ))}

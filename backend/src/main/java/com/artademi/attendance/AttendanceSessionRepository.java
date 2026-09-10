@@ -59,4 +59,9 @@ public interface AttendanceSessionRepository
     // NOT: grup + [from,to] tarih araligi sorgusu, opsiyonel sinirlarda Postgres untyped-null
     // hatasini onlemek icin Specification ile yapilir (bkz. AttendanceSessionSpecifications +
     // AttendanceService.listByGroup), JPQL "IS NULL OR" anti-pattern'i ile DEGIL.
+
+    // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
+    @Query("SELECT COUNT(s) FROM AttendanceSession s WHERE s.grup.id = :id")
+    long countByGrup(@Param("id") Long id);
+
 }

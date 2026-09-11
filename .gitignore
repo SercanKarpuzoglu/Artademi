@@ -72,3 +72,6 @@ infra/artademi-realm.json
 # Şifreleme anahtarı buradaysa: kaybolursa saklanan tüm kimlik bilgileri
 # geri getirilemez, sızarsa hepsi ele geçer. İkisi de geri dönüşü olmayan hatalar.
 credentials/
+
+# Playwright MCP oturum artiklari (yerel)
+.playwright-mcp/

@@ -5,6 +5,8 @@ import com.artademi.teacher.HakedisTipi;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import jakarta.validation.Valid;
+import java.util.List;
 
 /**
  * Grup olusturma istegi. tenant_id ve aktif ALINMAZ: tenant JWT'den gelir, yeni kayit her zaman
@@ -44,5 +46,10 @@ public record CreateGroupRequest(
         BigDecimal dersBasiUcret,
         /** Dalga E: grubun donemi (opsiyonel) ve donemlik ucret (GRUP tipinde, donemlik kayit icin). */
         Long donemId,
-        BigDecimal donemlikUcret) implements GrupBilgisi {
+        BigDecimal donemlikUcret,
+        /**
+         * Olusturma aninda ders saatleri (opsiyonel). Her satir icin salon/egitmen cakisma kontrolu yapilir;
+         * biri cakisirsa 409 ve GRUP DA OLUSMAZ (tek islem).
+         */
+        @Valid List<DersSaatiRequest> dersSaatleri) implements GrupBilgisi {
 }

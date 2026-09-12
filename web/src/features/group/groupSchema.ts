@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { GroupInput, GrupTipi } from '../../api/types';
+import type { GroupInput, GrupTipi, HaftaGunu } from '../../api/types';
+import { GUN_ORDER } from './scheduleDisplay';
 
 // Pozitif ondalik para degeri (string olarak girilir, virgul/nokta kabul).
 const POSITIVE_DECIMAL = /^\d+([.,]\d+)?$/;
@@ -35,8 +36,27 @@ export const groupSchema = z
     // Dalga E: dönem (opsiyonel) ve dönemlik ücret (GRUP; boşsa dönemlik kayıt yapılamaz).
     donemId: z.number().int().positive().optional(),
     donemlikUcret: optionalText,
+    // Oluşturma anında ders saatleri (12 Eylül talebi). Düzenlemede kullanılmaz (detaydaki panel).
+    dersSaatleri: z
+      .array(
+        z.object({
+          gun: z.enum(GUN_ORDER as unknown as [HaftaGunu, ...HaftaGunu[]], { message: 'Gün zorunludur' }),
+          baslangicSaati: z.string().min(1, 'Başlangıç zorunludur'),
+          bitisSaati: z.string().min(1, 'Bitiş zorunludur'),
+        }),
+      )
+      .optional(),
   })
   .superRefine((data, ctx) => {
+    (data.dersSaatleri ?? []).forEach((d, i) => {
+      if (d.baslangicSaati && d.bitisSaati && d.bitisSaati <= d.baslangicSaati) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['dersSaatleri', i, 'bitisSaati'],
+          message: 'Bitiş başlangıçtan sonra olmalı',
+        });
+      }
+    });
     if (data.tip === 'GRUP') {
       if (!data.salonId || data.salonId <= 0) {
         ctx.addIssue({
@@ -115,5 +135,6 @@ export function toPayload(values: GroupFormValues): GroupInput {
     dersBasiUcret: tip === 'OZEL' ? normalizeMoney(values.dersBasiUcret) : undefined,
     donemId: values.donemId || undefined,
     donemlikUcret: tip === 'GRUP' && values.donemlikUcret?.trim() ? normalizeMoney(values.donemlikUcret) : undefined,
+    dersSaatleri: values.dersSaatleri && values.dersSaatleri.length > 0 ? values.dersSaatleri : undefined,
   };
 }

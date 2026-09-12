@@ -405,6 +405,8 @@ export interface GroupInput {
   dersBasiUcret?: string;
   donemId?: number;
   donemlikUcret?: string;
+  /** Oluşturma anında ders saatleri (yalnız yeni grupta); çakışma varsa 409 ve grup da oluşmaz. */
+  dersSaatleri?: { gun: HaftaGunu; baslangicSaati: string; bitisSaati: string }[];
 }
 
 // --- Dönem & kredi (Dalga E) — backend com.artademi.donem / com.artademi.kredi ---

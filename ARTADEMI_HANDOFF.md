@@ -964,6 +964,19 @@ tahakkuk kesilip Aylık'ta kesilmiyordu). **Ödeme hiçbir zaman tetikleyici de�
   deneme planı ve DONDURULMUŞ üzerinden.
 - Test ekibinin 9 Eylül bulgusu bu kararla doğal olarak kapanmış oldu.
 
+### 7.36 Menü sırası + grup oluştururken ders saatleri (✅ 2026-09-12)
+
+- **Yönetici Paneli** açılır grubu artık Genel Bakış'ın hemen altında (`routes/menu.ts` — MENU dizisindeki sıra
+  sidebar sırasıdır; grup blokları `grup:` alanıyla ardışık öğelerden oluşur).
+- **Grup oluştururken ders saatleri**: `CreateGroupRequest.dersSaatleri: List<DersSaatiRequest{gun, baslangicSaati,
+  bitisSaati}>` (opsiyonel, `@Valid`, `@SaatAraligiGecerli`). `GroupService.create` grubu kaydettikten sonra her satır
+  için `ScheduleService.create` çağırır — **aynı işlemde**: salon/eğitmen çakışması `ConflictException` → rollback,
+  **grup da oluşmaz** (409, mesajda hangi grup/salon). Web: `GroupForm` yalnız oluşturma modunda "Ders Saatleri" bölümü
+  (`useFieldArray`; gün seçici + iki `time` alanı; "+ Ders saati" / "Kaldır"); 409 form üstünde gösterilir, kullanıcı
+  formda kalır. Düzenlemede bölüm yok — detaydaki Haftalık Program paneli kullanılır.
+- Test: `GroupControllerTest.create_dersSaatleriyle_olusur_cakismadaGrupDaOlusmaz` (2 saat → 2 program; çakışan
+  → 409 ve grup yok; ters aralık → 400).
+
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 
 Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:

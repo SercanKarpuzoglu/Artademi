@@ -457,4 +457,36 @@ class GroupControllerTest {
                         .content(json))
                 .andExpect(status().isCreated());
     }
+
+    /** 12 Eylul: olusturma aninda ders saatleri; cakisma -> 409 ve grup da olusmaz (tek islem). */
+    @Test
+    void create_dersSaatleriyle_olusur_cakismadaGrupDaOlusmaz() throws Exception {
+        String tenant = "11111111-0000-0000-0000-00000000dd01";
+        long[] refs = seedRefs(tenant, "ds");
+        String saatler = ",\"dersSaatleri\":[{\"gun\":\"PAZARTESI\",\"baslangicSaati\":\"10:00\",\"bitisSaati\":\"11:00\"},"
+                + "{\"gun\":\"CARSAMBA\",\"baslangicSaati\":\"10:00\",\"bitisSaati\":\"11:00\"}]";
+        String json = "{\"ad\":\"Saatli\",\"tip\":\"GRUP\",\"bransId\":" + refs[0] + ",\"ogretmenId\":" + refs[1]
+                + ",\"salonId\":" + refs[2] + ",\"aylikAidat\":500.00" + saatler + "}";
+        String body = mockMvc.perform(post("/api/groups").with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long grup = objectMapper.readTree(body).path("data").path("id").asLong();
+        mockMvc.perform(get("/api/groups/{id}/schedules", grup).with(admin(tenant)))
+                .andExpect(jsonPath("$.data.length()").value(2));
+
+        // Ayni salon, ayni gun/saat -> cakisma: 409 ve ikinci grup OLUSMAMALI
+        String cakisan = json.replace("\"ad\":\"Saatli\"", "\"ad\":\"Cakisan\"");
+        mockMvc.perform(post("/api/groups").with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON).content(cakisan))
+                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/groups").param("q", "Cakisan").with(admin(tenant)))
+                .andExpect(jsonPath("$.data.length()").value(0));
+
+        // Gecersiz aralik (bitis <= baslangic) -> 400
+        String ters = json.replace("\"bitisSaati\":\"11:00\"}]", "\"bitisSaati\":\"09:00\"}]");
+        mockMvc.perform(post("/api/groups").with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON).content(ters))
+                .andExpect(status().isBadRequest());
+    }
 }

@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiException } from '../../api/client';
 import type { GroupResponse } from '../../api/types';
@@ -10,6 +10,7 @@ import { useDonemler } from '../donem/useDonemler';
 import { useAktifSubeler } from '../sube/useSubeler';
 import { useTeachers } from '../teacher/useTeachers';
 import { GroupFormValues, groupSchema, toPayload } from './groupSchema';
+import { GUN_LABEL, GUN_ORDER } from './scheduleDisplay';
 import { useCreateGroup, useGroup, useUpdateGroup } from './useGroups';
 
 const EMPTY: GroupFormValues = {
@@ -25,6 +26,7 @@ const EMPTY: GroupFormValues = {
   dersBasiUcret: '',
   donemId: undefined,
   donemlikUcret: '',
+  dersSaatleri: [],
 };
 
 /** Model C: grup tipinden varsayilan hakediş tipi (GRUP→SAATLIK, OZEL→OZEL_DERS). */
@@ -48,6 +50,7 @@ function toFormValues(g: GroupResponse): GroupFormValues {
     dersBasiUcret: money(g.dersBasiUcret),
     donemId: g.donem?.id ?? undefined,
     donemlikUcret: money(g.donemlikUcret),
+    dersSaatleri: [],
   };
 }
 
@@ -79,11 +82,14 @@ export default function GroupForm() {
     watch,
     setError,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<GroupFormValues>({
     resolver: zodResolver(groupSchema),
     defaultValues: EMPTY,
   });
+  // Oluşturma anında ders saatleri (yalnız yeni grupta; düzenlemede detaydaki Haftalık Program paneli).
+  const dersSaatleri = useFieldArray({ control, name: 'dersSaatleri' });
 
   useEffect(() => {
     if (isEdit && groupQuery.data) {
@@ -156,6 +162,9 @@ export default function GroupForm() {
             setError(field as keyof GroupFormValues, { message });
           }
           setFormError('Lütfen işaretli alanları düzeltin.');
+        } else if (e.code === 'CONFLICT') {
+          // Ders saati çakışması (salon/eğitmen): grup oluşturulmadı, satır düzeltilip tekrar denenir.
+          setFormError(e.message);
         } else {
           setFormError(`${e.message}`);
         }
@@ -325,6 +334,58 @@ export default function GroupForm() {
             )}
           </div>
         </section>
+
+        {!isEdit && (
+          <section className="card space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700">Ders Saatleri</h2>
+                <p className="text-[12.5px] text-ink-soft">
+                  Ders günü ve saat aralığı; salon/eğitmen çakışması varsa grup oluşturulmaz. Sonradan grup
+                  sayfasından da eklenebilir.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => dersSaatleri.append({ gun: 'PAZARTESI', baslangicSaati: '', bitisSaati: '' })}
+              >
+                + Ders saati
+              </button>
+            </div>
+            {dersSaatleri.fields.length === 0 ? (
+              <p className="text-[13px] text-ink-soft">Henüz ders saati eklenmedi.</p>
+            ) : (
+              <div className="space-y-2">
+                {dersSaatleri.fields.map((f, i) => {
+                  const satirHata = errors.dersSaatleri?.[i];
+                  return (
+                    <div key={f.id} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
+                      <Field label="Gün" required error={satirHata?.gun?.message}>
+                        <select className={inputClass} {...register(`dersSaatleri.${i}.gun` as const)}>
+                          {GUN_ORDER.map((g) => (
+                            <option key={g} value={g}>
+                              {GUN_LABEL[g]}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Başlangıç" required error={satirHata?.baslangicSaati?.message}>
+                        <input type="time" className={inputClass} {...register(`dersSaatleri.${i}.baslangicSaati` as const)} />
+                      </Field>
+                      <Field label="Bitiş" required error={satirHata?.bitisSaati?.message}>
+                        <input type="time" className={inputClass} {...register(`dersSaatleri.${i}.bitisSaati` as const)} />
+                      </Field>
+                      <button type="button" className="btn btn-ghost mb-1" onClick={() => dersSaatleri.remove(i)}>
+                        Kaldır
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         <div className="flex justify-end gap-3">
           <button type="button" className="btn btn-ghost" onClick={() => navigate('/gruplar')}>

@@ -22,6 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.artademi.donem.Donem;
 import com.artademi.donem.DonemRepository;
+import com.artademi.group.dto.DersSaatiRequest;
+import com.artademi.schedule.ScheduleService;
+import com.artademi.schedule.dto.CreateScheduleRequest;
 
 /**
  * Grup is kurallari. {@code @Transactional} oldugundan cagrildiginda global tenant filtresi aktif
@@ -44,16 +47,18 @@ public class GroupService {
     private final RoomRepository roomRepository;
     private final SubeRepository subeRepository;
     private final DonemRepository donemRepository;
+    private final ScheduleService scheduleService;
 
     public GroupService(GroupRepository repository, BranchRepository branchRepository,
             TeacherRepository teacherRepository, RoomRepository roomRepository,
-            SubeRepository subeRepository, DonemRepository donemRepository) {
+            SubeRepository subeRepository, DonemRepository donemRepository, ScheduleService scheduleService) {
         this.repository = repository;
         this.branchRepository = branchRepository;
         this.teacherRepository = teacherRepository;
         this.roomRepository = roomRepository;
         this.subeRepository = subeRepository;
         this.donemRepository = donemRepository;
+        this.scheduleService = scheduleService;
     }
 
     /** Donem opsiyonel; verildiyse tenant-guvenli cozulur (yoksa 404). */
@@ -74,6 +79,13 @@ public class GroupService {
         Sube sube = resolveSube(req.subeId());
         Donem donem = resolveDonem(req.donemId());
         Group saved = repository.save(GroupMapper.toNewEntity(req, brans, ogretmen, salon, sube, donem));
+        // 12 Eylul talebi: olusturma ekraninda ders gunu + saat araligi. Ayni islemde: cakisma -> rollback.
+        if (req.dersSaatleri() != null) {
+            for (DersSaatiRequest ds : req.dersSaatleri()) {
+                scheduleService.create(new CreateScheduleRequest(saved.getId(), ds.gun(), ds.baslangicSaati(),
+                        ds.bitisSaati()));
+            }
+        }
         return GroupResponse.from(saved);
     }
 

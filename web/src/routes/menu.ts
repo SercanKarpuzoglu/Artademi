@@ -75,26 +75,7 @@ const YONETICI_PANELI = 'Yönetici Paneli';
 export const MENU: readonly MenuItem[] = [
   // Eğitmen girişinde yalnız Yoklama + Haftalık Program görünür (Genel Bakış ofis rollerine).
   { label: 'Genel Bakış', path: '/dashboard', icon: LayoutDashboard, section: 'Genel', roles: OFIS, hazir: true },
-  { label: 'Öğrenciler', path: '/ogrenciler', icon: Users, section: 'Eğitim', roles: OFIS, hazir: true },
-  { label: 'Ön Kayıt', path: '/basvurular', icon: ClipboardList, section: 'Eğitim', roles: OFIS, hazir: true },
-  {
-    label: 'Yoklama',
-    path: '/yoklama',
-    icon: ClipboardCheck,
-    section: 'Eğitim',
-    roles: OFIS_VE_EGITMEN,
-    hazir: true,
-  },
-  {
-    label: 'Haftalık Program',
-    path: '/program',
-    icon: CalendarDays,
-    section: 'Eğitim',
-    roles: OFIS_VE_EGITMEN,
-    hazir: true,
-  },
-  { label: 'Telafi Dersleri', path: '/telafi', icon: CalendarClock, section: 'Eğitim', roles: OFIS, hazir: true },
-  // Yönetici Paneli — açılır alt menü (9 Eylül talebi): Eğitmenler, Ders Ücretleri / Gruplar.
+  // Yönetici Paneli — açılır alt menü (9 Eylül talebi; 12 Eylül: Genel Bakış'ın hemen altına): Eğitmenler, Ders Ücretleri / Gruplar.
   {
     label: 'Eğitmenler',
     path: '/egitmenler',
@@ -122,6 +103,25 @@ export const MENU: readonly MenuItem[] = [
     roles: OFIS,
     hazir: true,
   },
+  { label: 'Öğrenciler', path: '/ogrenciler', icon: Users, section: 'Eğitim', roles: OFIS, hazir: true },
+  { label: 'Ön Kayıt', path: '/basvurular', icon: ClipboardList, section: 'Eğitim', roles: OFIS, hazir: true },
+  {
+    label: 'Yoklama',
+    path: '/yoklama',
+    icon: ClipboardCheck,
+    section: 'Eğitim',
+    roles: OFIS_VE_EGITMEN,
+    hazir: true,
+  },
+  {
+    label: 'Haftalık Program',
+    path: '/program',
+    icon: CalendarDays,
+    section: 'Eğitim',
+    roles: OFIS_VE_EGITMEN,
+    hazir: true,
+  },
+  { label: 'Telafi Dersleri', path: '/telafi', icon: CalendarClock, section: 'Eğitim', roles: OFIS, hazir: true },
   { label: 'Dönemler', path: '/donemler', icon: CalendarRange, section: 'Tanımlar', roles: OFIS, hazir: true },
   { label: 'Şubeler', path: '/subeler', icon: Store, section: 'Tanımlar', roles: OFIS, hazir: true },
   { label: 'Branşlar', path: '/branslar', icon: Tags, section: 'Tanımlar', roles: OFIS, hazir: true },

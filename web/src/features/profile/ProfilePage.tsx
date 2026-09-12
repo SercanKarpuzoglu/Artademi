@@ -205,8 +205,13 @@ function ChangePasswordCard() {
       reset({ mevcutParola: '', yeniParola: '', yeniParolaTekrar: '' });
     } catch (e) {
       if (e instanceof ApiException) {
-        // Servis doğrulamaları genelde error.fields taşımaz; mesaj mevcut parola altına basılır.
-        if (e.code === 'VALIDATION_ERROR') {
+        if (e.code === 'VALIDATION_ERROR' && e.fields) {
+          // Backend artık hangi alanın hatalı olduğunu söylüyor; mesaj o inputun altına gider.
+          for (const [field, message] of Object.entries(e.fields)) {
+            setError(field as keyof ChangePasswordFormValues, { message });
+          }
+        } else if (e.code === 'VALIDATION_ERROR') {
+          // Alan bilgisi gelmezse eski davranış: mesaj mevcut parola altına basılır.
           setError('mevcutParola', { message: e.message || 'Mevcut parola hatalı' });
         } else {
           setFormError(e.message);

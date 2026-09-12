@@ -5,11 +5,14 @@ export interface GetUsersParams {
   aktif?: boolean;
   rol?: string;
   q?: string;
+  page?: number;
+  size?: number;
 }
 
 /**
- * Kullanıcı listesi (YALNIZCA ADMIN). Backend bu uçta sayfalama meta'si DONDURMEZ (düz dizi),
- * yine de zarf sözleşmesi gereği tüm ApiResponse dönülür (data dizidir, meta null).
+ * Kullanıcı listesi (YALNIZCA ADMIN, sayfalı). Zarfın tamamı döner (data + meta).
+ * `rol` filtresinde toplam, rolü tutan kullanıcı sayısıdır (Keycloak rolü sorguda bilmez;
+ * backend tarayıp kendisi sayfalar).
  */
 export async function getUsers(
   params: GetUsersParams = {},

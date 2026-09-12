@@ -38,7 +38,13 @@ public class UserController {
         this.service = service;
     }
 
-    /** Tenant'taki kullanicilar; ?aktif=&rol=&q=&page=0&size=20 (hepsi opsiyonel). */
+    /**
+     * Tenant'taki kullanicilar; ?aktif=&rol=&q=&page=0&size=20 (hepsi opsiyonel).
+     *
+     * <p>Yanit sayfalidir: {@code meta} ile toplam/sayfa bilgisi doner (api-contract). Onceden
+     * meta DONMUYORDU; web listesi de sayfa gondermedigi icin 20'den fazla kullanicisi olan
+     * kurumda kalanlar SESSIZCE gorunmuyordu.
+     */
     @GetMapping
     public ApiResponse<List<UserResponse>> list(
             @RequestParam(required = false) Boolean aktif,
@@ -46,7 +52,8 @@ public class UserController {
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(service.list(aktif, rol, q, page, size));
+        UserService.UserSayfasi sayfa = service.list(aktif, rol, q, page, size);
+        return ApiResponse.ok(sayfa.icerik(), sayfa.meta());
     }
 
     /** Tek kullanici (tenant-eslesme zorunlu; baska tenant -> 404). */

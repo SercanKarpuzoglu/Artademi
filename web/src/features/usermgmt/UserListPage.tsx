@@ -7,6 +7,8 @@ import { sendPasswordReset } from '../../api/users';
 import { ASSIGNABLE_ROLES, roleBadgeClass, roleLabel } from './userDisplay';
 import { useDeleteUser, useSetUserActive, useUsers } from './useUsers';
 
+const PAGE_SIZE = 20;
+
 const AKTIF_TABS: { label: string; value: boolean | undefined }[] = [
   { label: 'Tümü', value: undefined },
   { label: 'Aktif', value: true },
@@ -40,6 +42,7 @@ export default function UserListPage() {
   const [q, setQ] = useState('');
   const [aktif, setAktif] = useState<boolean | undefined>(undefined);
   const [rol, setRol] = useState<string>('');
+  const [page, setPage] = useState(0);
   const debouncedQ = useDebounce(q, 300);
 
   const [actionError, setActionError] = useState<string | null>(null);
@@ -58,8 +61,9 @@ export default function UserListPage() {
     }
   }
 
-  // Filtre değişince sayfa-state'i yok (liste sayfalanmıyor); yine de hata kutusunu temizle.
+  // Filtre değişince ilk sayfaya dön; yoksa 3. sayfadayken daralan sonuçta boş ekran kalır.
   useEffect(() => {
+    setPage(0);
     setActionError(null);
   }, [debouncedQ, aktif, rol]);
 
@@ -67,11 +71,14 @@ export default function UserListPage() {
     q: debouncedQ.trim() || undefined,
     aktif,
     rol: rol || undefined,
+    page,
+    size: PAGE_SIZE,
   });
   const setActiveMut = useSetUserActive();
   const deleteMut = useDeleteUser();
 
   const users = query.data?.data ?? [];
+  const meta = query.data?.meta;
   const filtered = Boolean(debouncedQ.trim()) || aktif !== undefined || Boolean(rol);
 
   async function handleSetActive(id: string, next: boolean) {
@@ -254,6 +261,32 @@ export default function UserListPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {meta && users.length > 0 && (
+        <div className="mt-4 flex items-center justify-between text-[13px] text-ink-soft">
+          <span>
+            Toplam {meta.totalElements} · Sayfa {meta.page + 1}/{Math.max(meta.totalPages, 1)}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-ghost disabled:opacity-40"
+              onClick={() => setPage((p) => Math.max(p - 1, 0))}
+              disabled={meta.page <= 0}
+            >
+              Önceki
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost disabled:opacity-40"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={meta.page + 1 >= meta.totalPages}
+            >
+              Sonraki
+            </button>
+          </div>
         </div>
       )}
     </>

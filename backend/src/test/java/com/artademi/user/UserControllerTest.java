@@ -285,8 +285,124 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mevcutParola\":\"yanlis\",\"yeniParola\":\"uzunYeni123\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                // Servis katmani hatasi da ALAN bazli doner; form mesaji ilgili inputun altina yazar.
+                .andExpect(jsonPath("$.error.fields.mevcutParola").value("Mevcut parola hatalı"));
 
         verify(kc, never()).resetPassword(anyString(), anyString(), anyBoolean());
+    }
+
+    // ---------------------------------------------------------------------
+    // error.fields (servis katmani dogrulamalari)
+    // ---------------------------------------------------------------------
+
+    @Test
+    void gecersizRol_errorFields_rolleriIsaretler() throws Exception {
+        mockMvc.perform(post("/api/users")
+                        .with(admin(TENANT_A))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kullaniciAdi\":\"x\",\"ad\":\"X\",\"soyad\":\"Y\","
+                                + "\"roller\":[\"SUPER_ADMIN\"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fields.roller").exists());
+    }
+
+    @Test
+    void alanaBaglanamayanKural_fieldsTasimaz() throws Exception {
+        // "Kendi hesabinizi pasife alamazsiniz" bir FORM ALANI degil; uydurma alan adi
+        // formda yanlis inputu isaretlerdi. fields NULL kalmali.
+        when(kc.getUserById(ADMIN_SUB)).thenReturn(userRep(ADMIN_SUB, TENANT_A));
+
+        mockMvc.perform(patch("/api/users/{id}/active", ADMIN_SUB)
+                        .with(admin(TENANT_A))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"aktif\":false}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields").doesNotExist());
+    }
+
+    // ---------------------------------------------------------------------
+    // Sayfalama (meta)
+    // ---------------------------------------------------------------------
+
+    @Test
+    void list_sayfaMetasiDoner_toplamListeSorgusundanSayilir() throws Exception {
+        // Toplam KC'nin ayri /users/count ucundan DEGIL, listenin kendi sonucundan sayilir:
+        // o uc ayni filtreleri (ozellikle tenant) uygulamazsa realm geneli sayi donerdi.
+        when(kc.searchUsers(any(), any(), eq(0), anyInt(), eq(TENANT_A)))
+                .thenReturn(List.of(userRep("u1", TENANT_A), userRep("u2", TENANT_A),
+                        userRep("u3", TENANT_A), userRep("u4", TENANT_A),
+                        userRep("u5", TENANT_A), userRep("u6", TENANT_A),
+                        userRep("u7", TENANT_A)));
+        when(kc.getUserRealmRoles(anyString())).thenReturn(List.of(Map.of("name", "FRONTDESK")));
+
+        mockMvc.perform(get("/api/users").param("page", "1").param("size", "2")
+                        .with(admin(TENANT_A)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].id").value("u3")) // 2. sayfa = 3. ve 4. kayit
+                .andExpect(jsonPath("$.meta.page").value(1))
+                .andExpect(jsonPath("$.meta.size").value(2))
+                .andExpect(jsonPath("$.meta.totalElements").value(7))
+                .andExpect(jsonPath("$.meta.totalPages").value(4));
+    }
+
+    @Test
+    void list_rolSorgusu_YALNIZ_gosterilenSayfaIcinGider() throws Exception {
+        // Rol filtresi yokken 7 kullanicinin 7'si icin rol sormak bosuna 7 HTTP gidisidir;
+        // yalnizca sayfadaki 2 kullanici icin sorulmali.
+        when(kc.searchUsers(any(), any(), eq(0), anyInt(), eq(TENANT_A)))
+                .thenReturn(List.of(userRep("u1", TENANT_A), userRep("u2", TENANT_A),
+                        userRep("u3", TENANT_A), userRep("u4", TENANT_A),
+                        userRep("u5", TENANT_A), userRep("u6", TENANT_A),
+                        userRep("u7", TENANT_A)));
+        when(kc.getUserRealmRoles(anyString())).thenReturn(List.of(Map.of("name", "FRONTDESK")));
+
+        mockMvc.perform(get("/api/users").param("page", "0").param("size", "2")
+                        .with(admin(TENANT_A)))
+                .andExpect(status().isOk());
+
+        verify(kc).getUserRealmRoles("u1");
+        verify(kc).getUserRealmRoles("u2");
+        verify(kc, never()).getUserRealmRoles("u3");
+    }
+
+    @Test
+    void list_rolFiltresi_uygulamadaSayfalar_toplamEslesenSayisidir() throws Exception {
+        // KC rol filtresini bilmez: sayfayi KC sayfalarsa rol elemesi sonrasi satir sayisi
+        // sayfadan sayfaya degisir ve toplam yanlis olur. Bu yolda tarayip BIZ sayfalariz.
+        when(kc.searchUsers(any(), any(), eq(0), anyInt(), eq(TENANT_A)))
+                .thenReturn(List.of(userRep("a1", TENANT_A), userRep("f1", TENANT_A),
+                        userRep("a2", TENANT_A), userRep("f2", TENANT_A),
+                        userRep("a3", TENANT_A)));
+        when(kc.getUserRealmRoles("a1")).thenReturn(List.of(Map.of("name", "ADMIN")));
+        when(kc.getUserRealmRoles("a2")).thenReturn(List.of(Map.of("name", "ADMIN")));
+        when(kc.getUserRealmRoles("a3")).thenReturn(List.of(Map.of("name", "ADMIN")));
+        when(kc.getUserRealmRoles("f1")).thenReturn(List.of(Map.of("name", "FRONTDESK")));
+        when(kc.getUserRealmRoles("f2")).thenReturn(List.of(Map.of("name", "FRONTDESK")));
+
+        mockMvc.perform(get("/api/users").param("rol", "ADMIN")
+                        .param("page", "1").param("size", "2")
+                        .with(admin(TENANT_A)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1)) // 3 admin, 2. sayfada 1 kisi
+                .andExpect(jsonPath("$.data[0].id").value("a3"))
+                .andExpect(jsonPath("$.meta.totalElements").value(3))
+                .andExpect(jsonPath("$.meta.totalPages").value(2));
+    }
+
+    @Test
+    void list_baskaTenantinKullanicisi_sayfaya_SIZMAZ() throws Exception {
+        when(kc.searchUsers(any(), any(), anyInt(), anyInt(), eq(TENANT_A)))
+                .thenReturn(List.of(userRep("a1", TENANT_A), userRep("b1", TENANT_B)));
+        when(kc.getUserRealmRoles(anyString())).thenReturn(List.of(Map.of("name", "ADMIN")));
+
+        mockMvc.perform(get("/api/users").with(admin(TENANT_A)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].id").value("a1"))
+                // Toplam da elenmis listeden sayilir: baska tenant'in kaydi sayiya da girmez.
+                .andExpect(jsonPath("$.meta.totalElements").value(1));
     }
 }

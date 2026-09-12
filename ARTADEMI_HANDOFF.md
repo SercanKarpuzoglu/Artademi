@@ -1,7 +1,8 @@
 # Artademi — Proje Devir Dökümanı (Handoff)
 
-> **Bu dosyanın amacı:** Backend + Web + Kullanıcı/Tenant yönetimi + **Platform fazı (SUPER_ADMIN tenant yönetimi)** tamamlandı. Yeni işe **temiz bir sohbet penceresinde** başlamak için tüm bağlamı tek yerde toplar.
-> **Son güncelleme:** 2026-06 / **PROD CANLI** (app/auth/landing) + **iki feedback işi (grup transferi + Model C çoklu hakediş, V15+V16) + platform konsolu tam (kullanıcı CRUD + soft-delete) + CORS/provisioning/Security 403 zinciri çözüldü.** Daha önce: TEACHER /mine, Dashboard, Logo, Keycloak login teması, subscription (V14), platform fazı, backend çekirdeği, tüm web modülleri.
+> **Bu dosyanın amacı:** yeni bir oturuma (Claude masaüstü / CLI) **tek dosyayla** devir. "Bunu oku, kaldığımız yerden devam et" yeter. Sohbet dökümleri devredilmez; karar ve durumun tamamı burada ve hafıza notlarında.
+> **Son güncelleme:** **2026-09-12** — prod `1c9f137`, Flyway **V36**, **810 test yeşil**. 9 Eylül toplantı taleplerinin hepsi (Dalga A–F, §7.27–7.36) + kapanış eksikleri canlıda. En son ürün kararları: **DENEME→AKTİF plan seçimiyle** (§7.35), **dönem/kredi modeli aylık aidatın yerine** (§7.32), **yumuşak silme** (§7.29). Açık işler §13.4.
+> **Okuma sırası (yeni oturum):** §15 hızlı hatırlatmalar → §13.4 açık işler → ilgili §7.x modül notu. Tarihsel bölümler (§13.0–13.2, §14 eski maddeler) yalnız arka plan içindir.
 > **İletişim dili:** Türkçe. **Geliştirici:** Sercan (solo). **Çalışma stili:** "tane tane" — her modül gerçek test + curl ile doğrulanmadan bir sonrakine geçilmez.
 
 ---
@@ -23,9 +24,9 @@
 | Auth | Keycloak 26 (tek realm + `tenant_id` claim) |
 | Web (frontend) | React + Vite + TypeScript + Tailwind + keycloak-js + TanStack Query + React Hook Form + Zod |
 | Mobil | (henüz yok — ileride React Native + Expo) |
-| Altyapı | Docker, GitHub (private repo) |
+| Altyapı | Docker, GitHub (**public repo** — bu yüzden `credentials/`, `.env*` gitignore'da; sır asla commit'lenmez), Hetzner (prod), Caddy |
 
-**Repo:** `github.com/SercanKarpuzoglu/Artademi` (private)
+**Repo:** `github.com/SercanKarpuzoglu/Artademi` (**public**)
 **Proje kökü:** `/Users/sercankarpuzoglu/dev/Artademi`
 
 ---
@@ -53,6 +54,9 @@ cd ../web && npm run dev
 - `backend/.env` git'te YOK. İçeriği: `SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/artademi`, user/pass `artademi/artademi_local_2026`, `SERVER_PORT=8081`, `KEYCLOAK_ISSUER_URI=http://localhost:8080/realms/Artademi`.
 - **DevTools:** Kod değişince backend kendini yeniler ama **derleme tetiklenmeli** — `./mvnw compile` yeter (sadece kaydetmek yetmez). "No static resource" hatası = eski kod çalışıyor işareti → derle/yeniden başlat.
 - Test çalıştırmadan önce backend'i durdurmaya gerek yok (Testcontainers ayrı port), ama canlı curl için backend açık olmalı.
+- ⚠️ **Test koşarken `mvnw compile`/`clean` çalıştırma** — `target/classes` bozulur, 50+ sahte ClassNotFound. Önce testin bitmesini bekle.
+- ⚠️ **DevTools yeniden başlatması bozulabilir** (`RestClient` bean bulunamadı / public uçlar 401 / yeni uçlar 404 = eski sınıflar). Çare: 8081'i dinleyen süreci öldür (`lsof -nP -iTCP:8081 -sTCP:LISTEN -t | xargs kill`), `.env` yükleyip temiz `./mvnw spring-boot:run`.
+- ⚠️ **Docker Desktop diski salt-okunura düşebiliyor** (Testcontainers "Can't get Docker image", dockerd 500). `pkill -9 -f com.docker.backend` → `open -a Docker`. (13 Eyl 2026'da yaşandı.)
 
 ---
 
@@ -141,24 +145,27 @@ Bir modül başka entity'ye referans verirken her id'yi `findScopedById` ile do�
 ### Diğer
 - **Para:** tüm parasal alanlar `BigDecimal`, DB `NUMERIC(12,2)`, hesapta `setScale(2, HALF_UP)`. JSON sondaki sıfırı atabilir ama değer birebir doğru.
 - **Filtreler:** Spring Data Specifications.
-- **Silme yok:** kayıtlar silinmez; statü/aktiflik ile yönetilir (PATCH `.../active`, `.../status`, `.../leave` vb.).
+- **Silme = yumuşak silme (§7.29):** gerçek DELETE yok. Yönetici her sayfada "Sil" → `silindi_tarihi` damgası, Hibernate `@Filter` (autoEnabled) listelerden gizler, `Sistem → Silinenler`'den geri alınır. Pasif/ayrılma statüleri de duruyor (PATCH `.../active`, `.../status`, `.../leave`).
 
 ---
 
 ## 7. Backend Modülleri (HEPSİ TAMAM — commit'li, test edilmiş)
 
-Migration sırası **V1→V16** (V13=tenant, V14=subscription, **V15=teacher_hakedis (Model C + veri göçü)**, **V16=lesson_group.hakedis_tipi + payout unique→tip**). **Toplam 205 test yeşil.** Tüm yazma uçları rol-korumalı.
+Migration sırası **V1→V36** (dönüm noktaları: V13 tenant, V14 subscription, V15–16 Model C, V23 şube, V24 başvuru, V25 bildirim, V26 gizli ayar, V27 kasa/tedarikçi, V28 telafi, V29 paket, V31 kara liste, V32 yumuşak silme, V33 yoklama kilidi + uygulama bildirimi, V34 indirim, V35 dönem/kredi, V36 branş dönemi). **810 test yeşil** (2026-09-12). Tüm yazma uçları rol-korumalı. §7.1–7.25 çekirdek, **§7.27–7.36 Eylül dalgaları** (bazı çekirdek davranışları DEĞİŞTİRİR — her modülde ⚠️ ile işaretli).
 
 ### 7.1 Öğrenci — `com.artademi.student` (V3)
 - Alanlar: ad/soyad/tcKimlikNo(11h)/dogumTarihi, veli bilgisi öğrenci içinde, yetiskinMi. Statü: `AKTIF/PASIF/DENEME/DONDURULMUS`.
 - Kardeş eşleştirme aynı anne/baba TC üzerinden. `PATCH /{id}/status`. Validasyon: `@VeliRequired`.
-- **Uçlar:** `POST/GET/PUT /api/students`, `?statu=&q=&page=&size=`, `/{id}/siblings`, `/{id}/status`
-- **Yetki:** ADMIN/FRONTDESK/FRONTDESK_ACCOUNTING; TEACHER 403. **Web ekranı VAR.**
+- **Uçlar:** `POST/GET/PUT /api/students`, `?status=&q=&page=&size=`, `/{id}/siblings`, `/{id}/status`, **`GET /api/students/liste`** (zengin liste: gruplar, bakiye [rol bazlı], devam serisi, kara liste — §7.28), **`PATCH /{id}/kara-liste`** (§7.28).
+- ⚠️ **Statü kuralı (§7.35, 2026-09-12):** yeni öğrenci DENEME doğar; gruba yazılırken seçilen plan Aylık/Dönemlik (ya da özel ders) ise **otomatik AKTİF**; "Deneme dersi" planı DENEME bırakır, "Plana geçir" ile Aktif olur. Ödeme statüyü etkilemez.
+- ⚠️ **Kara liste kalkanı (§7.34):** TC benzersiz DEĞİL; aynı TC kara listedeyse yeni kayıt/başvuru dönüştürme/gruba yazma **409 `KARA_LISTE`** (sebep mesajda), `karaListeOnayi:true` ile geçilir.
+- **Yetki:** ADMIN/FRONTDESK/FRONTDESK_ACCOUNTING; TEACHER 403. **Web:** liste (`/ogrenciler`), form (kayıt sonrası "gruba da yaz" adımı, §7.34), detay (Kredi kartı §7.32, Finans kartı + İndirimler §7.31, Gruplar/Kayıtlar paneli, Kara listeye al, Sil).
 
 ### 7.2 Branş + Salon — `branch` + `room` (V4)
 - **Uçlar:** `/api/branches`, `/api/rooms` (POST/GET/PUT, `?aktif=&q=`, `/{id}/active`). Yetki: yazma ADMIN; okuma 3 rol.
 
-### 7.3 Öğretmen — `teacher` (V5; çoklu hakediş V15) ✅ Model C
+### 7.3 Öğretmen / **Eğitmen** — `teacher` (V5; çoklu hakediş V15) ✅ Model C
+> ⚠️ Kullanıcıya dönük ad **"Eğitmen"** (Dalga A, 2026-09-10): web rotası `/egitmenler` (`/ogretmenler` → yönlendirme), menü "Yönetici Paneli → Eğitmenler". Kod/paket/API adları `teacher` olarak kaldı.
 - Alanlar: ad/soyad/telefon/email, **keycloakUserId** (Keycloak sub eşleşmesi). `TeacherBranch` açık entity.
 - ⭐ **Çoklu hakediş tipi (Model C, V15):** Öğretmenin tek `hakedisTipi`+ücreti KALDIRILDI. Yerine **`TeacherHakedis`** açık entity (TenantAware): tip başına 1 satır — `SAATLIK`(saatlikUcret) / `CIRO_ORANI`(ciroOrani) / `OZEL_DERS`(dersBasiUcret). UNIQUE (teacher_id, tip). `Teacher.setHakedisler` reconcile setter (branchLinks deseni — uq insert-before-delete tuzağından kaçınır). `@HakedisTutarli` listeyi doğrular (≥1 satır, her tip ≤1, tipe göre değer zorunlu). DTO/response artık **hakediş listesi**.
 - **Uçlar:** `/api/teachers` (POST/GET/PUT, `?aktif=&q=&bransId=`, `/{id}/active`). Yetki: yazma ADMIN; okuma 3 rol.
@@ -166,28 +173,33 @@ Migration sırası **V1→V16** (V13=tenant, V14=subscription, **V15=teacher_hak
 ### 7.4 Grup — `group` (V6, `@Table(name="lesson_group")`; hakedis_tipi V16)
 - ad, tip (`GRUP`/`OZEL`), branş+öğretmen ZORUNLU, seviye. Salon GRUP'ta zorunlu. Ücret GRUP→`aylikAidat`, OZEL→`dersBasiUcret`.
 - ⭐ **`hakedisTipi` (Model C, V16):** Grup hangi hakediş tipiyle ödeneceğini taşır. Varsayılan: GRUP→`SAATLIK`, OZEL→`OZEL_DERS`; admin `CIRO_ORANI`'na çevirebilir. Payout bunu kullanır (bkz. §7.10).
-- **Uçlar:** `/api/groups` (POST/GET/PUT, filtreler, `/{id}/active`). Yetki: yazma ADMIN; okuma 3 rol.
+- ⚠️ **Dönem & ücretler (§7.32, V35):** GRUP tipinde `aylikAidat` = **aylık ücret**, ayrıca **`donemlikUcret`** ve **`donemId`** (opsiyonel; branşın varsayılan döneminden ön-dolu, §7.34). Dönemlik kayıt için ikisi de gerekli.
+- ⚠️ **Oluştururken ders saatleri (§7.36):** `CreateGroupRequest.dersSaatleri[]` — grup + program tek işlemde; çakışmada 409 ve grup da oluşmaz.
+- **Uçlar:** `/api/groups` (POST/GET/PUT, filtreler, `/{id}/active`), `GET /{id}/kayit-onizleme?plan=&tarih=` (§7.32). Yetki: yazma ADMIN; okuma 3 rol. **Web:** menü "Yönetici Paneli → Ders Ücretleri / Gruplar" (`/gruplar`).
 
 ### 7.5 Kayıt/Enrollment — `enrollment` (V7) — grup transferi ✅ YENİ
 - ogrenciId, grupId, kayitTarihi, durum (`AKTIF`/`AYRILDI`). Mükerrer aktif kayıt → 409. Çıkarma `PATCH /leave`.
 - ⭐ **Grup transferi:** `POST /api/enrollments/{id}/transfer` body `{yeniGrupId, donem?}`. Tek transaction: eski kayıt AYRILDI + yeni gruba AKTIF + **otomatik aidat farkı** (o dönem eski grup tahakkuku ÜRETİLDİYSE: eski grup **negatif/iade** tahakkuk `−eskiAidat` + yeni grup **pozitif** `+yeniAidat`; üretilmediyse hiçbir tahakkuk açılmaz). SADECE **GRUP↔GRUP** (OZEL → 400). Cross-tenant → 404, zaten aktif → 409. ⚠️ Accrual artık **negatif tutara izin verir** (iade; DB CHECK yoktu, DTO `@Positive` yalnız create ucunda — transfer entity üzerinden negatif yazar).
-- **Uçlar:** `POST/GET /api/enrollments`, filtreler, `/{id}/leave`, **`/{id}/transfer`**. Yetki: 3 rol; TEACHER 403.
+- ⚠️ **Ödeme planı (§7.32 + §7.35):** `odemePlani` = `AYLIK | DONEMLIK | DENEME` (NULL = AYLIK, eski kayıt). Aylık/Dönemlik → öğrenci AKTİF + kredi (paket) açılır; Dönemlik ayrıca **tek tahakkuk** (dönemlik ücret − indirim). DENEME → statü/para/kredi yok; **`POST /{id}/plana-gecir {odemePlani}`** ile Aylık/Dönemlik'e geçer ve o anda AKTİF olur (kredi geçiş gününden). Grup transferi planı taşır. Kayıt yanıtı `ogrenci.status`, `odemePlani`, `donem` taşır.
+- **Uçlar:** `POST/GET /api/enrollments`, filtreler, `/{id}/leave`, **`/{id}/transfer`**, **`/{id}/plana-gecir`**. `POST` gövdesi: `karaListeOnayi`, `odemePlani`. Yetki: 3 rol; TEACHER 403.
 
 ### 7.6 Program — `schedule` (V8)
 - grupId, gun (`HaftaGunu` enum), baslangic/bitisSaati. Çakışma (salon VEYA öğretmen) → 409.
-- **Uçlar:** `/api/schedules` (POST/GET/PUT, filtreler, `/{id}/active`). Yetki: yazma ADMIN; okuma 3 rol.
+- **Uçlar:** `/api/schedules` (POST/GET/PUT, filtreler, `/{id}/active`), **`GET /api/schedules/haftalik`** (tüm program gün gün; TEACHER yalnız kendi dersleri — Dalga A). Yetki: yazma ADMIN; okuma 3 rol + TEACHER (haftalık). **Web:** `/program` "Haftalık Program" (eğitmenin ana sayfalarından biri).
 
 ### 7.7 Yoklama — `attendance` (V9)
 - AttendanceSession + AttendanceEntry (`GELDI`/`GELMEDI`/`IZINLI`). Oturum açılınca AKTIF kayıtlı öğrenciler otomatik entry.
 - ⭐ **AttendanceAccessGuard:** TEACHER token sub → Teacher.keycloakUserId → kendi grupları.
-- **Uçlar:** `POST/GET /api/attendance-sessions`, `/{id}/entries`. Yetki: ADMIN/FRONTDESK yazma; ACCOUNTING okuma; TEACHER kendi grupları.
+- ⚠️ **Dalga C (§7.30, V33):** oturum `kaydedildiTarihi/kaydeden` taşır. Eğitmen **bir kez** Kaydet'e basar, sonrası eğitmen için KİLİTLİ (409 `KILITLI`); ofis/yönetici düzeltir. **İzinli** yalnız ofis (eğitmen 400). Eğitmenin ilk kaydı ofise `YOKLAMA_ALINDI` uygulama içi bildirimi üretir. Liste ucu `from/to` alır (Yoklama Listesi sayfası).
+- ⚠️ **Kredi uyarısı (§7.32):** GELDİ işaretlenen öğrencinin bu ders için kredisi yoksa ofise `KREDI_BITTI` bildirimi; yoklama engellenmez. Kontör düşümü `PaketService.yoklamaDegisti` (GELDİ/GELMEDİ düşer, İZİNLİ düşmez).
+- **Uçlar:** `POST/GET /api/attendance-sessions` (`?grupId&tarih&from&to`), `/{id}/entries`. Yetki: ADMIN/FRONTDESK yazma; ACCOUNTING okuma; TEACHER kendi grupları. **Web:** `/yoklama` (dikey liste, Geldi/Gelmedi/İzinli düğmeleri, `RollPanel`), `/yoklama-listesi`.
 
 ### 7.8 Tahsilat/Muhasebe — `finance` (V10)
 - Accrual + Payment + Expense. Bakiye = SUM(tahakkuk) − SUM(ödeme). `GET /api/students/{id}/balance`, `/finance`.
-- **Uçlar:** `/api/accruals`, `/api/payments`, `/api/expenses`. ⚠️ SADECE **ADMIN + FRONTDESK_ACCOUNTING**. FRONTDESK 403.
+- **Uçlar:** `/api/accruals`, `/api/payments`, `/api/expenses`. ⚠️ SADECE **ADMIN + FRONTDESK_ACCOUNTING**. FRONTDESK 403. Ödeme/gider `kasaId` (§7.23), gider `tedarikciId`. Accrual `brutTutar/indirimTutar/indirimAciklama` (§7.31; `tutar` NET). **Web:** Finans sekmeleri Tahakkuklar · **Gelirler** (ödemeler + ürün satışları, Dalga A) · Giderler · Ders Paketleri · İndirimler · Kasalar · Tedarikçiler · Otomatik Tahakkuk.
 
 ### 7.9 Otomatik Aylık Tahakkuk — `finance`
-- `POST /api/accruals/uret` + `GET /api/accruals/uret-onizle`. AKTIF öğrenci + GRUP tipi grup aidatı. Idempotent. Yetki: SADECE ADMIN.
+- `POST /api/accruals/uret` + `GET /api/accruals/uret-onizle`. AKTIF öğrenci + GRUP tipi grup + **AYLIK planlı** kayıt (DONEMLIK atlanır, §7.32). Brüt − öğrenci indirimi = net (§7.31). Idempotent. Persist modunda ayrıca **o ayın kredileri** açılır (`KrediService.aylikKredileriUret`). Sonuç `atlananDenemeOgrenciler` ile DENEME öğrencileri ayrıca listeler (§7.26). Yetki: SADECE ADMIN.
 
 ### 7.10 Hakediş — `payout` (V11; Model C V16) ✅ grup-bazında, çoklu satır
 - ⭐ **Model C — hakediş tipi GRUBA bağlı, çifte sayım imkânsız.** `hesapla`/`onizle` artık **`List<PayoutResponse>`** döner. Motor öğretmenin gruplarını dolaşır; her grup KENDİ `hakedisTipi`'yle ve öğretmenin o tipe ait `TeacherHakedis` oranıyla hesaplanır, **tip başına TEK satıra** toplanır:
@@ -203,7 +215,7 @@ Migration sırası **V1→V16** (V13=tenant, V14=subscription, **V15=teacher_hak
 - Product + Sale (birimFiyat kopyalanır). Atomik stok düşümü; yetersiz → 409. Uçlar: `/api/products`, `/api/sales`. Yetki: ürün yazma ADMIN; satış+ürün okuma ADMIN+ACCOUNTING.
 
 ### 7.12 Raporlar — `report` (read-only)
-- `/financial-summary` (ADMIN), `/student-balances` (ADMIN+ACCOUNTING), `/teacher-payouts` (ADMIN), `/group-occupancy` (3 rol). TEACHER tümüne 403.
+- `/financial-summary` (ADMIN), `/student-balances` (ADMIN+ACCOUNTING), `/teacher-payouts` (ADMIN), `/group-occupancy` (3 rol), `/attendance` + `/attendance.csv` (3 rol, Faz 4), **`/teacher-quality?baslangic&bitis`** (ADMIN, §7.33: yük, planlanan vs alınan yoklama, kaydedilmemiş oturum, katılım). TEACHER tümüne 403. **Web:** altı sekme, hepsi grafikli (`features/report/charts.tsx`, recharts).
 
 ### 7.13 Kullanıcı Yönetimi + Profil — `com.artademi.user` (Keycloak Admin API)
 - **`/api/users` (SADECE ADMIN, tenant-scoped):** GET liste/`{id}`, POST, PUT, PATCH `/{id}/active`, DELETE.
@@ -483,314 +495,6 @@ gruba kayıt ve yoklama statüyü değiştirmez, "Aktif" sekmesi `status=AKTIF` 
 - Reddedilen seçenekler (tekrar gündeme gelirse): (A) kayıt=AKTİF — deneme dersine gelen de faturalanır;
   (B) kayıt formunda "deneme dersi" kutusu — en dengeli ama kurum akışına ek alan.
 
-## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
-
-| Alan | ADMIN | FRONTDESK | FRONTDESK_ACCOUNTING | TEACHER | SUPER_ADMIN |
-|---|:--:|:--:|:--:|:--:|:--:|
-| Öğrenci/Grup/Kayıt (operasyon) | ✅ | ✅ | ✅ | ❌ | ❌ (400) |
-| Branş/Salon/Öğretmen/Grup/Program **yazma** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Branş/Salon/Öğretmen/Grup/Program **okuma** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Finans (tahakkuk/ödeme/gider/bakiye) | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Hakediş (maaş) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Stok ürün yazma | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Stok satış + ürün okuma | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Rapor: finansal özet / hakediş özeti | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Rapor: öğrenci borç listesi | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Rapor: grup doluluk | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Yoklama | ✅ | ✅ | (okuma) | **kendi grupları** | ❌ |
-| Kullanıcı yönetimi (`/api/users`) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Profil (`/api/me`) | ✅ | ✅ | ✅ | ✅ | ⚠️ 400 (tenant'sız) |
-| Dashboard (`/api/dashboard`) | ✅ tam | ✅ (para yok) | ✅ (para+borç) | ✅ (kendi) | ❌ 400 |
-| Tenant adı oku/düzenle (`/api/tenant`) | ✅ oku+yaz | ✅ oku | ✅ oku | ✅ oku | ❌ |
-| **Platform tenant yönetimi (`/api/platform/**`)** | ❌ | ❌ | ❌ | ❌ | **✅** |
-
-> **Genel ilke:** FRONTDESK = parayı görmez. FRONTDESK_ACCOUNTING = parayı görür, maaş görmez. TEACHER = kendi yoklaması. ADMIN = tenant içi her şey. **SUPER_ADMIN = platform sahibi: yalnız tenant yönetimi, iş verisine fail-closed izole (400/403).**
-
----
-
-## 9. Web Frontend — TAMAMLANDI ✅ (iş modülleri + platform konsolu)
-
-`web/` klasöründe **tüm modüller canlı + SUPER_ADMIN platform konsolu** ayrı ağaçta.
-
-**İskelet/altyapı:** Vite+React+TS+Tailwind, keycloak-js (login-required, PKCE S256, token bellekte, otomatik refresh), `api/client` (axios: Bearer + ApiResponse açma + 401 yenileme).
-
-**Tasarım sistemi:** `design-reference.html` (repo kökü, **resmî kaynak**) → erik+ahududu paleti + Fraunces (başlık) + Manrope (gövde) + `.card/.data-table/.badge/.tabs/.btn*`. Yeni tema uydurulmaz.
-
-**Mimari:** `AuthContext` (`realm_access.roles` → `hasRole`/`hasAnyRole`, token `name` claim'i konsol kimliği için), `AppShell` (iş kullanıcıları), `ProtectedRoute`/`RoleRoute` + rol bazlı landing. Kalıp `web/.claude/skills/frontend-architecture/SKILL.md`'de.
-
-**İş modülleri (liste/form/detay + rol gating):** Öğrenci · Tanımlar · Gruplar/Kayıt · Program/Yoklama · Finans · Hakediş · Stok/Satış · Raporlar · Kullanıcı Yönetimi · Profil. **Dashboard (Genel Bakış)**: role göre dolu panel (`.stat` + recharts trend + son hareketler + bugünkü dersler; `GET /api/dashboard`). İlk-şifre kilidi AppShell layout seviyesinde (bypass imkânsız).
-
-**✅ YENİ web işleri (bu faz):** (a) **Grup Değiştir** — GroupDetailPage kayıt satırında, hedef GRUP dropdown + eski/yeni aidat **fark**ı gösteren onay modalı → `/transfer`. (b) **Öğretmen çoklu hakediş (Model C)** — TeacherForm'da `useFieldArray` ile "+" tip ekle/sil + tip başına değer inputu; GroupForm'da **Hakediş Tipi** dropdown (grup-tipinden varsayılan, düzenlenebilir); payout/rapor ekranları **liste-response**a uyarlandı. (c) **Logo** — amblem sidebar/konsol/ilk-parola + favicon (`web/src/assets/`).
-
-**✅ SUPER_ADMIN Platform Konsolu (YENİ):**
-- **Ayrı PlatformApp ağacı:** Login sonrası `hasRole('SUPER_ADMIN')` → `/platform/*`, **AppShell HİÇ render edilmez**. İş kullanıcısı `/platform/*` → 403. super.admin iş route'larına → redirect.
-- **PlatformShell:** sidebar'sız sade konsol (üstte "Platform Konsolu" + kimlik token'dan + Çıkış). Tenant adı GÖSTERMEZ (super.admin'in tenant'ı yok). ⚠️ `/api/me`'ye BAĞIMLI DEĞİL — super.admin'de `/api/me` 400 döner, kimlik token'dan (`preferred_username`/`name`).
-- **Tenant listesi (`/platform/tenants`):** `.data-table` (Ad/Status/Oluşturulma/Aksiyon), tabs (Hepsi/Aktif/Askıda) + debounce arama. Satır aksiyonu: Askıya Al (onaylı) / Aktif Et → PATCH /status.
-- **Tenant oluştur formu:** RHF+Zod (ad+adminEmail+adminAd+adminSoyad), `error.fields`→input altı, 409→form üstü. Başarı → yeşil banner (username + ilk parola Artademi2026!); `warning` → amber banner (admin yaratılamadı, elle ekle). Her iki durumda tenant listede.
-- **Dosyalar:** `api/platform.ts`, `features/platform/{usePlatformTenants,tenantSchema,PlatformShell,TenantListPage,TenantForm}.tsx`, `App.tsx` (rol çatallanması), `AuthContext.tsx` (name claim).
-
-- **Logo varyantları** `web/src/assets/`: `artademi-logo-full.png` (login/Keycloak teması), `artademi-amblem.png` (sidebar/konsol), `artademi-favicon.png` (sekme). Landing kopyaları `infra/landing/assets/`.
-
----
-
-## 10. Çalışma Yöntemi (yeni pencerede aynen kullanılacak)
-
-### job.md yöntemi
-Görev `job.md`'ye yazılır (gitignore'da), Claude Code'a "job.md dosyasını oku ve uygula" denir.
-
-> **NOT:** `ARTADEMI_HANDOFF.md` artık repoda **tracked** (private repo; içinde test parolaları var). Claude Code diskten okuyup güncelleyebilir. (Üretim/devir notları `infra/DEPLOY-REHBERI.md`'de.)
-
-### module-workflow skill (backend — KURULU)
-Modül kurulduktan sonra Claude Code KENDİSİ doğrular: `./mvnw test` + backend restart + curl (mutlu yol + hata). **COMMIT/PUSH YAPMAZ.**
-
-### Skiller
-Backend `.claude/skills/`: `multi-tenancy`, `testing-standards`, `keycloak-auth`, `api-contract`, `project-architecture`, `spring-boot-backend`. Frontend `web/.claude/skills/frontend-architecture/SKILL.md`.
-
-### Commit disiplini
-Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşil olmadan commit yok.
-
----
-
-## 11. Git Commit Geçmişi (son durum, hepsi origin/main'de)
-
-```
-... feat(report) 15fd04f → fix(teacher) + verify-roles.sh
-→ [user + tenant modülleri]
-→ feat(platform) aa2b65d (SUPER_ADMIN tenant CRUD)
-→ feat(platform) d9d7a45 (ASKIDA login engeli)
-→ feat(platform) [provisioning] (tenant + ilk ADMIN)
-→ feat(web/platform) 23486c3 (SUPER_ADMIN konsolu)
-→ feat(platform) 17b99e0 (subscription + grace/ASKIDA, V14)
-→ feat(teacher) [/api/groups/mine]
-→ feat(web) [logo yerleştirme]
-→ feat(dashboard) [GET /api/dashboard]
-→ feat(web) 8b46a87 (dashboard frontend, recharts)
-→ feat(infra/keycloak) 3205947 (login teması)
-→ feat(infra) (prod deploy: compose.prod + Dockerfile + Caddy)
-→ feat(platform) (tenant kullanıcı CRUD + soft-delete/SILINDI + landing içeriği)
-→ feat(infra) edf211f (artademi.com landing: Caddy file_server + www→apex)
-→ fix(security) 61e4a1a (CORS allowed-origins env-driven — prod 403 çözümü)
-→ feat(enrollment) 82dd48f (öğrenci grup transferi + otomatik aidat farkı, İş A)
-→ feat(teacher,payout) a62ade4 (çoklu hakediş tipi — Model C grup-bazında, V15+V16, İş B)
-```
-
-> **PROD CANLI (Hetzner 37.27.241.117):** app.artademi.com (web+API) + auth.artademi.com (Keycloak) + **artademi.com/www landing** — hepsi SSL'li (Caddy/Let's Encrypt, Cloudflare DNS-only). Prod DB **Flyway v16**. Tek tenant: **Lina Sanat Merkezi** (`1111…`, AKTIF) + super.admin; Lina'da 3 öğretmen (hepsi SAATLIK, teacher_hakedis'e göç edildi). Test tenant'lar (test/test2/Tab Sanat) **kalıcı silindi**. Platform 403 zinciri (Security eski-imaj + provisioning SA-rolleri + CORS) **tamamen çözüldü**.
-
----
-
-## 12. Dev DB Test Verisi (tenant A `11111111-...` = Lina)
-
-- **Öğrenciler:** Ada Yılmaz(1, AKTIF, anne TC 98765432109), Mert(2, kardeş), Zeynep(3), Elif(4), Ahmet(5)
-- **Branş:** Bale(1). **Salon:** Salon A(1, kap. 20). **Öğretmen:** Selin Aydın(1, SAATLIK 350, keycloakUserId=teacher.a sub).
-- **Gruplar:** "Bale Başlangıç Cumartesi"(1, GRUP, aidat 1500) + "Selin ile Özel Bale"(2, OZEL, 500). **Kayıt:** Ada→grup1 AKTIF.
-- **Program:** grup1 Cumartesi 11:00-13:00. **Finance:** Ada bakiye 1620.50; gider 200. **Ürün:** Mayo(1). **Payout:** Selin 2026-06 ODENDI 350.
-- **Tenant B (Anka `2222…`):** "B-" önekli örnek veri zinciri (izolasyon testi).
-- **Platform testlerinden kalan:** "Prov Test …" + "Warn …" tenant'ları + `yonetici…` admin'i dev Keycloak/DB'de (silme yok ilkesi).
-
----
-
-## 13. SIRADAKİ İŞ: Yapılacaklar
-
-### 13.0 REKABET ANALİZİ SONRASI YOL HARİTASI (2026-09-01)
-
-**Rakip:** [derslic.com.tr](https://derslic.com.tr/) — kurs/etüt merkezleri, sanat kursları, pilates stüdyoları. Bulut tabanlı, **yalnız web** (mobil uygulama YOK, SSS'de teyitli). Fiyat kademeli: 1.750 / 2.250 / 2.750 / 3.500 TL (öğrenci sayısına göre, **KDV dahil**), 15 gün demo, yıllıkta 3 ay hediye.
-
-**En kritik bulgu:** eski fiyatımız (5.000 TL + KDV = 6.000) rakibin giriş kademesinin ~3,4 katıydı; küçük kurumu daha demoya girmeden eliyordu. Yeni fiyat 2.000 + KDV = 2.400 — Derslic'in giriş paketinin (1.750) hâlâ bir miktar üstünde ama 300+ öğrencili kurumlarda artık biz ucuzuz.
-
-#### ✅ Bu turda yapılanlar
-- **Fiyat düşürüldü: aylık 2.000 TL + KDV, TEK PLAN sabit.** Kademe YOK, yıllık plan YOK.
-  - ⚠️ **Yıllık plan bir ara eklenip GERİ ALINDI (2026-09-01, aynı gün).** `AbonelikPeriyodu`, `GET /api/billing/plans`, `PlanSecenegi`, periyot seçici — hepsi kaldırıldı. Tekrar istenirse git geçmişinde var; ama iyzico'da **her dönem AYRI plandır**, o yüzden yıllık için ikinci bir plan referansı (`IYZICO_YILLIK_PLAN_REF`) gerekir.
-  - ⚠️ `BillingProperties.aylikPlanUcreti()` varsayılanı **10.000'di** (yml 5.000 derken) — bayat değer, 2.000'e çekildi.
-  - Landing: fiyat kartı + Mesafeli Satış Sözleşmesi md.3 ve md.6 güncellendi.
-- **iyzico canlı plan açıldı (2026-09-01):** ürün "Artademi Tam Paket" (`affb14cb-6b90-42a1-b291-c673cc4f8bab`) altında yeni plan **"Aylik Tam Paket 2000"** → `IYZICO_PLAN_REF=8a914fbf-61fb-4b5f-9c09-587a8a0c88bb`. `.env.prod` güncellendi (`BILLING_AYLIK_UCRET=2000` da), yedek: `.env.prod.yedek-20260901-174046`.
-  - Canlıda duran eski planlar (abonesi YOK, temizlenebilir): "Aylik Tam Paket 5000" `e2902022-…`, "Aylik Tam Paket" 10.000 `1f2153d4-…`, "TEST 1 TL - silinecek" `a4953332-…`.
-  - ⚠️ **iyzico'da plan fiyatı sonradan DEĞİŞTİRİLEMEZ**; yeni fiyat = yeni plan. Mevcut aboneler eski planda kalır (şu an abone yok, sorun değil).
-- ⚠️ **YENİ TUZAK — iyzico imzası query string İÇERMEZ** (canlı API'de ölçüldü): `hex(HmacSHA256(rnd + uriPath + body, secret))` hesabında `?page=1&count=100` gibi bir query imzaya girerse **"Authentication token is not verified" (errorCode 8)** döner. `IyzicoAuth` javadoc'u tam tersini söylüyordu, düzeltildi. Bugünkü çağrıların hiçbirinde query yok; query'li bir uç eklenirse imza `path.split("?")[0]` ile hesaplanmalı.
-- `scripts/iyzico-plan-olustur.py` yeniden yazıldı: ürünü **bul-ya-da-oluştur** (canlıda ürün zaten var, eski hâli "zaten var" hatasıyla duruyordu), imza query'siz, tek aylık plan açar.
-- **Şube modülü yapıldı** (§7.18) — landing "çok şube" diyordu, kodda karşılığı yoktu.
-
-#### ⏳ SONRAKİ İŞLER (rakip paritesi — öncelik sırasıyla)
-| # | Modül | Durum / not |
-|---|---|---|
-| 1 | ~~**Makbuz / PDF çıktısı**~~ | ✅ **TAMAM** (2026-09-02) — tahsilat makbuzu + öğrenci kayıt formu, gömülü Türkçe font. Bkz. §7.19. |
-| 2 | **SMS** | §13.2b'de planlı. Önkoşul: **şifreli tenant-bazlı ayar saklama** (iyzico tek anahtarla `.env`'de; SMS her kurumun kendi kimlik bilgisini ister). |
-| 3 | **Otomatik bildirim** | Borç hatırlatma bugün ELLE (`BorcHatirlatmaPage`). Eklenecek: zamanlanmış gönderim (kurum opt-in), devamsızlık bildirimi, haftalık finansal özet. |
-| 4 | ~~**Online ön kayıt formu**~~ | ✅ **TAMAM** (2026-09-07) — public form (slug) + başvuru listesi + öğrenciye dönüştürme. Bkz. §7.20. |
-| 5 | **Kasa yönetimi** | Çoklu kasa/banka; tahsilat ve gider kasaya bağlanır, kasa bakiyesi + devir. |
-| 6 | **Tedarikçi/cari** | Gider → tedarikçi ilişkisi, tedarikçi bakiyesi. |
-| 7 | **Telafi dersi** | `YoklamaDurumu` bugün yalnız `GELDI/GELMEDI/IZINLI`. Telafi hakkı + kullanım takibi. |
-| 8 | **Ders paketi / kontör** | `Group` bugün `aylik_aidat` + `ders_basi_ucret` taşıyor; "10 derslik paket + kalan ders" üçüncü model olarak yok. |
-| 9 | **Veliden kartla tahsilat** | ⚠️ **ÖNCE HUKUK, SONRA KOD.** Parayı biz toplayıp kuruma aktarırsak bu ödeme aracılığıdır ve lisans sorusu doğurur; kurumun kendi alt üye işyeri (submerchant) hesabıyla yapılırsa iyzico ile ayrı sözleşme modeli gerekir. Mali müşavir/avukata sorulmadan başlanmamalı. Bugünkü iyzico entegrasyonu YALNIZCA kurumun BİZE ödediği abonelik içindir. |
-| 10 | **Yıllık ödeme avantajı** | ❌ **İPTAL** (2026-09-01, Sercan kararı): tek sabit aylık fiyat tercih edildi. Rakip yıllıkta 3 ay hediye veriyor — pazarlama gerekçesi doğarsa yeniden değerlendirilir. |
-
-#### 🎯 Rakipte de OLMAYAN (fark yaratacaklar)
-- **Veli portalı** — veli kendi çocuğunun devamsızlık/borç/programını görür. Ne bizde ne onlarda; ilk yapan öne geçer.
-- Uygulama içi bildirim merkezi · Mobil uygulama (React Native, planlı).
-
-#### Bizim zaten üstün olduğumuz yerler (pazarlamada öne çıkar)
-Çoklu hakediş (saatlik + ciro oranı aynı anda, grup bazında) · grup transferinde otomatik aidat farkı · kardeş eşleştirme · tip düzeyinde veri gizleme (ön büroya para alanları HİÇ gönderilmez) · işlem kaydı · KVKK veri dışa aktarma · devamsızlık + doluluk raporları · otomatik aylık tahakkuk · stok/ürün satışı.
-
-#### Kod olmayan işler
-Yardım videoları · WhatsApp destek hattı · rakibin 15 günlük demosunu açıp "bilinmiyor" işaretli özellikleri (veli portalı, raporlama derinliği, hakediş modeli) doğrulamak.
-
-### 13.1 ✅ TAMAMLANDI (bu faz)
-- **Platform fazı:** Tenant CRUD + ASKIDA login engeli + admin provisioning + web konsolu. SUPER_ADMIN = platform sahibi, iş modüllerine fail-closed, yalnız `/api/platform/**`.
-- **Platform konsolu tam:** tenant kullanıcı CRUD (ekle/sil) + **soft-delete (SILINDI)** (§7.15).
-- **İş A — öğrenci grup transferi** (§7.5) + **İş B — Model C çoklu hakediş** (§7.3/7.4/7.10), V15+V16, 205 test, prod'da canlı.
-- **Prod CANLI + 403 zinciri çözüldü:** app/auth/landing SSL'li yayında; Security(eski-imaj)+provisioning(SA-rolleri)+CORS 403'leri çözüldü (bkz. §11 prod notu, §7.15 CORS).
-- **Landing (artademi.com):** Caddy file_server, www→apex 301, logolar bağlı; animasyonlu hero + fiyatlandırma (4.000 TL/ay) + KVKK + iletişim (mailto info@artademi.com). ⚠️ Fiyat o gün 4.000 TL'ydi; GÜNCEL fiyat için §13.0.
-
-### 13.2 KALAN BÜYÜK FAZ (subscription parasallaşması + bildirim)
-> Hedef: ürün online abonelikle satılır. ⚠️ **GÜNCEL FİYAT: aylık 2.000 TL + KDV / yıllık 20.000 TL + KDV (bkz. §13.0)** — aşağıdaki 4.000/10.000 rakamları TARİHSELDİR. Kurum satın alır → login → ilk parola ile girer.
-- **Ödeme entegrasyonu — BACKEND TAMAM (2026-07, V17):** iyzico Abonelik API adaptörü (`com.artademi.billing`): `GET /api/billing/subscription` + `POST /api/billing/checkout` (ADMIN), `POST /api/billing/callback` (iyzico 302), `POST /api/webhooks/iyzico` (HMAC imzalı, idempotent, fail-closed). `/api/billing/**` TenantStatus muaf (ASKIDA kurum ödeme yapabilir). Env: `IYZICO_API_KEY/SECRET_KEY/MERCHANT_ID/PLAN_REF` (boşken checkout 409, webhook 401). Araştırma raporu `docs/odeme-aracisi-arastirmasi-2026-07.md`. **Web Abonelik sayfası CANLI:** `/abonelik` (ADMIN; menü "Sistem→Abonelik") — özet kartı + RHF/Zod fatura formu + iyzico checkout embed (`IyzicoCheckoutForm` script'leri elle kurar) + `?sonuc=` banner. Compose: `BILLING_WEB_RETURN_URL`, `IYZICO_*` env. **iyzico SANDBOX HAZIR (2026-07-29):** Abonelik modülü destek talebiyle aktifleştirildi (panelde self-servis YOK — entegrasyon@iyzico.com'a üye işyeri no ile yazılır). Merchant ID **3431492**. API'den kurulan ürün "Artademi Tam Paket" + plan "Aylık Tam Paket" (10.000 TL/ay TRY, RECURRING) → `IYZICO_PLAN_REF=ddf664c2-22fb-456d-af7e-cdf5e1c65453`. Anahtarlar `.env.prod`'da (git'te YOK). ⚠️ **Gerçek yanıt sapmaları (canlı testte bulundu, koda işlendi):** `initialize` token'ı KÖKTE döner (data altında değil); ödeme tamamlanmadan sorgulanırsa `failure/201601` döner → istisna değil "başarısız sonuç" sayılır. Webhook imzası doküman ile teyitli: `hex(HmacSHA256(merchantId+secretKey+eventType+subRef+orderRef+custRef, secretKey))`. ✅ **SANDBOX UÇTAN UCA GEÇTİ (2026-07-31):** app.artademi.com/abonelik → iyzico formu → test kartı (5528 7900 0000 0008) → abonelik başladı. Webhook imzası canlı doğrulandı (geçerli→200, sahte→401). ⚠️ **Telefon tuzağı:** iyzico `gsmNumber` için YALNIZCA `+90XXXXXXXXXX` kabul eder (`0555…`/`555…`/`90555…` → HTTP 422); `TurkishPhone.toE164` bunu çevirir. ⚠️ Adaptör 4xx/5xx'i yutup gövdeyi okur — aksi halde iyzico hataları opak 500 olurdu. ⚠️ **WEBHOOK SANDBOX'TA TESLİM EDİLMİYOR (ölçüldü):** URL İşyeri Bildirimleri'ne kaydedildiği halde, başarılı tahsilata rağmen `billing_event`'e hiçbir kayıt düşmedi. → **MUTABAKAT (reconciliation) eklendi ve artık DOĞRULUK KAYNAĞI odur:** `BillingReconciliationService.reconcileAll(today)` sağlayıcıya "bu aboneliğin durumu ne?" diye sorar (`GET /v2/subscription/subscriptions/{ref}` → `subscriptionStatus` + `orders[].orderStatus/endPeriod`), kaçan tahsilatı yakalar ve `markPaid` ile dönemi ilerletir. `SubscriptionScheduler` her gün 03:00'te **önce mutabakat, sonra evaluate** çalıştırır (ters sıra ödeme yapan kurumu haksız yere askıya alırdı). Sağlayıcı sorgulanamazsa kayda DOKUNULMAZ (fail-safe); bir aboneliğin hatası diğerlerini durdurmaz. **KALAN:** webhook teslimi için iyzico'ya sorulacak (opsiyonel — mutabakat olmadan da sistem doğru çalışır) + canlı (production) merchant başvurusu.
-- **Lead/iletişim formu — TAMAM (2026-07):** `POST /api/public/leads` (JWT'siz, honeypot+30sn IP cooldown) → Gmail SMTP ile info@artademi.com'a mail (`SMTP_USERNAME/SMTP_PASSWORD` app-password, `.env.prod`'da). Landing formu fetch ile bağlı (mailto kaldırıldı). Mail health check kapalı (`management.health.mail.enabled=false`). info@artademi.com = Google Workspace grubu (MX/SPF/DKIM Cloudflare'de, doğrulandı).
-- **Platform ops dashboard (SUPER_ADMIN) — ADIM 1 TAMAM (2026-07-31):** `GET /api/platform/dashboard` + web `/platform` (konsolun yeni açılışı) — kurum/abonelik sayıları, **MRR** (yalnız AKTIF+AYLIK+ODENDI sayılır; deneme/grace/SILINDI gelire yazılmaz), dikkat gerektirenler (grace/başarısız/askıda), 7 günlük yaklaşan yenilemeler, son ödeme hareketleri (`billing_event`). Konsola sekme navigasyonu eklendi (`PlatformShell.SEKMELER` — yeni ops sayfaları oraya). MRR fiyatı `BILLING_AYLIK_UCRET` (varsayılan artık **2.000**; bkz. §13.0). **ADIM 2 TAMAM:** `GET /api/platform/billing/subscriptions?filtre=&q=` (iş-dili filtreler: ODEYEN/DENEME/GECIKMIS/ASKIDA/HEPSI; SILINDI yalnız HEPSI'de) + `GET /api/platform/billing/events?page=&size=` (sayfalı, PageMeta) → web `/platform/odemeler` sekmesi: kurum bazlı ödeme durumu tablosu + ham hareket listesi. **ADIM 3 TAMAM — denetim izi (V18 `platform_audit`):** kurum aç/durum değiştir/sil, kullanıcı ekle/sil, abonelik güncelle işlemleri iz bırakır. `GET /api/platform/audit` (sayfalı) → web `/platform/denetim`. ⚠️ Tasarım: entity **salt-yazılır** (setter YOK), `target_ad` **snapshot** (kurum silinse de iz okunur), kurum işlemlerinde iz **aynı transaction'da** yazılır (izsiz işlem olmasın); Keycloak'a giden kullanıcı işlemlerinde ise işlem başarılı olduktan SONRA yazılır (`kaydetBagimsiz`). Actor JWT `preferred_username`'den, yoksa "sistem". Aynı duruma tekrar PATCH iz YAZMAZ (gürültü yok).
-- ✅ **Ödeme hatırlatma mailleri TAMAM (V19, 2026-08):** `BillingNotificationService` — 4 uyarı tipi (ODEME_BASARISIZ / GRACE_BASLADI / GRACE_BITIYOR (son 3 gün) / ASKIYA_ALINDI), kurumun **ADMIN** rolündeki kullanıcılarına (Keycloak'tan) gider. ⚠️ **Idempotency:** `uq_billing_notification(subscription_id, tip, donem_anahtari)` — scheduler her gün çalışır, aynı uyarı bir DÖNEM içinde tek kez gider; sonraki dönemde yeniden gidebilir. Alıcı yoksa iz YAZILMAZ (yönetici eklenince gitsin). Scheduler sırası: mutabakat → evaluate → **bildirim** (geçişlerden SONRA ki güncel durum yazılsın). Mail/Keycloak hatası günlük işi durdurmaz.
-- **Kalan mail işleri:** (a) provisioning'de yeni admin'e kullanıcı adı + ilk parola maili; (b) Keycloak SMTP (forgot-password akışı kurulu ama mail gitmiyor).
-- **Şifremi unuttum:** Keycloak forgot-password akışı + tema HAZIR; gerçek çalışması SMTP'ye bağlı (yukarıdaki mail işi).
-- **Grace uyarı banner:** dashboard ADMIN'de `subscriptionWarning` gösteriliyor (kısmi); diğer rol/sayfalara yaygınlaştırma opsiyonel.
-
-### 13.2b SMS ENTEGRASYONU (planlandı, 2026-08-30 — henüz YAPILMADI)
-
-> Karar: SMS **kurum kendi sağlayıcı hesabını bağlar**, platform hesabından gönderilmez.
-
-**Neden bu model** (e-posta itibar dersinin doğrudan sonucu):
-- **İtibar paylaşılmaz** — ortak gönderici başlığında bir okulun kötü kullanımı diğerlerinin
-  mesajlarını da riske atar. E-postada alan adımız zaten ortak; SMS'te aynı hatayı yapmayalım.
-- **Veli göndereni tanır** — başlık `TAB SANAT` olur, `ARTADEMI` değil. Tanınmayan başlıktan
-  gelen "borcunuz var" mesajı hem işe yaramaz hem şikâyet toplar.
-- **Maliyet ve hukuki sorumluluk doğru yerde** — veliyle sözleşme ilişkisi okulundur.
-
-**⚠️ Türkiye'ye özgü iki engel (planı etkiler, baştan bilinmeli):**
-1. **Gönderici başlığı tescili** — Türkiye'de rastgele isimle SMS atılamaz; başlık operatörde
-   tescillenir, şirket evrakı ister, birkaç gün sürer. Okul "bugün bağlayıp bugün gönderemez";
-   onboarding metninde bu söylenmeli.
-2. **İYS (İleti Yönetim Sistemi)** — ticari elektronik iletide alıcı onayının İYS'ye kaydı
-   zorunlu. Mevcut sözleşme ilişkisi kapsamındaki bilgilendirme için istisna var ama
-   "okul → veliye borç hatırlatma" bu sınırın neresine düşer, **hukukçuya sorulmalı**.
-   Uygulamaya geçmeden önce güncel mevzuat araştırılacak.
-
-**Teknik plan (iyzico kalıbının aynısı):**
-- `SmsSaglayici` portu + somut uygulamalar (Netgsm / İletimerkezi / Verimor vb.)
-- ⚠️ **ÖN KOŞUL — kurum bazlı şifreli sır saklama:** iyzico'da tek anahtar var ve `.env`'de
-  duruyor; SMS'te HER KURUMUN kendi API bilgisi olacak ve DB'ye yazılacak. Düz metin OLAMAZ.
-  Bu altyapı parçası SMS'ten ÖNCE yapılmalı.
-
-**Önerilen sıra:** (1) sağlayıcı araştırması + İYS netleştirmesi → (2) şifreli kurum-bazlı
-yapılandırma → (3) SMS gönderimi.
-
-### 13.3 Küçük açık işler / opsiyonel
-- Finans inline formlarını RHF+Zod'a hizalama (opsiyonel; kabul edilmiş istisna).
-- Demo modülü (V2 `demo_note`) temizliği (opsiyonel).
-
----
-
-## 14. Bilinen Eksikler / Teknik Borç
-
-### ✅ 14.0 İLK-PAROLA ZİNCİRİ — KAPATILDI (tespit 2026-08-10, düzeltme 2026-08-29)
-
-> Otovers'ta aynı konu çözülürken çapraz tespit edilmişti; iki açık da kapatıldı. 622 test yeşil.
->
-> **(a) Sabit ortak parola KALDIRILDI.** Artık: e-postası olan kullanıcıya parola HİÇ atanmaz —
-> Keycloak'ın "parolanı belirle" bağlantısı gönderilir, kullanıcı kendi parolasını kurar. Böylece
-> mailde, logda, yanıtta, yedekte hiçbir yerde düz metin parola bulunmaz. E-postası olmayan
-> kullanıcıda `IlkParola.uret()` ile KULLANICIYA ÖZEL rastgele parola üretilir (14 hane, her
-> sınıftan en az bir karakter garantili — düz rastgele çekim politikayı ihlal edebiliyordu) ve
-> yönetici ekranında BİR KEZ gösterilir. Hoş geldin maili artık parola içermez.
->
-> **(b) Sunucu tarafı yaptırım EKLENDİ.** `ParolaDegisikligiInterceptor` bayrak duruyorsa
-> 403 `PASSWORD_CHANGE_REQUIRED` döner. Muaf uçlar yalnızca çıkış yolu (`/api/me`,
-> `/api/me/change-password`) + kimliksiz uçlar + `/api/platform/**` (super.admin'in kilit ekranı
-> yok, kilitlenirse çıkış yolu kalmaz). 30 sn TTL önbellek + parola değişiminde açık invalidasyon.
-> ⚠️ Keycloak'a ulaşılamazsa **fail-open**: altyapı hatası çalışan kurumu durdurmamalı.
->
-> **Mevcut hesaplar:** prod'daki üç hesap (ezgi, sercan, super.admin) DEMO/TEST hesabıdır;
-> eski sabit parolada kalmaları risk oluşturmaz. İlk gerçek müşteri zaten yeni akıştan geçecek
-> (parolasını kendisi belirleyecek). Yine de canlıya gerçek kullanıcı alınırken bu üç hesabın
-> parolası yenilenmeli ya da hesaplar kapatılmalı.
-
-**(a) Sabit ORTAK ilk parola — `Artademi2026!`**
-
-`UserService.java:53`, `KeycloakTenantAdminProvisioner.java:31`, `KeycloakTenantUserAdmin.java:33`
-— üçünde de aynı sabit. Her yeni kullanıcı **aynı** parolayla açılıyor (`temporary=false`).
-
-Sonuç: bu parolayı bilen herkes, **açılmış ama henüz ilk girişini yapmamış herhangi bir
-hesaba** girebilir. Kullanıcı adları tahmin edilebilir olduğu için pratikte istismar edilebilir.
-Parola ayrıca depoda yazılı ve hoş geldin mailinde düz metin gidiyor (`HosGeldinMaili`) —
-gelen kutusunda, yedeklerde ve iletilmiş maillerde kalıcı olarak durur.
-
-Bu, Otovers'ta 2026-08-09'da kapatılan açığın aynı sınıfı: orada sabit `operas123` vardı ve
-ayrıcalık yükseltme zincirinin parçasıydı. Artademi'de rol ataması daha dar olduğu için etki
-daha küçük, ama mekanizma aynı.
-
-**Çözüm (Otovers'ta uygulanan):** parola **her kullanıcı için ayrı** üretilir, istemcide
-(`crypto.getRandomValues`) — böylece hiçbir sunucu cevabında ve log satırında düz metin parola
-bulunmaz — ve yöneticiye kayıttan sonra **bir kez** gösterilir. Üreteç realm parola politikasını
-garanti etmeli: düz rastgele çekim, en az bir rakam/özel karakter garantisi vermediği için
-Otovers'ta üretimlerin **%29,1'i** politikayı ihlal ediyordu.
-
-**(b) `must_change_password` yalnızca İSTEMCİDE zorlanıyor**
-
-Bayrak Keycloak özniteliğinde tutuluyor (doğru tercih — Keycloak'ın `UPDATE_PASSWORD` zorunlu
-eylemi Direct Access Grant'i kırar, ileride mobil eklenirse bu önemli). **Ama yaptırım yok:**
-`web/src/components/AppShell.tsx:33` bayrağı görünce yalnız kilit ekranını render ediyor;
-backend'de kontrol eden hiçbir filtre/interceptor yok (`TenantFilter`,
-`TenantStatusInterceptor`, `RequireTenantInterceptor`, `TenantAuditInterceptor` — dördünde de
-geçmiyor).
-
-Yani bu bir güvenlik kontrolü değil, **UX dürtmesi**. İsteği doğrudan API'ye atan biri
-parolasını hiç değiştirmeden her şeye erişir — ki (a) yüzünden o parola zaten herkesin bildiği
-sabit parola.
-
-**Çözüm (Otovers'ta uygulanan):** sunucu tarafı tek kapı. `PasswordChangeRequiredFilter`
-bayrak duruyorsa `403 {"code":"PASSWORD_CHANGE_REQUIRED"}` döner; muaf uçlar yalnızca
-kullanıcının bu durumdan çıkabilmesi için gerekenler (profil oku, parola değiştir, menü,
-çıkış). Öznitelik Keycloak admin API'sinden okunduğu için 30 saniyelik TTL'li cache +
-parola değişiminde açık invalidasyon kullanıldı.
-
-**(c) Not — dil tuzağı Artademi'de YOK, sebebi kayda değer**
-
-Otovers'ta Keycloak'ın şifre sıfırlama maili İngilizce gitti: Keycloak dili tarayıcının
-`Accept-Language` başlığından seçiyor ve kullanıcıda `locale` özniteliği yoksa realm varsayılanı
-(`tr`) devreye girmiyor. Artademi bu tuzağa düşmüyor çünkü **maillerini Keycloak'a bırakmıyor**,
-`HosGeldinMaili` gibi kendi Türkçe şablonlarını `JavaMailSender` ile gönderiyor. İleride
-Keycloak'ın kendi maillerine (örn. `execute-actions-email`) geçilirse bu tuzak Artademi'de de
-doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'den `en` kaldırılmalı.
-
-- ✅ **ÇÖZÜLDÜLER (artık açık iş değil):** TEACHER `/api/groups/mine`; platform 403 zinciri (Security eski-imaj + provisioning SA-rolleri + CORS prod origin); landing canlı; tenant izolasyonu kanıtlı; platform konsolu kullanıcı CRUD + soft-delete; Model C çoklu hakediş; grup transferi.
-- **Gerçek ödeme entegrasyonu YOK** (PayTR/iyzico) — paymentStatus elle/`markPaid` ile set ediliyor (subscription temeli hazır).
-- **Mail YOK (info@artademi.com / Zoho bekliyor):** provisioning'de yeni admin'e parola maili gitmez (username + `Artademi2026!` konsolda gösterilir, super.admin elle iletir); grace/ödeme bildirimi yok; Keycloak SMTP yok → forgot-password sayfası temalı ama mail göndermez.
-- `user` modülü: servis-katmanı validasyonları `error.fields` doldurmaz (yalnız `message`); kullanıcı listesinde PageMeta yok.
-- Finans inline formları RHF+Zod yerine `useState` (kabul edilmiş istisna). Demo modülü (V2 `demo_note`) hâlâ duruyor.
-- "Herkes sadece kendi girdiğini düzeltir" ince yetkisi yok. Satış/ödeme iptal/iade yok.
-- ⚠️ **Keycloak prod kurulumu kısmen elle:** service-account realm-management rolleri + user-profile attribute'ları realm export'a (`infra/artademi-realm.json`) işlendi (yeniden import getirir); ama temiz bir yeni ortam kurulumunda doğrulanmalı.
-- ⚠️ **Junk tenant kalıcı silme** prod'da elle (psql + kcadm) yapılır — konsol "Sil" yalnız soft-delete (SILINDI).
-
----
-
-## 15. Hızlı Hatırlatmalar
-
-- Kod değişince backend'i yenile (`./mvnw compile` → devtools restart). "No static resource" = eski kod.
-- Uygulanmış migration düzenlenmez. Para = BigDecimal, asla double.
-- Tenant-aware entity'de `findScopedById`, asla `findById`. **AMA** `Tenant` entity (platform) TenantAware DEĞİL → orada `findById` doğru.
-- **Yumuşak silme (§7.29):** "silindi ama bakiyede duruyor / listede yok ama ödemede adı var" şikâyeti tasarım gereğidir. Silinenler `Sistem → Silinenler`'den geri alınır. Native SQL yazarsanız `silindi_tarihi IS NULL` ve `tenant_id` koşullarını ELLE ekleyin.
-- Kullanıcı/provisioning Keycloak Admin API ile (service account, §4) — frontend'den asla. Keycloak PUT tam-temsil ister (merge şart).
-- **Lina (tenant A) ASKIDA'ya alınmaz** — ana dev tenant; askıya alma testleri Anka/yan tenant'larla.
-- super.admin: tenant'sız, iş uçlarına 400, yalnız `/api/platform/**`; web'de ayrı PlatformApp ağacı (AppShell render edilmez).
-- Tek mesaj = tek istek (kullanıcı tercihi).
-- **DENEME→AKTİF plan seçimiyle otomatik** (§7.35, 2026-09-12): Aylık/Dönemlik/özel ders kaydı öğrenciyi Aktif yapar; "Deneme dersi" planı Deneme bırakır, "Plana geçir" ile Aktif olur. Elle statü hâlâ `PATCH /api/students/{id}/status`.
-- ⚠️ **`formatDate` sadece `YYYY-MM-DD` içindir.** `Instant` alanı (`olusturulmaTarihi`, `createdAt` …) verirseniz ekranda `07T09:30:47.326471Z.09.2026` gibi bozuk metin çıkar — hata sessizdir, patlamaz. Instant için **`formatDateTime`** kullanın. (Bu tuzak üç kez ısırdı: TenantListPage ve DashboardPage call site'ta `.slice(0,10)` ile yamamıştı, Ön Kayıt listesinde canlıya çıktı. `formatDate` artık defansif ama doğru fonksiyonu seçmek yine de sizin işiniz.)
-- **Deploy (2026-09-08'den itibaren normal `git pull`):**
-  ```bash
-  ssh root@37.27.241.117 "cd /opt/artademi && git pull && cd infra && \
-    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build backend web"
-  ```
-  Sunucuda **SSH deploy key** kurulu (`/root/.ssh/artademi_deploy`, `~/.ssh/config`'te github.com için tanımlı); remote `git@github.com:...`. Anahtar **salt-okunur** ve yalnızca bu depoya kapsamlı — sunucu ele geçirilse bile kod push'lanamaz.
-- ⚠️ **Geçmiş tuzak (çözüldü, tekrarlarsa tanıyın):** HTTPS remote ile sunucu `git pull` yapamıyordu — `GET /info/refs` 200 dönerken nesneleri taşıyan `POST /git-upload-pack` **401** veriyordu (depo public olmasına rağmen); protokol v1'e düşürmek de çözmedi. Çözüm HTTPS'i onarmak değil **SSH'a geçmek** oldu. O dönemde deploy'lar `git bundle` ile yapıldı; artık gerekmiyor. Aynı belirti dönerse önce `ssh -T git@github.com` ile anahtarı doğrulayın.
-- Deploy: compose **`infra/`** altındadır (`/opt/artademi/infra/docker-compose.prod.yml`), repo kökünde DEĞİL. Landing Caddy'den doğrudan servis edilir (pull yeterli), ama **panel ayrı bir `web` konteyneridir** — frontend değişikliği için `up -d --build web` şart.
-
----
-
 ### 7.27 Dalga A — menü/isim/küçük ekranlar (✅ 2026-09-10)
 
 - **Menü** (`routes/menu.ts` + `AppShell.SidebarNav`): `MenuItem.grup` ile açılır alt menü; "Yönetici Paneli" başlığı altında Eğitmenler (`/egitmenler`) ve Ders Ücretleri / Gruplar (`/gruplar`). Açık/kapalı tercihi `localStorage['artademi.menu.acik']`; içindeki sayfa aktifse kendiliğinden açık. Genel Bakış artık TEACHER'a görünmez (eğitmen girişte `/yoklama`'ya düşer; menüde Yoklama + Haftalık Program + Geri Bildirim).
@@ -977,6 +681,356 @@ tahakkuk kesilip Aylık'ta kesilmiyordu). **Ödeme hiçbir zaman tetikleyici de�
 - Test: `GroupControllerTest.create_dersSaatleriyle_olusur_cakismadaGrupDaOlusmaz` (2 saat → 2 program; çakışan
   → 409 ve grup yok; ters aralık → 400).
 
+---
+
+## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
+
+| Alan | ADMIN | FRONTDESK | FRONTDESK_ACCOUNTING | TEACHER | SUPER_ADMIN |
+|---|:--:|:--:|:--:|:--:|:--:|
+| Öğrenci/Grup/Kayıt (operasyon) | ✅ | ✅ | ✅ | ❌ | ❌ (400) |
+| Branş/Salon/Öğretmen/Grup/Program **yazma** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Branş/Salon/Öğretmen/Grup/Program **okuma** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Finans (tahakkuk/ödeme/gider/bakiye) | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Hakediş (maaş) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Stok ürün yazma | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Stok satış + ürün okuma | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Rapor: finansal özet / hakediş özeti | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Rapor: öğrenci borç listesi | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Rapor: grup doluluk | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Yoklama | ✅ | ✅ | (okuma) | **kendi grupları** | ❌ |
+| Kullanıcı yönetimi (`/api/users`) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Profil (`/api/me`) | ✅ | ✅ | ✅ | ✅ | ⚠️ 400 (tenant'sız) |
+| Dashboard (`/api/dashboard`) | ✅ tam | ✅ (para yok) | ✅ (para+borç) | ✅ (kendi) | ❌ 400 |
+| Tenant adı oku/düzenle (`/api/tenant`) | ✅ oku+yaz | ✅ oku | ✅ oku | ✅ oku | ❌ |
+| **Platform tenant yönetimi (`/api/platform/**`)** | ❌ | ❌ | ❌ | ❌ | **✅** |
+| Dönemler / Şubeler / Branşlar / Salonlar (okuma · yazma) | ✅ · ✅ | ✅ · ❌ | ✅ · ❌ | ❌ | ❌ |
+| Haftalık Program (`/api/schedules/haftalik`) | ✅ | ✅ | ✅ | ✅ kendi | ❌ |
+| Yoklama Listesi | ✅ | ✅ | ✅ | ✅ kendi | ❌ |
+| Yoklama düzeltme (kayıt sonrası) / İzinli | ✅ | ✅ | ❌ | ❌ (kilitli) | ❌ |
+| Kara liste (işaretle / uyarıyı geç) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Sil** (yumuşak) + Silinenler | ✅ | ❌ | ❌ | ❌ | ❌ |
+| İndirim tanımı yazma · öğrenciye uygulama | ✅ · ✅ | ❌ | ❌ · ✅ | ❌ | ❌ |
+| Rapor: eğitmen kalitesi · devamsızlık | ✅ · ✅ | ❌ · ✅ | ❌ · ✅ | ❌ | ❌ |
+| Bildirim zili (`/api/bildirimler`) | ✅ | ✅ | ✅ | ✅ kendi | ❌ |
+| Bildirim Ayarları / İşlem Kaydı / Kullanıcılar / Abonelik | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+> **Genel ilke:** FRONTDESK = parayı görmez. FRONTDESK_ACCOUNTING = parayı görür, maaş görmez. TEACHER = kendi yoklaması. ADMIN = tenant içi her şey. **SUPER_ADMIN = platform sahibi: yalnız tenant yönetimi, iş verisine fail-closed izole (400/403).**
+
+---
+
+## 9. Web Frontend — TAMAMLANDI ✅ (iş modülleri + platform konsolu)
+
+`web/` klasöründe **tüm modüller canlı + SUPER_ADMIN platform konsolu** ayrı ağaçta.
+
+**İskelet/altyapı:** Vite+React+TS+Tailwind, keycloak-js (login-required, PKCE S256, token bellekte, otomatik refresh), `api/client` (axios: Bearer + ApiResponse açma + 401 yenileme).
+
+**Tasarım sistemi:** `design-reference.html` (repo kökü, **resmî kaynak**) → erik+ahududu paleti + Fraunces (başlık) + Manrope (gövde) + `.card/.data-table/.badge/.tabs/.btn*`. Yeni tema uydurulmaz.
+
+**Mimari:** `AuthContext` (`realm_access.roles` → `hasRole`/`hasAnyRole`, token `name` claim'i konsol kimliği için), `AppShell` (iş kullanıcıları), `ProtectedRoute`/`RoleRoute` + rol bazlı landing. Kalıp `web/.claude/skills/frontend-architecture/SKILL.md`'de.
+
+**Menü (2026-09-12, `routes/menu.ts` — dizi sırası = sidebar sırası; `grup:` alanı açılır blok):**
+Genel Bakış → **Yönetici Paneli** (açılır: Eğitmenler · Yoklama Listesi · Ders Ücretleri / Gruplar) → **Eğitim** (Öğrenciler · Ön Kayıt · Yoklama · Haftalık Program · Telafi Dersleri) → **Tanımlar** (Dönemler · Şubeler · Branşlar · Salonlar) → **İşletme** (Finans · Borç Hatırlatma · Hakediş · Stok / Satış · Raporlar) → **Sistem** (Bildirim Ayarları · İşlem Kaydı · Silinenler · Geri Bildirim · Kullanıcılar · Abonelik). Üst barda **bildirim zili** (30 sn sorgu + toast). Eğitmen girişte yalnız Yoklama + Haftalık Program (+ Yoklama Listesi kendi) görür.
+
+**İş modülleri (liste/form/detay + rol gating):** yukarıdaki menünün tamamı canlı. **Dashboard (Genel Bakış)**: role göre dolu panel (`.stat` + recharts trend + son hareketler + bugünkü dersler; `GET /api/dashboard`). İlk-şifre kilidi AppShell layout seviyesinde (bypass imkânsız). Ortak bileşenler: `SilButonu` (+ onay modalı, 20 sayfada), `KaraListeUyariModal` (`eylem`: grup/kayit/donustur), `KayitPlaniModal` (Aylık/Dönemlik/Deneme dersi, hesaplı), `StatusBadge`, `charts.tsx`.
+
+**✅ YENİ web işleri (bu faz):** (a) **Grup Değiştir** — GroupDetailPage kayıt satırında, hedef GRUP dropdown + eski/yeni aidat **fark**ı gösteren onay modalı → `/transfer`. (b) **Öğretmen çoklu hakediş (Model C)** — TeacherForm'da `useFieldArray` ile "+" tip ekle/sil + tip başına değer inputu; GroupForm'da **Hakediş Tipi** dropdown (grup-tipinden varsayılan, düzenlenebilir); payout/rapor ekranları **liste-response**a uyarlandı. (c) **Logo** — amblem sidebar/konsol/ilk-parola + favicon (`web/src/assets/`).
+
+**✅ SUPER_ADMIN Platform Konsolu (YENİ):**
+- **Ayrı PlatformApp ağacı:** Login sonrası `hasRole('SUPER_ADMIN')` → `/platform/*`, **AppShell HİÇ render edilmez**. İş kullanıcısı `/platform/*` → 403. super.admin iş route'larına → redirect.
+- **PlatformShell:** sidebar'sız sade konsol (üstte "Platform Konsolu" + kimlik token'dan + Çıkış). Tenant adı GÖSTERMEZ (super.admin'in tenant'ı yok). ⚠️ `/api/me`'ye BAĞIMLI DEĞİL — super.admin'de `/api/me` 400 döner, kimlik token'dan (`preferred_username`/`name`).
+- **Tenant listesi (`/platform/tenants`):** `.data-table` (Ad/Status/Oluşturulma/Aksiyon), tabs (Hepsi/Aktif/Askıda) + debounce arama. Satır aksiyonu: Askıya Al (onaylı) / Aktif Et → PATCH /status.
+- **Tenant oluştur formu:** RHF+Zod (ad+adminEmail+adminAd+adminSoyad), `error.fields`→input altı, 409→form üstü. Başarı → yeşil banner (username + ilk parola Artademi2026!); `warning` → amber banner (admin yaratılamadı, elle ekle). Her iki durumda tenant listede.
+- **Dosyalar:** `api/platform.ts`, `features/platform/{usePlatformTenants,tenantSchema,PlatformShell,TenantListPage,TenantForm}.tsx`, `App.tsx` (rol çatallanması), `AuthContext.tsx` (name claim).
+
+- **Logo varyantları** `web/src/assets/`: `artademi-logo-full.png` (login/Keycloak teması), `artademi-amblem.png` (sidebar/konsol), `artademi-favicon.png` (sekme). Landing kopyaları `infra/landing/assets/`.
+
+---
+
+## 10. Çalışma Yöntemi (yeni pencerede aynen kullanılacak)
+
+### job.md yöntemi
+Görev `job.md`'ye yazılır (gitignore'da), Claude Code'a "job.md dosyasını oku ve uygula" denir.
+
+> **NOT:** `ARTADEMI_HANDOFF.md` artık repoda **tracked** (private repo; içinde test parolaları var). Claude Code diskten okuyup güncelleyebilir. (Üretim/devir notları `infra/DEPLOY-REHBERI.md`'de.)
+
+### module-workflow skill (backend — KURULU)
+Modül kurulduktan sonra Claude Code KENDİSİ doğrular: `./mvnw test` + backend restart + curl (mutlu yol + hata). **COMMIT/PUSH YAPMAZ.**
+
+### Skiller
+Backend `.claude/skills/`: `multi-tenancy`, `testing-standards`, `keycloak-auth`, `api-contract`, `project-architecture`, `spring-boot-backend`. Frontend `web/.claude/skills/frontend-architecture/SKILL.md`.
+
+### Commit disiplini
+Her commit öncesi `git status` ile sır dosyası (`.env`) kontrolü. Test yeşil olmadan commit yok.
+
+---
+
+## 11. Git Commit Geçmişi (son durum, hepsi origin/main'de)
+
+```
+... feat(report) 15fd04f → fix(teacher) + verify-roles.sh
+→ [user + tenant modülleri]
+→ feat(platform) aa2b65d (SUPER_ADMIN tenant CRUD)
+→ feat(platform) d9d7a45 (ASKIDA login engeli)
+→ feat(platform) [provisioning] (tenant + ilk ADMIN)
+→ feat(web/platform) 23486c3 (SUPER_ADMIN konsolu)
+→ feat(platform) 17b99e0 (subscription + grace/ASKIDA, V14)
+→ feat(teacher) [/api/groups/mine]
+→ feat(web) [logo yerleştirme]
+→ feat(dashboard) [GET /api/dashboard]
+→ feat(web) 8b46a87 (dashboard frontend, recharts)
+→ feat(infra/keycloak) 3205947 (login teması)
+→ feat(infra) (prod deploy: compose.prod + Dockerfile + Caddy)
+→ feat(platform) (tenant kullanıcı CRUD + soft-delete/SILINDI + landing içeriği)
+→ feat(infra) edf211f (artademi.com landing: Caddy file_server + www→apex)
+→ fix(security) 61e4a1a (CORS allowed-origins env-driven — prod 403 çözümü)
+→ feat(enrollment) 82dd48f (öğrenci grup transferi + otomatik aidat farkı, İş A)
+→ feat(teacher,payout) a62ade4 (çoklu hakediş tipi — Model C grup-bazında, V15+V16, İş B)
+→ [2026-07/08] billing (iyzico V17), platform ops dashboard + denetim (V18), ödeme hatırlatma mailleri (V19),
+   ilk-parola zinciri düzeltmesi 07cbab4, KVKK dışa aktarma bccab99, devamsızlık raporu 7ad6f49, borç hatırlatma 7314ac6 (V22)
+→ f9ab456 şube (V23) + fiyat 2.000 · c2ce196 makbuz/kayıt formu PDF · 71f2196 ön kayıt (V24) · c20ef67 bildirim (V25)
+→ c03ae27 şifreli ayar (V26) · b1365d0 kasa/tedarikçi (V27) · 8e7d636 telafi (V28) · 4c6742d ders paketi (V29)
+→ 28d4baf deploy artık git pull (SSH deploy key)
+→ d261fd0 Deneme uyarıları · 0fbc45a Dalga A · 999e8c3 Dalga B (V31, V32) · 56705bb Dalga C (V33)
+→ 1f34cb8 Dalga D (V34) · 733c01b Dalga E (V35) · 47f0bfe Dalga F · 54a2b14 kapanış eksikleri (V36) · 5c75326
+→ 442e6fa plan seçimi statüyü belirler · 1c9f137 menü sırası + grup formunda ders saatleri   ← PROD (2026-09-12)
+```
+
+> **PROD CANLI (Hetzner 37.27.241.117):** app.artademi.com (web+API) + auth.artademi.com (Keycloak) + **artademi.com/www landing** — hepsi SSL'li (Caddy/Let's Encrypt, Cloudflare DNS-only). Prod DB **Flyway V36** (2026-09-12). Tek tenant: **Lina Sanat Merkezi** (`1111…`, AKTIF) + super.admin; abone yok, tüm hesaplar test. Deploy komutu §15.
+
+---
+
+## 12. Dev DB Test Verisi (tenant A `11111111-...` = Lina)
+
+> ⚠️ **Tarihsel.** Eylül'deki tarayıcı turları dev DB'ye çok sayıda test kaydı ekledi ("Saatli Grup 1234", "Kredi Test", "Eksik Test", "Güz 4556" dönemi vb.). Aşağıdaki liste ilk kurulumun fotoğrafıdır; güncel veri için doğrudan DB'ye bakın (`docker exec artademi-postgres psql -U artademi -d artademi`). Dev kullanıcıları ve tenant kimlikleri (§4) değişmedi.
+
+- **Öğrenciler:** Ada Yılmaz(1, AKTIF, anne TC 98765432109), Mert(2, kardeş), Zeynep(3), Elif(4), Ahmet(5)
+- **Branş:** Bale(1). **Salon:** Salon A(1, kap. 20). **Öğretmen:** Selin Aydın(1, SAATLIK 350, keycloakUserId=teacher.a sub).
+- **Gruplar:** "Bale Başlangıç Cumartesi"(1, GRUP, aidat 1500) + "Selin ile Özel Bale"(2, OZEL, 500). **Kayıt:** Ada→grup1 AKTIF.
+- **Program:** grup1 Cumartesi 11:00-13:00. **Finance:** Ada bakiye 1620.50; gider 200. **Ürün:** Mayo(1). **Payout:** Selin 2026-06 ODENDI 350.
+- **Tenant B (Anka `2222…`):** "B-" önekli örnek veri zinciri (izolasyon testi).
+- **Platform testlerinden kalan:** "Prov Test …" + "Warn …" tenant'ları + `yonetici…` admin'i dev Keycloak/DB'de (silme yok ilkesi).
+
+---
+
+## 13. SIRADAKİ İŞ: Yapılacaklar
+
+### 13.0 REKABET ANALİZİ SONRASI YOL HARİTASI (2026-09-01)
+
+**Rakip:** [derslic.com.tr](https://derslic.com.tr/) — kurs/etüt merkezleri, sanat kursları, pilates stüdyoları. Bulut tabanlı, **yalnız web** (mobil uygulama YOK, SSS'de teyitli). Fiyat kademeli: 1.750 / 2.250 / 2.750 / 3.500 TL (öğrenci sayısına göre, **KDV dahil**), 15 gün demo, yıllıkta 3 ay hediye.
+
+**En kritik bulgu:** eski fiyatımız (5.000 TL + KDV = 6.000) rakibin giriş kademesinin ~3,4 katıydı; küçük kurumu daha demoya girmeden eliyordu. Yeni fiyat 2.000 + KDV = 2.400 — Derslic'in giriş paketinin (1.750) hâlâ bir miktar üstünde ama 300+ öğrencili kurumlarda artık biz ucuzuz.
+
+#### ✅ Bu turda yapılanlar
+- **Fiyat düşürüldü: aylık 2.000 TL + KDV, TEK PLAN sabit.** Kademe YOK, yıllık plan YOK.
+  - ⚠️ **Yıllık plan bir ara eklenip GERİ ALINDI (2026-09-01, aynı gün).** `AbonelikPeriyodu`, `GET /api/billing/plans`, `PlanSecenegi`, periyot seçici — hepsi kaldırıldı. Tekrar istenirse git geçmişinde var; ama iyzico'da **her dönem AYRI plandır**, o yüzden yıllık için ikinci bir plan referansı (`IYZICO_YILLIK_PLAN_REF`) gerekir.
+  - ⚠️ `BillingProperties.aylikPlanUcreti()` varsayılanı **10.000'di** (yml 5.000 derken) — bayat değer, 2.000'e çekildi.
+  - Landing: fiyat kartı + Mesafeli Satış Sözleşmesi md.3 ve md.6 güncellendi.
+- **iyzico canlı plan açıldı (2026-09-01):** ürün "Artademi Tam Paket" (`affb14cb-6b90-42a1-b291-c673cc4f8bab`) altında yeni plan **"Aylik Tam Paket 2000"** → `IYZICO_PLAN_REF=8a914fbf-61fb-4b5f-9c09-587a8a0c88bb`. `.env.prod` güncellendi (`BILLING_AYLIK_UCRET=2000` da), yedek: `.env.prod.yedek-20260901-174046`.
+  - Canlıda duran eski planlar (abonesi YOK, temizlenebilir): "Aylik Tam Paket 5000" `e2902022-…`, "Aylik Tam Paket" 10.000 `1f2153d4-…`, "TEST 1 TL - silinecek" `a4953332-…`.
+  - ⚠️ **iyzico'da plan fiyatı sonradan DEĞİŞTİRİLEMEZ**; yeni fiyat = yeni plan. Mevcut aboneler eski planda kalır (şu an abone yok, sorun değil).
+- ⚠️ **YENİ TUZAK — iyzico imzası query string İÇERMEZ** (canlı API'de ölçüldü): `hex(HmacSHA256(rnd + uriPath + body, secret))` hesabında `?page=1&count=100` gibi bir query imzaya girerse **"Authentication token is not verified" (errorCode 8)** döner. `IyzicoAuth` javadoc'u tam tersini söylüyordu, düzeltildi. Bugünkü çağrıların hiçbirinde query yok; query'li bir uç eklenirse imza `path.split("?")[0]` ile hesaplanmalı.
+- `scripts/iyzico-plan-olustur.py` yeniden yazıldı: ürünü **bul-ya-da-oluştur** (canlıda ürün zaten var, eski hâli "zaten var" hatasıyla duruyordu), imza query'siz, tek aylık plan açar.
+- **Şube modülü yapıldı** (§7.18) — landing "çok şube" diyordu, kodda karşılığı yoktu.
+
+#### ⏳ SONRAKİ İŞLER (rakip paritesi — öncelik sırasıyla)
+| # | Modül | Durum / not |
+|---|---|---|
+| 1 | ~~**Makbuz / PDF çıktısı**~~ | ✅ **TAMAM** (2026-09-02) — tahsilat makbuzu + öğrenci kayıt formu, gömülü Türkçe font. Bkz. §7.19. |
+| 2 | **SMS** | §13.2b'de planlı. Önkoşul: **şifreli tenant-bazlı ayar saklama** (iyzico tek anahtarla `.env`'de; SMS her kurumun kendi kimlik bilgisini ister). |
+| 3 | ~~**Otomatik bildirim**~~ | ✅ **TAMAM** (2026-09-07, V25) — borç hatırlatma otomatik, devamsızlık bildirimi, haftalık özet; kurum opt-in. §7.21. Dalga C ile uygulama içi zil + "yoklama alınmadı" eklendi (§7.30). |
+| 4 | ~~**Online ön kayıt formu**~~ | ✅ **TAMAM** (2026-09-07) — public form (slug) + başvuru listesi + öğrenciye dönüştürme. Bkz. §7.20. |
+| 5 | ~~**Kasa yönetimi**~~ | ✅ **TAMAM** (2026-09-07, V27) §7.23. |
+| 6 | ~~**Tedarikçi**~~ | ✅ **TAMAM** (2026-09-07, V27) §7.23 — cari hesap DEĞİL, toplam ödenen. |
+| 7 | ~~**Telafi dersi**~~ | ✅ **TAMAM** (2026-09-07, V28) §7.24. |
+| 8 | ~~**Ders paketi / kontör**~~ | ✅ **TAMAM** (2026-09-07, V29) §7.25; Dalga E'de **kredi** altyapısı oldu (§7.32). |
+| 9 | **Veliden kartla tahsilat** | ⚠️ **ÖNCE HUKUK, SONRA KOD.** Parayı biz toplayıp kuruma aktarırsak bu ödeme aracılığıdır ve lisans sorusu doğurur; kurumun kendi alt üye işyeri (submerchant) hesabıyla yapılırsa iyzico ile ayrı sözleşme modeli gerekir. Mali müşavir/avukata sorulmadan başlanmamalı. Bugünkü iyzico entegrasyonu YALNIZCA kurumun BİZE ödediği abonelik içindir. |
+| 10 | **Yıllık ödeme avantajı** | ❌ **İPTAL** (2026-09-01, Sercan kararı): tek sabit aylık fiyat tercih edildi. Rakip yıllıkta 3 ay hediye veriyor — pazarlama gerekçesi doğarsa yeniden değerlendirilir. |
+
+#### 🎯 Rakipte de OLMAYAN (fark yaratacaklar)
+- **Veli portalı** — veli kendi çocuğunun devamsızlık/borç/programını görür. Ne bizde ne onlarda; ilk yapan öne geçer.
+- Uygulama içi bildirim merkezi · Mobil uygulama (React Native, planlı).
+
+#### Bizim zaten üstün olduğumuz yerler (pazarlamada öne çıkar)
+Çoklu hakediş (saatlik + ciro oranı aynı anda, grup bazında) · grup transferinde otomatik aidat farkı · kardeş eşleştirme · tip düzeyinde veri gizleme (ön büroya para alanları HİÇ gönderilmez) · işlem kaydı · KVKK veri dışa aktarma · devamsızlık + doluluk raporları · otomatik aylık tahakkuk · stok/ürün satışı.
+
+#### Kod olmayan işler
+Yardım videoları · WhatsApp destek hattı · rakibin 15 günlük demosunu açıp "bilinmiyor" işaretli özellikleri (veli portalı, raporlama derinliği, hakediş modeli) doğrulamak.
+
+### 13.1 ✅ TAMAMLANDI (bu faz)
+- **Platform fazı:** Tenant CRUD + ASKIDA login engeli + admin provisioning + web konsolu. SUPER_ADMIN = platform sahibi, iş modüllerine fail-closed, yalnız `/api/platform/**`.
+- **Platform konsolu tam:** tenant kullanıcı CRUD (ekle/sil) + **soft-delete (SILINDI)** (§7.15).
+- **İş A — öğrenci grup transferi** (§7.5) + **İş B — Model C çoklu hakediş** (§7.3/7.4/7.10), V15+V16, 205 test, prod'da canlı.
+- **Prod CANLI + 403 zinciri çözüldü:** app/auth/landing SSL'li yayında; Security(eski-imaj)+provisioning(SA-rolleri)+CORS 403'leri çözüldü (bkz. §11 prod notu, §7.15 CORS).
+- **Landing (artademi.com):** Caddy file_server, www→apex 301, logolar bağlı; animasyonlu hero + fiyatlandırma (4.000 TL/ay) + KVKK + iletişim (mailto info@artademi.com). ⚠️ Fiyat o gün 4.000 TL'ydi; GÜNCEL fiyat için §13.0.
+
+### 13.2 KALAN BÜYÜK FAZ (subscription parasallaşması + bildirim)
+> Hedef: ürün online abonelikle satılır. ⚠️ **GÜNCEL FİYAT: aylık 2.000 TL + KDV / yıllık 20.000 TL + KDV (bkz. §13.0)** — aşağıdaki 4.000/10.000 rakamları TARİHSELDİR. Kurum satın alır → login → ilk parola ile girer.
+- **Ödeme entegrasyonu — BACKEND TAMAM (2026-07, V17):** iyzico Abonelik API adaptörü (`com.artademi.billing`): `GET /api/billing/subscription` + `POST /api/billing/checkout` (ADMIN), `POST /api/billing/callback` (iyzico 302), `POST /api/webhooks/iyzico` (HMAC imzalı, idempotent, fail-closed). `/api/billing/**` TenantStatus muaf (ASKIDA kurum ödeme yapabilir). Env: `IYZICO_API_KEY/SECRET_KEY/MERCHANT_ID/PLAN_REF` (boşken checkout 409, webhook 401). Araştırma raporu `docs/odeme-aracisi-arastirmasi-2026-07.md`. **Web Abonelik sayfası CANLI:** `/abonelik` (ADMIN; menü "Sistem→Abonelik") — özet kartı + RHF/Zod fatura formu + iyzico checkout embed (`IyzicoCheckoutForm` script'leri elle kurar) + `?sonuc=` banner. Compose: `BILLING_WEB_RETURN_URL`, `IYZICO_*` env. **iyzico SANDBOX HAZIR (2026-07-29):** Abonelik modülü destek talebiyle aktifleştirildi (panelde self-servis YOK — entegrasyon@iyzico.com'a üye işyeri no ile yazılır). Merchant ID **3431492**. API'den kurulan ürün "Artademi Tam Paket" + plan "Aylık Tam Paket" (10.000 TL/ay TRY, RECURRING) → `IYZICO_PLAN_REF=ddf664c2-22fb-456d-af7e-cdf5e1c65453`. Anahtarlar `.env.prod`'da (git'te YOK). ⚠️ **Gerçek yanıt sapmaları (canlı testte bulundu, koda işlendi):** `initialize` token'ı KÖKTE döner (data altında değil); ödeme tamamlanmadan sorgulanırsa `failure/201601` döner → istisna değil "başarısız sonuç" sayılır. Webhook imzası doküman ile teyitli: `hex(HmacSHA256(merchantId+secretKey+eventType+subRef+orderRef+custRef, secretKey))`. ✅ **SANDBOX UÇTAN UCA GEÇTİ (2026-07-31):** app.artademi.com/abonelik → iyzico formu → test kartı (5528 7900 0000 0008) → abonelik başladı. Webhook imzası canlı doğrulandı (geçerli→200, sahte→401). ⚠️ **Telefon tuzağı:** iyzico `gsmNumber` için YALNIZCA `+90XXXXXXXXXX` kabul eder (`0555…`/`555…`/`90555…` → HTTP 422); `TurkishPhone.toE164` bunu çevirir. ⚠️ Adaptör 4xx/5xx'i yutup gövdeyi okur — aksi halde iyzico hataları opak 500 olurdu. ⚠️ **WEBHOOK SANDBOX'TA TESLİM EDİLMİYOR (ölçüldü):** URL İşyeri Bildirimleri'ne kaydedildiği halde, başarılı tahsilata rağmen `billing_event`'e hiçbir kayıt düşmedi. → **MUTABAKAT (reconciliation) eklendi ve artık DOĞRULUK KAYNAĞI odur:** `BillingReconciliationService.reconcileAll(today)` sağlayıcıya "bu aboneliğin durumu ne?" diye sorar (`GET /v2/subscription/subscriptions/{ref}` → `subscriptionStatus` + `orders[].orderStatus/endPeriod`), kaçan tahsilatı yakalar ve `markPaid` ile dönemi ilerletir. `SubscriptionScheduler` her gün 03:00'te **önce mutabakat, sonra evaluate** çalıştırır (ters sıra ödeme yapan kurumu haksız yere askıya alırdı). Sağlayıcı sorgulanamazsa kayda DOKUNULMAZ (fail-safe); bir aboneliğin hatası diğerlerini durdurmaz. **KALAN:** webhook teslimi için iyzico'ya sorulacak (opsiyonel — mutabakat olmadan da sistem doğru çalışır) + canlı (production) merchant başvurusu.
+- **Lead/iletişim formu — TAMAM (2026-07):** `POST /api/public/leads` (JWT'siz, honeypot+30sn IP cooldown) → Gmail SMTP ile info@artademi.com'a mail (`SMTP_USERNAME/SMTP_PASSWORD` app-password, `.env.prod`'da). Landing formu fetch ile bağlı (mailto kaldırıldı). Mail health check kapalı (`management.health.mail.enabled=false`). info@artademi.com = Google Workspace grubu (MX/SPF/DKIM Cloudflare'de, doğrulandı).
+- **Platform ops dashboard (SUPER_ADMIN) — ADIM 1 TAMAM (2026-07-31):** `GET /api/platform/dashboard` + web `/platform` (konsolun yeni açılışı) — kurum/abonelik sayıları, **MRR** (yalnız AKTIF+AYLIK+ODENDI sayılır; deneme/grace/SILINDI gelire yazılmaz), dikkat gerektirenler (grace/başarısız/askıda), 7 günlük yaklaşan yenilemeler, son ödeme hareketleri (`billing_event`). Konsola sekme navigasyonu eklendi (`PlatformShell.SEKMELER` — yeni ops sayfaları oraya). MRR fiyatı `BILLING_AYLIK_UCRET` (varsayılan artık **2.000**; bkz. §13.0). **ADIM 2 TAMAM:** `GET /api/platform/billing/subscriptions?filtre=&q=` (iş-dili filtreler: ODEYEN/DENEME/GECIKMIS/ASKIDA/HEPSI; SILINDI yalnız HEPSI'de) + `GET /api/platform/billing/events?page=&size=` (sayfalı, PageMeta) → web `/platform/odemeler` sekmesi: kurum bazlı ödeme durumu tablosu + ham hareket listesi. **ADIM 3 TAMAM — denetim izi (V18 `platform_audit`):** kurum aç/durum değiştir/sil, kullanıcı ekle/sil, abonelik güncelle işlemleri iz bırakır. `GET /api/platform/audit` (sayfalı) → web `/platform/denetim`. ⚠️ Tasarım: entity **salt-yazılır** (setter YOK), `target_ad` **snapshot** (kurum silinse de iz okunur), kurum işlemlerinde iz **aynı transaction'da** yazılır (izsiz işlem olmasın); Keycloak'a giden kullanıcı işlemlerinde ise işlem başarılı olduktan SONRA yazılır (`kaydetBagimsiz`). Actor JWT `preferred_username`'den, yoksa "sistem". Aynı duruma tekrar PATCH iz YAZMAZ (gürültü yok).
+- ✅ **Ödeme hatırlatma mailleri TAMAM (V19, 2026-08):** `BillingNotificationService` — 4 uyarı tipi (ODEME_BASARISIZ / GRACE_BASLADI / GRACE_BITIYOR (son 3 gün) / ASKIYA_ALINDI), kurumun **ADMIN** rolündeki kullanıcılarına (Keycloak'tan) gider. ⚠️ **Idempotency:** `uq_billing_notification(subscription_id, tip, donem_anahtari)` — scheduler her gün çalışır, aynı uyarı bir DÖNEM içinde tek kez gider; sonraki dönemde yeniden gidebilir. Alıcı yoksa iz YAZILMAZ (yönetici eklenince gitsin). Scheduler sırası: mutabakat → evaluate → **bildirim** (geçişlerden SONRA ki güncel durum yazılsın). Mail/Keycloak hatası günlük işi durdurmaz.
+- **Kalan mail işleri:** (a) provisioning'de yeni admin'e kullanıcı adı + ilk parola maili; (b) Keycloak SMTP (forgot-password akışı kurulu ama mail gitmiyor).
+- **Şifremi unuttum:** Keycloak forgot-password akışı + tema HAZIR; gerçek çalışması SMTP'ye bağlı (yukarıdaki mail işi).
+- **Grace uyarı banner:** dashboard ADMIN'de `subscriptionWarning` gösteriliyor (kısmi); diğer rol/sayfalara yaygınlaştırma opsiyonel.
+
+### 13.2b SMS ENTEGRASYONU (planlandı, 2026-08-30 — henüz YAPILMADI)
+
+> Karar: SMS **kurum kendi sağlayıcı hesabını bağlar**, platform hesabından gönderilmez.
+
+**Neden bu model** (e-posta itibar dersinin doğrudan sonucu):
+- **İtibar paylaşılmaz** — ortak gönderici başlığında bir okulun kötü kullanımı diğerlerinin
+  mesajlarını da riske atar. E-postada alan adımız zaten ortak; SMS'te aynı hatayı yapmayalım.
+- **Veli göndereni tanır** — başlık `TAB SANAT` olur, `ARTADEMI` değil. Tanınmayan başlıktan
+  gelen "borcunuz var" mesajı hem işe yaramaz hem şikâyet toplar.
+- **Maliyet ve hukuki sorumluluk doğru yerde** — veliyle sözleşme ilişkisi okulundur.
+
+**⚠️ Türkiye'ye özgü iki engel (planı etkiler, baştan bilinmeli):**
+1. **Gönderici başlığı tescili** — Türkiye'de rastgele isimle SMS atılamaz; başlık operatörde
+   tescillenir, şirket evrakı ister, birkaç gün sürer. Okul "bugün bağlayıp bugün gönderemez";
+   onboarding metninde bu söylenmeli.
+2. **İYS (İleti Yönetim Sistemi)** — ticari elektronik iletide alıcı onayının İYS'ye kaydı
+   zorunlu. Mevcut sözleşme ilişkisi kapsamındaki bilgilendirme için istisna var ama
+   "okul → veliye borç hatırlatma" bu sınırın neresine düşer, **hukukçuya sorulmalı**.
+   Uygulamaya geçmeden önce güncel mevzuat araştırılacak.
+
+**Teknik plan (iyzico kalıbının aynısı):**
+- `SmsSaglayici` portu + somut uygulamalar (Netgsm / İletimerkezi / Verimor vb.)
+- ⚠️ **ÖN KOŞUL — kurum bazlı şifreli sır saklama:** iyzico'da tek anahtar var ve `.env`'de
+  duruyor; SMS'te HER KURUMUN kendi API bilgisi olacak ve DB'ye yazılacak. Düz metin OLAMAZ.
+  Bu altyapı parçası SMS'ten ÖNCE yapılmalı.
+
+**Önerilen sıra:** (1) sağlayıcı araştırması + İYS netleştirmesi → (2) şifreli kurum-bazlı
+yapılandırma → (3) SMS gönderimi.
+
+### 13.3 Küçük açık işler / opsiyonel
+- Finans inline formlarını RHF+Zod'a hizalama (opsiyonel; kabul edilmiş istisna).
+- Demo modülü (V2 `demo_note`) temizliği (opsiyonel).
+
+### 13.4 ✅ GÜNCEL AÇIK İŞLER (2026-09-12 itibarıyla — buradan başla)
+
+**Kod (öncelik sırası önerisi):**
+1. **WhatsApp bildirimi** — `bildirim/kanal/BildirimKanali` arayüzü hazır (e-posta uyguluyor); Meta Cloud API + işletme doğrulaması + mesaj başı ücret. Kurum bazlı kimlik bilgisi için §7.22 şifreli ayar kullanılır.
+2. **SMS** — §13.2b planı aynen geçerli; ön koşul (şifreli ayar) TAMAM. Sağlayıcı teklifi + İYS hukuk sorusu **Sercan'da**.
+3. **Dönem/kredi bilinçli sınırları (§7.32):** tatil takvimi yok (düz takvim); dönem ortası kayıtta dönemlik ücret orantılanmıyor; elle tahakkuk / elle paket satışı / grup transferi farkı **indirim ve plan bilmiyor**.
+4. **Veli portalı** (rakipte de yok) · mobil uygulama (React Native, planlı).
+5. Küçükler: §13.3; `user` modülünde `error.fields` yok; satış/ödeme iptal-iade yok.
+
+**Sercan'ın tarafında:**
+- `ARTADEMI_SIFRELEME_ANAHTARI`'nı parola yöneticisine yedekle (yalnız sunucu + repo dışı `credentials/`).
+- iyzico **canlı** (production) merchant başvurusu.
+- Prod'da Deneme'de kalmış eski öğrenciler varsa Aktif yap (Otomatik Tahakkuk'taki "N deneme öğrencisi" listesinden); bu ayın kredileri için Otomatik Tahakkuk'u bir kez çalıştır.
+- Test ekibine 9 Eylül taleplerinin canlıda olduğunu bildir (sayfa haritası artifact'i paylaşılabilir).
+
+---
+
+## 14. Bilinen Eksikler / Teknik Borç
+
+### ✅ 14.0 İLK-PAROLA ZİNCİRİ — KAPATILDI (tespit 2026-08-10, düzeltme 2026-08-29)
+
+> Otovers'ta aynı konu çözülürken çapraz tespit edilmişti; iki açık da kapatıldı. 622 test yeşil.
+>
+> **(a) Sabit ortak parola KALDIRILDI.** Artık: e-postası olan kullanıcıya parola HİÇ atanmaz —
+> Keycloak'ın "parolanı belirle" bağlantısı gönderilir, kullanıcı kendi parolasını kurar. Böylece
+> mailde, logda, yanıtta, yedekte hiçbir yerde düz metin parola bulunmaz. E-postası olmayan
+> kullanıcıda `IlkParola.uret()` ile KULLANICIYA ÖZEL rastgele parola üretilir (14 hane, her
+> sınıftan en az bir karakter garantili — düz rastgele çekim politikayı ihlal edebiliyordu) ve
+> yönetici ekranında BİR KEZ gösterilir. Hoş geldin maili artık parola içermez.
+>
+> **(b) Sunucu tarafı yaptırım EKLENDİ.** `ParolaDegisikligiInterceptor` bayrak duruyorsa
+> 403 `PASSWORD_CHANGE_REQUIRED` döner. Muaf uçlar yalnızca çıkış yolu (`/api/me`,
+> `/api/me/change-password`) + kimliksiz uçlar + `/api/platform/**` (super.admin'in kilit ekranı
+> yok, kilitlenirse çıkış yolu kalmaz). 30 sn TTL önbellek + parola değişiminde açık invalidasyon.
+> ⚠️ Keycloak'a ulaşılamazsa **fail-open**: altyapı hatası çalışan kurumu durdurmamalı.
+>
+> **Mevcut hesaplar:** prod'daki üç hesap (ezgi, sercan, super.admin) DEMO/TEST hesabıdır;
+> eski sabit parolada kalmaları risk oluşturmaz. İlk gerçek müşteri zaten yeni akıştan geçecek
+> (parolasını kendisi belirleyecek). Yine de canlıya gerçek kullanıcı alınırken bu üç hesabın
+> parolası yenilenmeli ya da hesaplar kapatılmalı.
+
+**(a) Sabit ORTAK ilk parola — `Artademi2026!`**
+
+`UserService.java:53`, `KeycloakTenantAdminProvisioner.java:31`, `KeycloakTenantUserAdmin.java:33`
+— üçünde de aynı sabit. Her yeni kullanıcı **aynı** parolayla açılıyor (`temporary=false`).
+
+Sonuç: bu parolayı bilen herkes, **açılmış ama henüz ilk girişini yapmamış herhangi bir
+hesaba** girebilir. Kullanıcı adları tahmin edilebilir olduğu için pratikte istismar edilebilir.
+Parola ayrıca depoda yazılı ve hoş geldin mailinde düz metin gidiyor (`HosGeldinMaili`) —
+gelen kutusunda, yedeklerde ve iletilmiş maillerde kalıcı olarak durur.
+
+Bu, Otovers'ta 2026-08-09'da kapatılan açığın aynı sınıfı: orada sabit `operas123` vardı ve
+ayrıcalık yükseltme zincirinin parçasıydı. Artademi'de rol ataması daha dar olduğu için etki
+daha küçük, ama mekanizma aynı.
+
+**Çözüm (Otovers'ta uygulanan):** parola **her kullanıcı için ayrı** üretilir, istemcide
+(`crypto.getRandomValues`) — böylece hiçbir sunucu cevabında ve log satırında düz metin parola
+bulunmaz — ve yöneticiye kayıttan sonra **bir kez** gösterilir. Üreteç realm parola politikasını
+garanti etmeli: düz rastgele çekim, en az bir rakam/özel karakter garantisi vermediği için
+Otovers'ta üretimlerin **%29,1'i** politikayı ihlal ediyordu.
+
+**(b) `must_change_password` yalnızca İSTEMCİDE zorlanıyor**
+
+Bayrak Keycloak özniteliğinde tutuluyor (doğru tercih — Keycloak'ın `UPDATE_PASSWORD` zorunlu
+eylemi Direct Access Grant'i kırar, ileride mobil eklenirse bu önemli). **Ama yaptırım yok:**
+`web/src/components/AppShell.tsx:33` bayrağı görünce yalnız kilit ekranını render ediyor;
+backend'de kontrol eden hiçbir filtre/interceptor yok (`TenantFilter`,
+`TenantStatusInterceptor`, `RequireTenantInterceptor`, `TenantAuditInterceptor` — dördünde de
+geçmiyor).
+
+Yani bu bir güvenlik kontrolü değil, **UX dürtmesi**. İsteği doğrudan API'ye atan biri
+parolasını hiç değiştirmeden her şeye erişir — ki (a) yüzünden o parola zaten herkesin bildiği
+sabit parola.
+
+**Çözüm (Otovers'ta uygulanan):** sunucu tarafı tek kapı. `PasswordChangeRequiredFilter`
+bayrak duruyorsa `403 {"code":"PASSWORD_CHANGE_REQUIRED"}` döner; muaf uçlar yalnızca
+kullanıcının bu durumdan çıkabilmesi için gerekenler (profil oku, parola değiştir, menü,
+çıkış). Öznitelik Keycloak admin API'sinden okunduğu için 30 saniyelik TTL'li cache +
+parola değişiminde açık invalidasyon kullanıldı.
+
+**(c) Not — dil tuzağı Artademi'de YOK, sebebi kayda değer**
+
+Otovers'ta Keycloak'ın şifre sıfırlama maili İngilizce gitti: Keycloak dili tarayıcının
+`Accept-Language` başlığından seçiyor ve kullanıcıda `locale` özniteliği yoksa realm varsayılanı
+(`tr`) devreye girmiyor. Artademi bu tuzağa düşmüyor çünkü **maillerini Keycloak'a bırakmıyor**,
+`HosGeldinMaili` gibi kendi Türkçe şablonlarını `JavaMailSender` ile gönderiyor. İleride
+Keycloak'ın kendi maillerine (örn. `execute-actions-email`) geçilirse bu tuzak Artademi'de de
+doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'den `en` kaldırılmalı.
+
+- ✅ **ÇÖZÜLDÜLER (artık açık iş değil):** TEACHER `/api/groups/mine`; platform 403 zinciri (Security eski-imaj + provisioning SA-rolleri + CORS prod origin); landing canlı; tenant izolasyonu kanıtlı; platform konsolu kullanıcı CRUD + soft-delete; Model C çoklu hakediş; grup transferi.
+- ~~Gerçek ödeme entegrasyonu YOK~~ → ✅ iyzico abonelik + mutabakat CANLI (sandbox uçtan uca geçti; canlı merchant başvurusu bekliyor, §13.2).
+- ~~Mail YOK~~ → ✅ Gmail SMTP canlı (lead formu, ödeme uyarıları, otomatik bildirimler, parola belirleme bağlantısı). **Kalan:** Keycloak'ın kendi SMTP'si yok → forgot-password sayfası temalı ama mail göndermez.
+- `user` modülü: servis-katmanı validasyonları `error.fields` doldurmaz (yalnız `message`); kullanıcı listesinde PageMeta yok.
+- Finans inline formları RHF+Zod yerine `useState` (kabul edilmiş istisna). Demo modülü (V2 `demo_note`) hâlâ duruyor.
+- "Herkes sadece kendi girdiğini düzeltir" ince yetkisi yok. Satış/ödeme iptal/iade yok.
+- ⚠️ **Keycloak prod kurulumu kısmen elle:** service-account realm-management rolleri + user-profile attribute'ları realm export'a (`infra/artademi-realm.json`) işlendi (yeniden import getirir); ama temiz bir yeni ortam kurulumunda doğrulanmalı.
+- ⚠️ **Junk tenant kalıcı silme** prod'da elle (psql + kcadm) yapılır — konsol "Sil" yalnız soft-delete (SILINDI).
+
+---
+
+## 15. Hızlı Hatırlatmalar
+
+- Kod değişince backend'i yenile (`./mvnw compile` → devtools restart). "No static resource" = eski kod.
+- Uygulanmış migration düzenlenmez. Para = BigDecimal, asla double.
+- Tenant-aware entity'de `findScopedById`, asla `findById`. **AMA** `Tenant` entity (platform) TenantAware DEĞİL → orada `findById` doğru.
+- **Yumuşak silme (§7.29):** "silindi ama bakiyede duruyor / listede yok ama ödemede adı var" şikâyeti tasarım gereğidir. Silinenler `Sistem → Silinenler`'den geri alınır. Native SQL yazarsanız `silindi_tarihi IS NULL` ve `tenant_id` koşullarını ELLE ekleyin.
+- Kullanıcı/provisioning Keycloak Admin API ile (service account, §4) — frontend'den asla. Keycloak PUT tam-temsil ister (merge şart).
+- **Lina (tenant A) ASKIDA'ya alınmaz** — ana dev tenant; askıya alma testleri Anka/yan tenant'larla.
+- super.admin: tenant'sız, iş uçlarına 400, yalnız `/api/platform/**`; web'de ayrı PlatformApp ağacı (AppShell render edilmez).
+- Tek mesaj = tek istek (kullanıcı tercihi).
+- **Yeni oturum protokolü:** oturum dökümü devredilmez; bu dosya + `~/.claude/projects/-Users-sercankarpuzoglu-dev-Artademi/memory/` yeterli. Proje **`~/dev/Artademi`** klasöründen açılır (12 Eyl 2026'dan itibaren masaüstü Claude). Doğrulama alışkanlığı: backend testi + izole headless Chrome turu (`scratchpad/ui-*.js` kalıbı: `launchPersistentContext(<kendi dizin>, {channel:'chrome', headless:true})`; MCP'nin paylaşılan profilini KULLANMA) + DB kontrolü, sonra commit + deploy.
+- **Her deploy'dan önce:** `./mvnw test` tam paket yeşil (≈10 dk) + `npx tsc --noEmit` + `npx vite build`. Deploy sonrası `docker logs` içinde "Started BackendApplication" ve varsa "Migrating schema … version N" görülmeli.
+- **DENEME→AKTİF plan seçimiyle otomatik** (§7.35, 2026-09-12): Aylık/Dönemlik/özel ders kaydı öğrenciyi Aktif yapar; "Deneme dersi" planı Deneme bırakır, "Plana geçir" ile Aktif olur. Elle statü hâlâ `PATCH /api/students/{id}/status`.
+- ⚠️ **`formatDate` sadece `YYYY-MM-DD` içindir.** `Instant` alanı (`olusturulmaTarihi`, `createdAt` …) verirseniz ekranda `07T09:30:47.326471Z.09.2026` gibi bozuk metin çıkar — hata sessizdir, patlamaz. Instant için **`formatDateTime`** kullanın. (Bu tuzak üç kez ısırdı: TenantListPage ve DashboardPage call site'ta `.slice(0,10)` ile yamamıştı, Ön Kayıt listesinde canlıya çıktı. `formatDate` artık defansif ama doğru fonksiyonu seçmek yine de sizin işiniz.)
+- **Deploy (2026-09-08'den itibaren normal `git pull`):**
+  ```bash
+  ssh root@37.27.241.117 "cd /opt/artademi && git pull && cd infra && \
+    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build backend web"
+  ```
+  Sunucuda **SSH deploy key** kurulu (`/root/.ssh/artademi_deploy`, `~/.ssh/config`'te github.com için tanımlı); remote `git@github.com:...`. Anahtar **salt-okunur** ve yalnızca bu depoya kapsamlı — sunucu ele geçirilse bile kod push'lanamaz.
+- ⚠️ **Geçmiş tuzak (çözüldü, tekrarlarsa tanıyın):** HTTPS remote ile sunucu `git pull` yapamıyordu — `GET /info/refs` 200 dönerken nesneleri taşıyan `POST /git-upload-pack` **401** veriyordu (depo public olmasına rağmen); protokol v1'e düşürmek de çözmedi. Çözüm HTTPS'i onarmak değil **SSH'a geçmek** oldu. O dönemde deploy'lar `git bundle` ile yapıldı; artık gerekmiyor. Aynı belirti dönerse önce `ssh -T git@github.com` ile anahtarı doğrulayın.
+- Deploy: compose **`infra/`** altındadır (`/opt/artademi/infra/docker-compose.prod.yml`), repo kökünde DEĞİL. Landing Caddy'den doğrudan servis edilir (pull yeterli), ama **panel ayrı bir `web` konteyneridir** — frontend değişikliği için `up -d --build web` şart.
+
+---
+
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 
 Kaynak: `9 Eylül toplantı notları` (repo kökü, git dışı). Kararlar 10 Eylül'de alındı:
@@ -993,3 +1047,8 @@ buna gömülür) · **İzinli yalnız yönetici düzeltmesinde** · sıra **A→
 | D | İndirim/kampanya tanımı (oran/tutar) + öğrenciye özel atama (grup, tarih aralığı) + tahakkukta brüt−indirim=net (Tahakkuklar listesinde ve önizlemede görünür) | ✅ 2026-09-10 (§7.31) |
 | E | Dönem tanımı, grup ücretleri (dönemlik/aylık), kayıtta dönemlik/aylık seçimi, program × dönem = kredi, öğrenci detayında kalan kredi, kredi bitince/dönem dışı derse gelince ofise uyarı | ✅ 2026-09-10 (§7.32; tasarım onaylandı) |
 | F | Raporlar grafikli yenileme (pasta/çubuk/trend); eğitmen kalitesi paneli (yük, öğrenci sayısı, katılım oranı) | ✅ 2026-09-10 (§7.33) |
+| — | Kapanış eksikleri: kara liste TC kalkanı (yeni kayıt + başvuru dönüştürme), branşa dönem, kayıt sonrası "gruba da yaz" | ✅ 2026-09-10 (§7.34) |
+| — | Plan seçimi statüyü belirler: Aylık/Dönemlik → AKTİF; "Deneme dersi" planı + "Plana geçir" (§7.26 kararını değiştirir) | ✅ 2026-09-12 (§7.35) |
+| — | Yönetici Paneli menüde en üste; grup oluştururken ders günü + saat aralığı | ✅ 2026-09-12 (§7.36) |
+
+**Sonraki tur:** §13.4 açık işler (WhatsApp, SMS, tatil takvimi/orantılama, veli portalı).

@@ -49,6 +49,15 @@ set -a && source .env && set +a
 cd ../web && npm run dev
 ```
 
+> **Claude Code web / uzak oturumda (kod sunucuda, Mac'te değil):** kurumsal egress politikası Docker Hub'ın
+> blob sunucusunu engelliyor → `postgres:16` ÇEKİLEMEZ, Testcontainers ayağa kalkmaz. Çözüm (13 Eyl 2026'da
+> uygulandı): `sudo dockerd &` ile daemon'u başlat, `debootstrap --variant=minbase --include=postgresql-16,locales
+> noble <dizin> https://archive.ubuntu.com/ubuntu/` ile bir rootfs kur, resmi imajın entrypoint'ini taklit eden
+> küçük bir `docker-entrypoint.sh` yaz (initdb + POSTGRES_DB'yi aç + `su postgres` — ⚠️ `su` PATH'i sıfırlar,
+> postgres ikililerini tam yolla çağır) ve `tar | docker import ... postgres:16` ile etiketle. Testleri
+> `TESTCONTAINERS_RYUK_DISABLED=true ./mvnw -DargLine="-Dapi.version=1.44" test` ile koş — ryuk imajı da
+> çekilemez, ve docker 29 eski API sürümünü (docker-java varsayılanı 1.32) reddeder.
+
 **Önemli notlar:**
 - **Docker Desktop açık olmalı** (testler Testcontainers kullanır).
 - `backend/.env` git'te YOK. İçeriği: `SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/artademi`, user/pass `artademi/artademi_local_2026`, `SERVER_PORT=8081`, `KEYCLOAK_ISSUER_URI=http://localhost:8080/realms/Artademi`.
@@ -681,6 +690,47 @@ tahakkuk kesilip Aylık'ta kesilmiyordu). **Ödeme hiçbir zaman tetikleyici de�
 - Test: `GroupControllerTest.create_dersSaatleriyle_olusur_cakismadaGrupDaOlusmaz` (2 saat → 2 program; çakışan
   → 409 ve grup yok; ters aralık → 400).
 
+### 7.37 Küçük açık işler: alan bazlı hata + kullanıcı listesi sayfalama (✅ 2026-09-12)
+
+§13.4'teki "küçükler" maddesinin ikisi kapatıldı.
+
+**(a) `error.fields` artık servis katmanından da doluyor.** `ValidationException` opsiyonel bir `fields` haritası
+taşıyor (`ValidationException.alan(alan, mesaj)`); `GlobalExceptionHandler` bunu `ApiError.fields`'a geçiriyor.
+Sözleşme (api-contract) DEĞİŞMEDİ — alan bilgisi olmayan kural hâlâ yalnız `message` döner.
+
+- ⚠️ **Uydurma alan adı yazılmaz.** Alan adı istek DTO'sundaki adla birebir aynı olmalı; bir form alanına
+  bağlanamayan kural (ör. "Kendi hesabınızı pasife alamazsınız") `fields` TAŞIMAZ — uydurulan bir ad formda
+  yanlış inputu işaretler. Test: `alanaBaglanamayanKural_fieldsTasimaz`.
+- `user` modülünde bağlananlar: rol doğrulamaları → `roller`; parola değiştirme → `mevcutParola` / `yeniParola`.
+- Web zaten `error.fields` → `setError` kalıbını uyguluyordu, yalnızca veri gelmiyordu. Profil ekranındaki parola
+  formu bu yüzden **her** doğrulama hatasını "Mevcut Parola" altına basıyordu (ör. "Yeni parola en az 8 karakter
+  olmalı" yanlış inputun altında çıkıyordu); artık doğru alana gidiyor.
+
+**(b) Kullanıcı listesi sayfalı.** `GET /api/users` artık `meta` döner. Bu yalnızca eksik meta değildi: web listesi
+`page` hiç göndermiyordu, backend varsayılanı 20'ydi → **20'den fazla kullanıcısı olan kurumda kalan kullanıcılar
+sessizce görünmüyordu.** Web'e kanonik sayfalama ayağı eklendi ("Toplam N · Sayfa x/y" + Önceki/Sonraki; filtre
+değişince sayfa başa döner).
+
+- **Sayfalama Keycloak'a bırakılmadı — bilinçli, iki sebep de "kullanıcıya yanlış sayı gösterme" riski:**
+  1. **Rol filtresi:** KC rolü sorguda bilmez. KC sayfalayıp rolü biz elersek sayfa başına satır sayısı değişir
+     ve "Toplam" hiçbir zaman tutmaz (eski kod aynen böyleydi).
+  2. **Toplam:** KC'nin `/users/count` ucu AYRI bir sözleşmedir; listeyle aynı `q=tenant_id:` filtresini
+     uygulamazsa toplam kurumun değil **realm'in** sayısı olur — başka kurumların varlığını sızdıran bir sayı.
+     Doğrulanamayan bir uç davranışına bağlanmak yerine toplam listenin kendi sorgusundan sayılıyor.
+- Kurumun kullanıcıları tek listede çekilir (`MAX_TARAMA = 500`; sınıra dayanılırsa uyarı loglanır — sanat okulu
+  ölçeğinde yaklaşılmaz), tenant (+varsa rol) filtresi uygulanır, sayfalama ve toplam **bizde** hesaplanır.
+  Rol sorgusu (kullanıcı başına bir HTTP gidişi) yalnız gerektiğinde: rol filtresi varsa taranan herkes için,
+  yoksa YALNIZ gösterilen sayfa için (istek boyunca önbellekli).
+- `UserService.list` artık `UserSayfasi(icerik, meta)` döner; iç çağıranlar (`BasvuruBildirimService`,
+  `OtomatikBildirimService` → admin adresleri) `.icerik()` ile alır.
+- Testler: `UserControllerTest` (+6) — meta ve sayfa dilimi, rol filtresinde uygulama-içi sayfalama, rol
+  sorgusunun yalnız sayfa için gitmesi, çapraz tenant kaydının **toplama da** girmemesi, `error.fields` dolu/boş.
+
+**Not — "satış/ödeme iptal-iade" maddesi yanıltıcıydı:** *iptal* zaten var (yumuşak silme §7.29; `SATIS` silinince
+stok geri eklenir, geri alınınca düşülür — `SilmeService`). Eksik olan **iade**: veliye para geri verildiğinde
+bunu ayrı bir muhasebe kaydı olarak tutmak (kısmi iade, kasa çıkışı, gelir özetinden düşme). Ürün kararı gerekir,
+§13.4'te öyle yazıldı.
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
@@ -913,7 +963,9 @@ yapılandırma → (3) SMS gönderimi.
 2. **SMS** — §13.2b planı aynen geçerli; ön koşul (şifreli ayar) TAMAM. Sağlayıcı teklifi + İYS hukuk sorusu **Sercan'da**.
 3. **Dönem/kredi bilinçli sınırları (§7.32):** tatil takvimi yok (düz takvim); dönem ortası kayıtta dönemlik ücret orantılanmıyor; elle tahakkuk / elle paket satışı / grup transferi farkı **indirim ve plan bilmiyor**.
 4. **Veli portalı** (rakipte de yok) · mobil uygulama (React Native, planlı).
-5. Küçükler: §13.3; `user` modülünde `error.fields` yok; satış/ödeme iptal-iade yok.
+5. Küçükler: §13.3; **iade (para geri verme) yok** — iptal zaten yumuşak silmeyle var (§7.37 sonundaki not);
+   iade için ürün kararı gerekir: kısmi iade olacak mı, kasa çıkışı nasıl yazılacak, gelir özeti/raporlardan nasıl
+   düşülecek. (`user` modülünde `error.fields` ve kullanıcı listesinde sayfalama ✅ kapandı — §7.37.)
 
 **Sercan'ın tarafında:**
 - `ARTADEMI_SIFRELEME_ANAHTARI`'nı parola yöneticisine yedekle (yalnız sunucu + repo dışı `credentials/`).
@@ -998,9 +1050,10 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 - ✅ **ÇÖZÜLDÜLER (artık açık iş değil):** TEACHER `/api/groups/mine`; platform 403 zinciri (Security eski-imaj + provisioning SA-rolleri + CORS prod origin); landing canlı; tenant izolasyonu kanıtlı; platform konsolu kullanıcı CRUD + soft-delete; Model C çoklu hakediş; grup transferi.
 - ~~Gerçek ödeme entegrasyonu YOK~~ → ✅ iyzico abonelik + mutabakat CANLI (sandbox uçtan uca geçti; canlı merchant başvurusu bekliyor, §13.2).
 - ~~Mail YOK~~ → ✅ Gmail SMTP canlı (lead formu, ödeme uyarıları, otomatik bildirimler, parola belirleme bağlantısı). **Kalan:** Keycloak'ın kendi SMTP'si yok → forgot-password sayfası temalı ama mail göndermez.
-- `user` modülü: servis-katmanı validasyonları `error.fields` doldurmaz (yalnız `message`); kullanıcı listesinde PageMeta yok.
+- ~~`user` modülü: servis-katmanı validasyonları `error.fields` doldurmaz; kullanıcı listesinde PageMeta yok~~ →
+  ✅ kapandı (§7.37). Alan bazlı hata artık tüm modüllerde `ValidationException.alan(...)` ile yazılabilir.
 - Finans inline formları RHF+Zod yerine `useState` (kabul edilmiş istisna). Demo modülü (V2 `demo_note`) hâlâ duruyor.
-- "Herkes sadece kendi girdiğini düzeltir" ince yetkisi yok. Satış/ödeme iptal/iade yok.
+- "Herkes sadece kendi girdiğini düzeltir" ince yetkisi yok. Satış/ödeme **iadesi** yok (iptal = yumuşak silme, var).
 - ⚠️ **Keycloak prod kurulumu kısmen elle:** service-account realm-management rolleri + user-profile attribute'ları realm export'a (`infra/artademi-realm.json`) işlendi (yeniden import getirir); ama temiz bir yeni ortam kurulumunda doğrulanmalı.
 - ⚠️ **Junk tenant kalıcı silme** prod'da elle (psql + kcadm) yapılır — konsol "Sil" yalnız soft-delete (SILINDI).
 
@@ -1010,6 +1063,9 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 
 - Kod değişince backend'i yenile (`./mvnw compile` → devtools restart). "No static resource" = eski kod.
 - Uygulanmış migration düzenlenmez. Para = BigDecimal, asla double.
+- Servis katmanı doğrulaması bir **form alanına** bağlanabiliyorsa `ValidationException.alan("alanAdi", mesaj)`
+  kullan (alan adı = istek DTO'sundaki ad) — web formu mesajı o inputun altına basar. Bağlanamıyorsa düz
+  `new ValidationException(mesaj)`; uydurma alan adı formda YANLIŞ inputu işaretler (§7.37).
 - Tenant-aware entity'de `findScopedById`, asla `findById`. **AMA** `Tenant` entity (platform) TenantAware DEĞİL → orada `findById` doğru.
 - **Yumuşak silme (§7.29):** "silindi ama bakiyede duruyor / listede yok ama ödemede adı var" şikâyeti tasarım gereğidir. Silinenler `Sistem → Silinenler`'den geri alınır. Native SQL yazarsanız `silindi_tarihi IS NULL` ve `tenant_id` koşullarını ELLE ekleyin.
 - Kullanıcı/provisioning Keycloak Admin API ile (service account, §4) — frontend'den asla. Keycloak PUT tam-temsil ister (merge şart).

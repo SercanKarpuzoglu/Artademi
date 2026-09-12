@@ -74,11 +74,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(new ApiError("PASSWORD_CHANGE_REQUIRED", ex.getMessage())));
     }
 
-    /** 400 — servis katmani is kurali dogrulama hatasi (Bean Validation disi). */
+    /**
+     * 400 — servis katmani is kurali dogrulama hatasi (Bean Validation disi).
+     *
+     * <p>Kural bir alana baglandiysa ({@link ValidationException#alan}) {@code error.fields} de
+     * doldurulur; boylece web formu mesaji ilgili inputun altina yazabilir. Alan bilgisi yoksa
+     * {@code fields} null kalir — sozlesme (api-contract) her iki durumda da ayni.
+     */
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessValidation(ValidationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail(new ApiError("VALIDATION_ERROR", ex.getMessage())));
+                .body(ApiResponse.fail(
+                        new ApiError("VALIDATION_ERROR", ex.getMessage(), ex.getFields())));
     }
 
     /** 400 — Bean Validation hatalari; alan bazli mesajlar error.fields'a doldurulur. */

@@ -1,5 +1,6 @@
 package com.artademi.user;
 
+import com.artademi.common.PageMeta;
 import com.artademi.common.exception.NotFoundException;
 import com.artademi.common.exception.TenantRequiredException;
 import com.artademi.common.exception.ValidationException;
@@ -44,6 +45,12 @@ public class UserService {
     /** Son-admin kontrolunde taranacak azami kullanici (kurum basina makul ust sinir). */
     private static final int MAX_ADMIN_TARAMA = 200;
 
+    /** Liste ucunda taranacak azami kullanici (sayfalama ve toplam bunun uzerinden hesaplanir). */
+    private static final int MAX_TARAMA = 500;
+
+    /** Istemcinin isteyebilecegi azami sayfa boyu (KC'ye devasa {@code max} gitmesin). */
+    private static final int MAX_SAYFA_BOYU = 100;
+
     /** Atanabilir realm rolleri; SUPER_ADMIN bu kumede DEGILDIR (asla atanmaz). */
     static final Set<String> MANAGEABLE_ROLES =
             Set.of("ADMIN", "FRONTDESK", "FRONTDESK_ACCOUNTING", "TEACHER");
@@ -51,6 +58,13 @@ public class UserService {
     private static final String ATTR_TENANT = "tenant_id";
     private static final String ATTR_TELEFON = "telefon";
     private static final String ATTR_MUST_CHANGE = "must_change_password";
+
+    /**
+     * Rol dogrulama hatalarinin baglandigi istek alani. Create/Update DTO'larindaki alan adiyla
+     * AYNI olmak zorunda: web formu {@code error.fields} anahtarini bu isimle eslestirip mesaji
+     * rol secim kutusunun altina yazar.
+     */
+    private static final String ALAN_ROLLER = "roller";
 
     /** Yeni kullanicilara verilen sabit ilk parola (gecici DEGIL; must_change_password ile zorlanir). */
     /**
@@ -87,25 +101,79 @@ public class UserService {
     // /api/users (ADMIN)
     // =====================================================================
 
-    /** Acting admin'in tenant'indaki kullanicilari listeler; {@code rol} verilirse uygulamada filtreler. */
-    public List<UserResponse> list(Boolean aktif, String rol, String q, int page, int size) {
-        String tenant = requireTenant();
-        int first = page * size;
-        List<Map<String, Object>> users = kc.searchUsers(q, aktif, first, size, tenant);
+    /** Sayfalanmis kullanici listesi: sayfanin icerigi + {@code meta} icin sayfa bilgisi. */
+    public record UserSayfasi(List<UserResponse> icerik, PageMeta meta) {
+    }
 
-        List<UserResponse> result = new ArrayList<>();
-        for (Map<String, Object> rep : users) {
-            // Tenant filtresi KC q ile yapildi; yine de fail-closed dogrula.
-            if (!tenant.equals(KeycloakAdminClient.firstAttribute(rep, ATTR_TENANT))) {
-                continue;
+    /**
+     * Acting admin'in tenant'indaki kullanicilari SAYFALI listeler.
+     *
+     * <p><b>Neden sayfalamayi Keycloak'a birakmiyoruz?</b> Iki sebep, ikisi de kullaniciya yanlis
+     * sayi gosterme riski:
+     * <ol>
+     *   <li><b>Rol filtresi:</b> Keycloak rolu sorguda bilmez. KC sayfalayip biz rol elersek
+     *       sayfa basina satir sayisi degisir ve "Toplam" hicbir zaman dogru olmaz.</li>
+     *   <li><b>Toplam:</b> KC'nin {@code /users/count} ucu ayri bir sozlesmedir; listeyle AYNI
+     *       olcutleri (ozellikle {@code q=tenant_id:...}) uygulamazsa toplam kurumun degil
+     *       REALM'in sayisi olur — baska kurumlarin varligini sizdiran bir sayi. Toplami listenin
+     *       kendi sorgusundan saymak bu riski tamamen ortadan kaldirir.</li>
+     * </ol>
+     *
+     * <p>Bu yuzden kurumun kullanicilari tek listede cekilir, tenant (ve varsa rol) filtresi
+     * uygulanir, sayfalama BURADA yapilir. Rol sorgusu YALNIZCA gerektiginde gider: rol filtresi
+     * varsa taranan her kullanici icin, yoksa sadece gosterilen sayfadakiler icin.
+     *
+     * <p>⚠️ Tarama {@link #MAX_TARAMA} kullaniciyla sinirlidir; sinira dayanilirsa uyari loglanir
+     * (sanat okulu olceginde — onlarca kullanici — bu sinira yaklasilmaz).
+     */
+    public UserSayfasi list(Boolean aktif, String rol, String q, int page, int size) {
+        String tenant = requireTenant();
+        int guvenliPage = Math.max(page, 0);
+        int guvenliSize = Math.min(Math.max(size, 1), MAX_SAYFA_BOYU);
+
+        // Tenant filtresi KC q ile yapildi; yine de fail-closed dogrula (sizinti yok).
+        List<Map<String, Object>> adaylar = new ArrayList<>();
+        for (Map<String, Object> rep : kc.searchUsers(q, aktif, 0, MAX_TARAMA, tenant)) {
+            if (tenant.equals(KeycloakAdminClient.firstAttribute(rep, ATTR_TENANT))) {
+                adaylar.add(rep);
             }
-            List<String> roller = manageableRolesOf(stringId(rep));
-            if (rol != null && !rol.isBlank() && !roller.contains(rol)) {
-                continue;
-            }
-            result.add(toResponse(rep, roller));
         }
-        return result;
+        if (adaylar.size() >= MAX_TARAMA) {
+            log.warn("Kullanici listesi {} kaydi sinirina dayandi; toplam eksik olabilir.",
+                    MAX_TARAMA);
+        }
+
+        // Rol sorgusu HTTP cagrisidir; ayni kullanici icin iki kez sorulmasin.
+        Map<String, List<String>> rolCache = new LinkedHashMap<>();
+        if (rol != null && !rol.isBlank()) {
+            List<Map<String, Object>> eslesen = new ArrayList<>();
+            for (Map<String, Object> rep : adaylar) {
+                if (rollerCached(rolCache, stringId(rep)).contains(rol)) {
+                    eslesen.add(rep);
+                }
+            }
+            adaylar = eslesen;
+        }
+
+        int basla = Math.min(guvenliPage * guvenliSize, adaylar.size());
+        int bitir = Math.min(basla + guvenliSize, adaylar.size());
+        List<UserResponse> icerik = new ArrayList<>();
+        for (Map<String, Object> rep : adaylar.subList(basla, bitir)) {
+            icerik.add(toResponse(rep, rollerCached(rolCache, stringId(rep))));
+        }
+        return new UserSayfasi(List.copyOf(icerik),
+                meta(guvenliPage, guvenliSize, adaylar.size()));
+    }
+
+    /** Kullanicinin manageable rolleri; istek boyunca onbellege alinir (her cagri bir HTTP gidisi). */
+    private List<String> rollerCached(Map<String, List<String>> cache, String id) {
+        return cache.computeIfAbsent(id, this::manageableRolesOf);
+    }
+
+    /** Spring Data Page olmadan sayfa meta'si (bu ucun kaynagi DB degil Keycloak). */
+    private static PageMeta meta(int page, int size, long toplam) {
+        int toplamSayfa = (int) ((toplam + size - 1) / size);
+        return new PageMeta(page, size, toplam, toplamSayfa);
     }
 
     /** Tek kullanici (tenant-eslesme zorunlu; baska tenant -> 404, sizinti yok). */
@@ -356,10 +424,11 @@ public class UserService {
         String sub = currentUser.sub();
         String username = currentUser.username();
         if (!kc.verifyPassword(username, req.mevcutParola())) {
-            throw new ValidationException("Mevcut parola hatalı");
+            throw ValidationException.alan("mevcutParola", "Mevcut parola hatalı");
         }
         if (req.yeniParola() == null || req.yeniParola().length() < MIN_PASSWORD_LENGTH) {
-            throw new ValidationException("Yeni parola en az " + MIN_PASSWORD_LENGTH + " karakter olmalı");
+            throw ValidationException.alan("yeniParola",
+                    "Yeni parola en az " + MIN_PASSWORD_LENGTH + " karakter olmalı");
         }
         kc.resetPassword(sub, req.yeniParola(), false);
 
@@ -404,12 +473,12 @@ public class UserService {
     /** roller bos olmamali ve tamami MANAGEABLE_ROLES icinde olmali; aksi halde 400. */
     private Set<String> validateRoles(List<String> roller) {
         if (roller == null || roller.isEmpty()) {
-            throw new ValidationException("En az bir rol seçilmeli");
+            throw ValidationException.alan(ALAN_ROLLER, "En az bir rol seçilmeli");
         }
         Set<String> desired = new LinkedHashSet<>(roller);
         for (String r : desired) {
             if (!MANAGEABLE_ROLES.contains(r)) {
-                throw new ValidationException("Geçersiz veya atanamaz rol: " + r);
+                throw ValidationException.alan(ALAN_ROLLER, "Geçersiz veya atanamaz rol: " + r);
             }
         }
         return desired;
@@ -444,7 +513,7 @@ public class UserService {
         for (String name : roller) {
             Map<String, Object> role = kc.getRealmRole(name);
             if (role == null || role.get("id") == null) {
-                throw new ValidationException("Rol bulunamadı: " + name);
+                throw ValidationException.alan(ALAN_ROLLER, "Rol bulunamadı: " + name);
             }
             reps.add(Map.of("id", role.get("id"), "name", role.get("name")));
         }

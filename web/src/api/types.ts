@@ -22,7 +22,7 @@ export interface ApiResponse<T> {
 
 // --- Kullanıcı yönetimi (User) + Profil (Me) — backend DTO'lari ile birebir aynalanir ---
 
-/** Kullanıcı yaniti — backend UserResponse. roller ham string dizisi. Liste sayfasi YOK (düz dizi). */
+/** Kullanıcı yaniti — backend UserResponse. roller ham string dizisi. Liste sayfalıdır (meta döner). */
 export interface UserResponse {
   id: string;
   kullaniciAdi: string;

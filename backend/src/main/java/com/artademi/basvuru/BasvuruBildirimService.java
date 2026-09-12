@@ -66,7 +66,7 @@ public class BasvuruBildirimService {
 
     /** Kurumun e-posta adresi olan AKTIF admin kullanicilari. */
     private List<String> adminAdresleri() {
-        return users.list(true, "ADMIN", null, 0, 50).stream()
+        return users.list(true, "ADMIN", null, 0, 50).icerik().stream()
                 .map(u -> u.email())
                 .filter(e -> e != null && !e.isBlank())
                 .toList();

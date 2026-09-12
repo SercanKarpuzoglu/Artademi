@@ -5,15 +5,17 @@ import type { KayitOnizleme, OdemePlani } from '../../api/types';
 import { formatDate, formatMoney } from '../../lib/format';
 
 /**
- * Gruba yazarken plan seçimi (Dalga E): Aylık mı, Dönemlik mi? Her seçenek o anki hesabı gösterir
- * ("Dönem 14 Eyl–31 Oca · haftada 2 ders · 22 ders · 9.000 ₺" / "Bu ay 4 ders · 2.000 ₺").
- * Ücret gösterir; çağıran gating yapmaz — kayıt yapan ön büro da ücreti bilmeli.
+ * Gruba yazarken plan seçimi: Aylık / Dönemlik / Deneme dersi. Aylık ya da Dönemlik seçilince öğrenci
+ * AKTİF olur, kredi + tahakkuk açılır; Deneme dersi seçilince Deneme kalır, para yok, yoklama alınır
+ * (sonra "Plana geçir"). Her seçenek o anki hesabı gösterir. Ücret gösterir; çağıran gating yapmaz —
+ * kayıt yapan ön büro da ücreti bilmeli. {@code denemeSecenegi=false} plana geçirme modudur.
  */
 export default function KayitPlaniModal({
   grupId,
   grupAd,
   ogrenciAd,
   pending,
+  denemeSecenegi = true,
   onVazgec,
   onOnayla,
 }: {
@@ -21,14 +23,16 @@ export default function KayitPlaniModal({
   grupAd: string;
   ogrenciAd: string;
   pending: boolean;
+  /** Yeni kayıtta true (üç seçenek); deneme kaydını plana geçirirken false (yalnız Aylık/Dönemlik). */
+  denemeSecenegi?: boolean;
   onVazgec: () => void;
   onOnayla: (plan: OdemePlani) => void;
 }) {
   const [plan, setPlan] = useState<OdemePlani>('AYLIK');
   const aylik = useQuery({ queryKey: ['kayit-onizleme', grupId, 'AYLIK'], queryFn: () => getKayitOnizleme(grupId, 'AYLIK') });
   const donemlik = useQuery({ queryKey: ['kayit-onizleme', grupId, 'DONEMLIK'], queryFn: () => getKayitOnizleme(grupId, 'DONEMLIK') });
-  const secili = plan === 'AYLIK' ? aylik.data : donemlik.data;
-  const uygun = secili?.uygun ?? false;
+  const secili = plan === 'AYLIK' ? aylik.data : plan === 'DONEMLIK' ? donemlik.data : undefined;
+  const uygun = plan === 'DENEME' ? true : (secili?.uygun ?? false);
 
   return (
     <div
@@ -40,21 +44,48 @@ export default function KayitPlaniModal({
     >
       <div className="card w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
         <div>
-          <h3 id="kayit-plani-baslik">Kayıt planı</h3>
+          <h3 id="kayit-plani-baslik">{denemeSecenegi ? 'Kayıt planı' : 'Plana geçir'}</h3>
           <p className="text-[13px] text-ink-soft">
-            <b>{ogrenciAd}</b> → <b>{grupAd}</b>. Plan, krediyi (ders sayısı) ve tahakkuku belirler.
+            <b>{ogrenciAd}</b> → <b>{grupAd}</b>. Aylık ya da Dönemlik seçilince öğrenci <b>Aktif</b> olur;
+            kredi ve tahakkuk plana göre açılır.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <PlanKarti baslik="Aylık" aciklama="Her ay aidat tahakkuku; o ayın dersleri kadar kredi" secili={plan === 'AYLIK'} veri={aylik.data} yukleniyor={aylik.isLoading} onSec={() => setPlan('AYLIK')} />
           <PlanKarti baslik="Dönemlik" aciklama="Dönem ücreti tek tahakkuk; dönemdeki tüm dersler kredi" secili={plan === 'DONEMLIK'} veri={donemlik.data} yukleniyor={donemlik.isLoading} onSec={() => setPlan('DONEMLIK')} />
+          {denemeSecenegi && (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={plan === 'DENEME'}
+              onClick={() => setPlan('DENEME')}
+              className={`rounded-[12px] border-[1.5px] p-3 text-left transition sm:col-span-2 ${
+                plan === 'DENEME' ? 'border-rasp bg-rasp/5' : 'border-line bg-card'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <b className="text-[14px]">Deneme dersi</b>
+                <span className="badge b-amber">Ücretsiz</span>
+              </div>
+              <p className="mt-0.5 text-[12.5px] text-ink-soft">
+                Para ve kredi yok; öğrenci <b>Deneme</b> statüsünde kalır, yoklaması alınır. Karar verince
+                kayıt satırından "Plana geçir" ile Aylık/Dönemlik'e çevrilir.
+              </p>
+            </button>
+          )}
         </div>
         <div className="flex justify-end gap-3">
           <button type="button" className="btn btn-ghost" onClick={onVazgec}>
             Vazgeç
           </button>
           <button type="button" className="btn btn-primary" disabled={pending || !uygun} onClick={() => onOnayla(plan)}>
-            {pending ? 'Kaydediliyor…' : plan === 'AYLIK' ? 'Aylık kaydet' : 'Dönemlik kaydet'}
+            {pending
+              ? 'Kaydediliyor…'
+              : plan === 'AYLIK'
+                ? 'Aylık kaydet'
+                : plan === 'DONEMLIK'
+                  ? 'Dönemlik kaydet'
+                  : 'Deneme dersi olarak kaydet'}
           </button>
         </div>
       </div>

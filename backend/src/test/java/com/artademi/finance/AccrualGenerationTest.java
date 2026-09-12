@@ -233,12 +233,24 @@ class AccrualGenerationTest {
     void aktifOlmayanOgrenci_uretilmez() throws Exception {
         String t = "44444444-0000-0000-0000-000000000001";
         long grup = createGrupGroup(t, "x", "1500.00");
-        long ogrenci = createStudent(t, "Deneme", randomTc()); // statu DENEME (AKTIF degil)
-        enroll(t, ogrenci, grup);
+        long ogrenci = createStudent(t, "Deneme", randomTc());
+        // 2026-09-12 kurali: plansiz/AYLIK kayit ogrenciyi AKTIF yapar; DENEME'de kalmasi icin
+        // "deneme dersi" plani gerekir — o da aidat almaz.
+        mockMvc.perform(post("/api/enrollments").with(admin(t)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ogrenciId\":" + ogrenci + ",\"grupId\":" + grup + ",\"odemePlani\":\"DENEME\"}"))
+                .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/accruals/uret").with(admin(t))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"donem\":\"" + DONEM + "\"}"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.uretilenSayisi").value(0));
+
+        // Sonradan DONDURULMUS yapilan AKTIF ogrenci de uretmez
+        long ikinci = createStudent(t, "Donduruldu", randomTc());
+        enroll(t, ikinci, grup); // AYLIK -> AKTIF
+        setStatus(t, ikinci, "DONDURULMUS");
+        mockMvc.perform(post("/api/accruals/uret").with(admin(t))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"donem\":\"" + DONEM + "\"}"))
                 .andExpect(jsonPath("$.data.uretilenSayisi").value(0));
     }
 

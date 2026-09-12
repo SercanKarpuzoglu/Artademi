@@ -420,7 +420,8 @@ export interface DonemInput {
   baslangic: string;
   bitis: string;
 }
-export type OdemePlani = 'AYLIK' | 'DONEMLIK';
+/** DENEME = deneme dersi: para/kredi yok, öğrenci Deneme statüsünde kalır; "Plana geçir" ile Aylık/Dönemlik'e çevrilir. */
+export type OdemePlani = 'AYLIK' | 'DONEMLIK' | 'DENEME';
 export interface KayitOnizleme {
   plan: OdemePlani;
   uygun: boolean;

@@ -62,3 +62,9 @@ export async function transferEnrollment(
   );
   return res.data.data;
 }
+
+/** Deneme dersi kaydını plana geçirir (AYLIK/DONEMLIK): kredi + tahakkuk açılır, öğrenci AKTİF olur. */
+export async function planaGecir(id: number, odemePlani: 'AYLIK' | 'DONEMLIK'): Promise<EnrollmentResponse> {
+  const res = await api.post<ApiResponse<EnrollmentResponse>>(`/api/enrollments/${id}/plana-gecir`, { odemePlani });
+  return res.data.data;
+}

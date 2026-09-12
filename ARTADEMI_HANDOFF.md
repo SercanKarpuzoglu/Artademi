@@ -462,7 +462,7 @@ Bu ayrım mevcut `YoklamaDurumu` ile birebir örtüşüyor — "haber verdi mi" 
 
 ---
 
-### 7.26 Öğrenci statüsü: DENEME→AKTİF geçişi ELLE (ürün kararı 2026-09-09)
+### 7.26 Öğrenci statüsü: DENEME→AKTİF geçişi ELLE (ürün kararı 2026-09-09 — ⚠️ 2026-09-12'de DEĞİŞTİ, bkz. §7.35)
 
 Test ekibi: "Öğrenciyi gruba atıyorum, yoklamasını alıyorum; aktif listesinde çıkmıyor." Doğrulandı
 (kod + kırmızı test + tarayıcı/DB): yeni öğrenci `DENEME` doğar (`StudentMapper.toNewEntity`),
@@ -778,7 +778,7 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 - **Lina (tenant A) ASKIDA'ya alınmaz** — ana dev tenant; askıya alma testleri Anka/yan tenant'larla.
 - super.admin: tenant'sız, iş uçlarına 400, yalnız `/api/platform/**`; web'de ayrı PlatformApp ağacı (AppShell render edilmez).
 - Tek mesaj = tek istek (kullanıcı tercihi).
-- **DENEME→AKTİF otomatik DEĞİL** (ürün kararı, §7.26). "Aktif listede çıkmıyor" şikâyeti gelirse hata değil; uyarılar grup ekranı + Otomatik Tahakkuk'ta. Statü `PATCH /api/students/{id}/status`.
+- **DENEME→AKTİF plan seçimiyle otomatik** (§7.35, 2026-09-12): Aylık/Dönemlik/özel ders kaydı öğrenciyi Aktif yapar; "Deneme dersi" planı Deneme bırakır, "Plana geçir" ile Aktif olur. Elle statü hâlâ `PATCH /api/students/{id}/status`.
 - ⚠️ **`formatDate` sadece `YYYY-MM-DD` içindir.** `Instant` alanı (`olusturulmaTarihi`, `createdAt` …) verirseniz ekranda `07T09:30:47.326471Z.09.2026` gibi bozuk metin çıkar — hata sessizdir, patlamaz. Instant için **`formatDateTime`** kullanın. (Bu tuzak üç kez ısırdı: TenantListPage ve DashboardPage call site'ta `.slice(0,10)` ile yamamıştı, Ön Kayıt listesinde canlıya çıktı. `formatDate` artık defansif ama doğru fonksiyonu seçmek yine de sizin işiniz.)
 - **Deploy (2026-09-08'den itibaren normal `git pull`):**
   ```bash
@@ -942,6 +942,27 @@ Talep listesi koda karşı denetlendi; üç eksik kapatıldı.
   geçilebilir — kayıt zaten açılmıştır.
 - Testler: `dalga/EksiklerTest` (yeni kayıt + başvuru dönüştürmede kara liste kalkanı ve onay, branş dönemi,
   dönem silme engelinin branşı sayması).
+
+### 7.35 Plan seçimi statüyü belirler (ürün kararı 2026-09-12, §7.26'yı değiştirir)
+
+Soru: "gruba atanınca hâlâ Deneme'de duruyor, neden otomatik Aktif olmuyor?" Cevap: 10 Eylül'de "elle kalsın"
+seçilmişti; ama Dalga E'nin plan modalıyla bu tutarsızlaştı (plan seçen öğrenci Deneme kalıyor; Dönemlik'te
+tahakkuk kesilip Aylık'ta kesilmiyordu). **Ödeme hiçbir zaman tetikleyici değildi.**
+
+- `OdemePlani.DENEME` (deneme dersi) eklendi. `EnrollmentService.create`: GRUP tipinde plan AYLIK (varsayılan) /
+  DONEMLIK / DENEME; ÖZEL derste plan yok. **AYLIK, DONEMLIK ve ÖZEL ders → öğrenci DENEME ise AKTİF olur**, kredi +
+  tahakkuk açılır. **DENEME planı → DENEME kalır**, kredi/tahakkuk yok, yoklama alınır, `KREDI_BITTI` uyarısı
+  üretilmez, Otomatik Tahakkuk'ta aidat ve aylık kredi atlanır (Deneme uyarı listesi §7.26'daki gibi çalışır).
+- **`POST /api/enrollments/{id}/plana-gecir {odemePlani: AYLIK|DONEMLIK}`**: yalnız plan DENEME olan AKTİF kayıtta;
+  planı yazar, kayıt tarihini bugüne çeker (deneme günleri faturalanmaz), öğrenciyi AKTİF yapar, kredi + tahakkuk
+  açar. İkinci kez 400.
+- Grup transferi planı taşır (DONEMLIK + yeni grupta dönem yoksa AYLIK'a düşer).
+- Web: `KayitPlaniModal` üç kart (Deneme dersi ücretsiz/amber); `denemeSecenegi=false` = "Plana geçir" modu. Grup ve
+  öğrenci sayfalarında kayıt satırında **Deneme dersi** rozeti (amber) + **Plana geçir** düğmesi.
+- Testler: `OgrenciAktiflesmeTest` yeniden yazıldı (kayıt → AKTİF + aidat; deneme dersi → DENEME, para yok, uyarı
+  yok, plana geçirince AKTİF + aidat, ikinci geçiş 400); `AccrualGenerationTest.aktifOlmayanOgrenci_uretilmez`
+  deneme planı ve DONDURULMUŞ üzerinden.
+- Test ekibinin 9 Eylül bulgusu bu kararla doğal olarak kapanmış oldu.
 
 ## 16. Yol Haritası — 9 Eylül 2026 toplantı talepleri (onaylı kararlar)
 

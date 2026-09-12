@@ -3,6 +3,7 @@ import {
   createEnrollment,
   getGroupEnrollments,
   leaveEnrollment,
+  planaGecir,
   transferEnrollment,
 } from '../../api/enrollments';
 import type { EnrollmentDurumu, EnrollmentInput } from '../../api/types';
@@ -28,6 +29,18 @@ export function useCreateEnrollment(groupId: number) {
 }
 
 /** Öğrenciyi gruptan çıkarır; basarida ilgili grubun kayıt listesi tazelenir. */
+/** Deneme dersi kaydını plana geçirir; grup listesi tazelenir (öğrenci artık AKTİF). */
+export function usePlanaGecir(groupId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, plan }: { id: number; plan: 'AYLIK' | 'DONEMLIK' }) => planaGecir(id, plan),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['group', groupId, 'enrollments'] });
+      qc.invalidateQueries({ queryKey: ['students'] });
+    },
+  });
+}
+
 export function useLeaveEnrollment(groupId: number) {
   const qc = useQueryClient();
   return useMutation({

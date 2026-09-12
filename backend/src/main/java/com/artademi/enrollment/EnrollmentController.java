@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import com.artademi.enrollment.dto.PlanaGecirRequest;
 
 /**
  * Kayit (enrollment) ucu — ogrenci/grup yazma iliskisi. Ince controller: dogrular, servisi cagirir,
@@ -64,6 +65,13 @@ public class EnrollmentController {
     @PatchMapping("/api/enrollments/{id}/leave")
     public ApiResponse<EnrollmentResponse> leave(@PathVariable Long id) {
         return ApiResponse.ok(service.leave(id));
+    }
+
+    /** Deneme dersi kaydini plana gecir (AYLIK/DONEMLIK): kredi+tahakkuk acilir, ogrenci AKTIF olur. */
+    @PostMapping("/api/enrollments/{id}/plana-gecir")
+    public ApiResponse<EnrollmentResponse> planaGecir(@PathVariable Long id,
+            @Valid @RequestBody PlanaGecirRequest request) {
+        return ApiResponse.ok(service.planaGecir(id, request.odemePlani()));
     }
 
     /**

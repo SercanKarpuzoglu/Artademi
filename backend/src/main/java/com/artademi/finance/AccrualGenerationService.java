@@ -77,7 +77,7 @@ public class AccrualGenerationService {
 
         for (Enrollment kayit : enrollmentRepository.findAktifAidatliKayitlar()) {
             // Dalga E: donemlik kayit donem ucretini kayitta tek kalem odedi; aylik aidat URETILMEZ.
-            if (kayit.getOdemePlani() == OdemePlani.DONEMLIK) {
+            if (kayit.getOdemePlani() == OdemePlani.DONEMLIK || kayit.getOdemePlani() == OdemePlani.DENEME) {
                 continue;
             }
             Student ogrenci = kayit.getOgrenci();

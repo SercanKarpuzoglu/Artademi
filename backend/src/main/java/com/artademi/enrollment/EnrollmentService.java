@@ -88,20 +88,64 @@ public class EnrollmentService {
         }
 
         Enrollment yeni = EnrollmentMapper.toNewEntity(ogrenci, grup, req.kayitTarihi());
-        // Dalga E: plan (GRUP tipinde). DONEMLIK -> grubun donemi kayda yazilir; kredi + tahakkuk KrediService'te.
-        if (grup.getTip() == GrupTipi.GRUP) {
-            OdemePlani plan = req.odemePlani() == null ? OdemePlani.AYLIK : req.odemePlani();
-            yeni.setOdemePlani(plan);
-            if (plan == OdemePlani.DONEMLIK) {
-                if (grup.getDonem() == null) {
-                    throw new ValidationException("Grubun dönemi tanımlı değil; dönemlik kayıt yapılamaz");
-                }
-                yeni.setDonem(grup.getDonem());
-            }
-        }
+        // Plan (GRUP tipinde; OZEL derste plan yok = kayit). DONEMLIK -> grubun donemi kayda yazilir.
+        OdemePlani plan = grup.getTip() == GrupTipi.GRUP
+                ? (req.odemePlani() == null ? OdemePlani.AYLIK : req.odemePlani())
+                : null;
+        planiUygula(yeni, grup, plan);
         Enrollment saved = repository.save(yeni);
-        krediService.kayitSonrasiKredi(saved);
+        // URUN KARARI (2026-09-12): plan secimi statuyu belirler. AYLIK/DONEMLIK (ve OZEL ders) = taahhut ->
+        // ogrenci AKTIF olur; DENEME (deneme dersi) -> DENEME kalir, para/kredi yok. Onceki karar (10 Eylul,
+        // "elle kalsin") Dalga E'nin plan modaliyla anlamsizlasmisti: plan secen ogrencinin Deneme kalmasi ve
+        // Donemlik'te tahakkuk kesilip Aylik'ta kesilmemesi tutarsizdi.
+        if (plan != OdemePlani.DENEME) {
+            aktiflestir(ogrenci);
+            krediService.kayitSonrasiKredi(saved);
+        }
         return EnrollmentResponse.from(saved);
+    }
+
+    /**
+     * Deneme dersi kaydini plana gecirir (AYLIK/DONEMLIK): kredi + tahakkuk o anda acilir, ogrenci AKTIF olur.
+     * Yalniz plan DENEME olan AKTIF kayitta; digerinde 400.
+     */
+    @Transactional
+    public EnrollmentResponse planaGecir(Long id, OdemePlani yeniPlan) {
+        Enrollment e = findOrThrow(id);
+        if (e.getDurum() != EnrollmentDurumu.AKTIF) {
+            throw new ValidationException("Ayrılmış kayıt plana geçirilemez");
+        }
+        if (e.getOdemePlani() != OdemePlani.DENEME) {
+            throw new ValidationException("Bu kayıt zaten bir planda (" + e.getOdemePlani() + ")");
+        }
+        if (yeniPlan == null || yeniPlan == OdemePlani.DENEME) {
+            throw new ValidationException("Aylık ya da Dönemlik seçin");
+        }
+        planiUygula(e, e.getGrup(), yeniPlan);
+        // Kredi, plana gecis gununden itibaren hesaplanir (deneme gunleri faturalanmaz).
+        e.setKayitTarihi(LocalDate.now());
+        aktiflestir(e.getOgrenci());
+        krediService.kayitSonrasiKredi(e);
+        return EnrollmentResponse.from(e);
+    }
+
+    private static void planiUygula(Enrollment e, Group grup, OdemePlani plan) {
+        e.setOdemePlani(plan);
+        if (plan == OdemePlani.DONEMLIK) {
+            if (grup.getDonem() == null) {
+                throw new ValidationException("Grubun dönemi tanımlı değil; dönemlik kayıt yapılamaz");
+            }
+            e.setDonem(grup.getDonem());
+        } else {
+            e.setDonem(null);
+        }
+    }
+
+    /** DENEME -> AKTIF (PASIF/DONDURULMUS zaten gruba yazilamaz; AKTIF'e dokunulmaz). */
+    private static void aktiflestir(Student ogrenci) {
+        if (ogrenci.getStatus() == StudentStatus.DENEME) {
+            ogrenci.setStatus(StudentStatus.AKTIF);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -153,9 +197,13 @@ public class EnrollmentService {
         mevcut.setDurum(EnrollmentDurumu.AYRILDI);
         mevcut.setAyrilmaTarihi(LocalDate.now());
 
-        // 2) Yeni gruba AKTIF kayit.
-        Enrollment yeni = repository.save(
-                EnrollmentMapper.toNewEntity(ogrenci, yeniGrup, LocalDate.now()));
+        // 2) Yeni gruba AKTIF kayit — plan tasinir (DONEMLIK'te yeni grubun donemi; yoksa AYLIK'a duser).
+        Enrollment yeniKayit = EnrollmentMapper.toNewEntity(ogrenci, yeniGrup, LocalDate.now());
+        OdemePlani tasinanPlan = mevcut.getOdemePlani() == OdemePlani.DONEMLIK && yeniGrup.getDonem() == null
+                ? OdemePlani.AYLIK
+                : (mevcut.getOdemePlani() == null ? OdemePlani.AYLIK : mevcut.getOdemePlani());
+        planiUygula(yeniKayit, yeniGrup, tasinanPlan);
+        Enrollment yeni = repository.save(yeniKayit);
 
         // 3) Aidat farki — yalnizca eski grubun o donem tahakkuku zaten urediyse.
         String donem = (req.donem() != null && !req.donem().isBlank())

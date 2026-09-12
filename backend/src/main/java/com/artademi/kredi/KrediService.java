@@ -88,6 +88,10 @@ public class KrediService {
             return KayitOnizleme.uygunDegil(plan, "Özel derste plan seçimi yok (ders başı ücret)");
         }
         int haftalik = (int) schedules.findByGrupId(grupId).stream().filter(Schedule::isAktif).count();
+        if (plan == OdemePlani.DENEME) {
+            // Deneme dersi: para yok, kredi yok; yalnizca "uygun" doner (modalda ucretsiz kart).
+            return new KayitOnizleme(plan, true, null, null, null, t, null, haftalik, 0, null);
+        }
         if (plan == OdemePlani.DONEMLIK) {
             Donem d = g.getDonem();
             if (d == null) {
@@ -122,6 +126,9 @@ public class KrediService {
             return;
         }
         OdemePlani plan = e.getOdemePlani() == null ? OdemePlani.AYLIK : e.getOdemePlani();
+        if (plan == OdemePlani.DENEME) {
+            return; // deneme dersi: kredi/tahakkuk yok
+        }
         LocalDate kayit = e.getKayitTarihi() == null ? LocalDate.now() : e.getKayitTarihi();
         KayitOnizleme on = onizle(g.getId(), plan, kayit);
         if (!on.uygun()) {
@@ -165,7 +172,7 @@ public class KrediService {
         YearMonth ay = YearMonth.parse(donem);
         int n = 0;
         for (Enrollment e : enrollments.findAktifAidatliKayitlar()) {
-            if (e.getOdemePlani() == OdemePlani.DONEMLIK) {
+            if (e.getOdemePlani() == OdemePlani.DONEMLIK || e.getOdemePlani() == OdemePlani.DENEME) {
                 continue;
             }
             LocalDate from = ay.atDay(1);
@@ -205,6 +212,9 @@ public class KrediService {
      */
     @Transactional(readOnly = true)
     public boolean krediUyarisiGerekli(Enrollment e, LocalDate tarih) {
+        if (e.getOdemePlani() == OdemePlani.DENEME) {
+            return false; // deneme dersinde kredi beklenmez
+        }
         if (e.getOdemePlani() == OdemePlani.DONEMLIK) {
             return true;
         }

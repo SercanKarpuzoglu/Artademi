@@ -8,10 +8,12 @@ import { useDebounce } from '../../lib/useDebounce';
 import { DURUM_BADGE, DURUM_LABEL, TIP_BADGE, TIP_LABEL } from '../group/groupDisplay';
 import { useGroups } from '../group/useGroups';
 import KayitPlaniModal from '../enrollment/KayitPlaniModal';
+import { planRozeti } from '../enrollment/planDisplay';
 import KaraListeModal from './KaraListeModal';
 import KrediKarti from './KrediKarti';
 import KaraListeUyariModal from './KaraListeUyariModal';
-import { useEnrollStudent, useLeaveFromStudent, useStudentEnrollments } from './useStudentEnrollments';
+import { useEnrollStudent, useLeaveFromStudent,
+  usePlanaGecirFromStudent, useStudentEnrollments } from './useStudentEnrollments';
 import { useAuth } from '../../auth/AuthContext';
 import { Role } from '../../auth/roles';
 import StatusBadge from '../../components/StatusBadge';
@@ -211,6 +213,8 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
   const kayitlar = useStudentEnrollments(student.id);
   const ekleMut = useEnrollStudent(student.id);
   const cikarMut = useLeaveFromStudent(student.id);
+  const planaGecirMut = usePlanaGecirFromStudent(student.id);
+  const [planaGecirRow, setPlanaGecirRow] = useState<{ id: number; grupId: number; grupAd: string } | null>(null);
   const [q, setQ] = useState('');
   const debouncedQ = useDebounce(q, 300);
   const [hata, setHata] = useState<string | null>(null);
@@ -328,6 +332,21 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
         />
       )}
 
+      {planaGecirRow && (
+        <KayitPlaniModal
+          grupId={planaGecirRow.grupId}
+          grupAd={planaGecirRow.grupAd}
+          ogrenciAd={`${student.ad} ${student.soyad}`}
+          pending={planaGecirMut.isPending}
+          denemeSecenegi={false}
+          onVazgec={() => setPlanaGecirRow(null)}
+          onOnayla={(plan) => {
+            if (plan === 'DENEME') return;
+            planaGecirMut.mutate({ id: planaGecirRow.id, plan }, { onSuccess: () => setPlanaGecirRow(null) });
+          }}
+        />
+      )}
+
       {eklendi && student.status === 'DENEME' && (
         <div role="status" className="rounded-[12px] border border-amber/40 bg-amber-soft px-4 py-3 text-[13px]">
           <p className="font-semibold text-amber">{eklendi} grubuna Deneme statüsünde yazıldı</p>
@@ -372,7 +391,7 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
                 <td className="text-ink-soft">
                   {formatDate(e.kayitTarihi)}
                   {e.grup.tip === 'GRUP' && (
-                    <span className="badge b-gray ml-2">{e.odemePlani === 'DONEMLIK' ? `Dönemlik${e.donem ? ` · ${e.donem.ad}` : ''}` : 'Aylık'}</span>
+                    <span className={`badge ${planRozeti(e).sinif} ml-2`}>{planRozeti(e).metin}</span>
                   )}
                 </td>
                 <td>
@@ -383,14 +402,25 @@ function KayitPaneli({ student }: { student: StudentResponse }) {
                 </td>
                 <td className="t-right">
                   {e.durum === 'AKTIF' && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={cikarMut.isPending}
-                      onClick={() => cikar(e.id)}
-                    >
-                      Çıkar
-                    </button>
+                    <div className="inline-flex gap-2">
+                      {e.odemePlani === 'DENEME' && (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => setPlanaGecirRow({ id: e.id, grupId: e.grup.id, grupAd: e.grup.ad })}
+                        >
+                          Plana geçir
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={cikarMut.isPending}
+                        onClick={() => cikar(e.id)}
+                      >
+                        Çıkar
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>

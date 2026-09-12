@@ -9,6 +9,7 @@ import StatusBadge from '../../components/StatusBadge';
 import { formatDate, formatMoney } from '../../lib/format';
 import { useDebounce } from '../../lib/useDebounce';
 import KayitPlaniModal from '../enrollment/KayitPlaniModal';
+import { planRozeti } from '../enrollment/planDisplay';
 import KaraListeUyariModal from '../student/KaraListeUyariModal';
 import { useStudents } from '../student/useStudents';
 import GroupSchedulePanel from './GroupSchedulePanel';
@@ -17,6 +18,7 @@ import {
   useCreateEnrollment,
   useEnrollments,
   useLeaveEnrollment,
+  usePlanaGecir,
   useTransferEnrollment,
 } from './useEnrollments';
 import { useGroup, useGroups } from './useGroups';
@@ -126,6 +128,9 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
   const enrollmentsQuery = useEnrollments(groupId, durum);
   const createMut = useCreateEnrollment(groupId);
   const leaveMut = useLeaveEnrollment(groupId);
+  const planaGecirMut = usePlanaGecir(groupId);
+  // Deneme dersi kaydını plana geçirme modalı (Aylık/Dönemlik; Deneme seçeneği yok).
+  const [planaGecirRow, setPlanaGecirRow] = useState<{ id: number; ogrenciAd: string } | null>(null);
 
   // Grup transferi: yalnızca GRUP↔GRUP (OZEL grupta transfer yok).
   const canTransfer = canManage && group.tip === 'GRUP';
@@ -272,6 +277,21 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
         />
       )}
 
+      {planaGecirRow && (
+        <KayitPlaniModal
+          grupId={groupId}
+          grupAd={group.ad}
+          ogrenciAd={planaGecirRow.ogrenciAd}
+          pending={planaGecirMut.isPending}
+          denemeSecenegi={false}
+          onVazgec={() => setPlanaGecirRow(null)}
+          onOnayla={(plan) => {
+            if (plan === 'DENEME') return;
+            planaGecirMut.mutate({ id: planaGecirRow.id, plan }, { onSuccess: () => setPlanaGecirRow(null) });
+          }}
+        />
+      )}
+
       {denemeUyari && (
         <div
           role="status"
@@ -338,7 +358,7 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
                 <td className="text-ink-soft">
                   {formatDate(e.kayitTarihi)}
                   {group.tip === 'GRUP' && (
-                    <span className="badge b-gray ml-2">{e.odemePlani === 'DONEMLIK' ? `Dönemlik${e.donem ? ` · ${e.donem.ad}` : ''}` : 'Aylık'}</span>
+                    <span className={`badge ${planRozeti(e).sinif} ml-2`}>{planRozeti(e).metin}</span>
                   )}
                 </td>
                 <td>
@@ -348,6 +368,17 @@ function EnrollmentSection({ group, canManage }: { group: GroupResponse; canMana
                   <td className="t-right">
                     {e.durum === 'AKTIF' && (
                       <div className="inline-flex gap-2">
+                        {e.odemePlani === 'DENEME' && (
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() =>
+                              setPlanaGecirRow({ id: e.id, ogrenciAd: `${e.ogrenci.ad} ${e.ogrenci.soyad}` })
+                            }
+                          >
+                            Plana geçir
+                          </button>
+                        )}
                         {canTransfer && (
                           <button
                             type="button"

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blog — Kurs yönetimi üzerine | Artademi</title>
+<meta name="description" content="Özel kurs sahipleri için kurs yönetimi yazıları: yoklama, aidat, dönem, hoca hakedişi ve kasa — hepsi tek panelde nasıl işler." />
+<link rel="canonical" href="https://artademi.com/blog/" />
+<link rel="icon" type="image/png" href="/assets/favicon.png" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Artademi Blog — Kurs yönetimi üzerine" />
+<meta property="og:description" content="Özel kurs sahipleri için kurs yönetimi yazıları." />
+<meta property="og:url" content="https://artademi.com/blog/" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/blog/blog.css" />
+</head>
+<body>
+<div class="bg-field"><div class="orb c1"></div><div class="orb c2"></div></div>
+
+<header id="hdr">
+  <div class="wrap nav">
+    <a href="/" class="brand"><img src="/assets/amblem.png" class="logo-img" alt="Artademi"><span>artademi</span></a>
+    <nav class="nav-links" id="navlinks">
+      <a href="/#features">Özellikler</a>
+      <a href="/#how">Nasıl çalışır</a>
+      <a href="/#pricing">Fiyatlandırma</a>
+      <a href="/blog/" class="active">Blog</a>
+      <a href="/#contact">Demo iste</a>
+      <a href="https://app.artademi.com" class="nav-cta">Giriş yap</a>
+    </nav>
+    <button class="menu-btn" id="menuBtn" aria-label="Menü">☰</button>
+  </div>
+</header>
+
+<main>
+  <div class="read">
+    <span class="eyebrow">Blog</span>
+    <h1 class="title">Kurs yönetimi üzerine</h1>
+    <p class="lead">Özel kurs sahipleri için: yoklama, aidat, dönem, hoca hakedişi ve kasa tek panelde nasıl işler.</p>
+
+    <div class="post-list">
+      <a class="post-card" href="/blog/kurs-yonetim-programi-tek-panel/">
+        <span class="tag">Kurs yönetimi · 13 Eylül 2026</span>
+        <h2>Kurs Yönetimi: Yoklamadan Hoca Hakedişine Her Şey Tek Panelde</h2>
+        <p>Yoklama deftere, aidat Excel'e, hoca hakedişi kafadan mı? Hepsini tek panelde toplamak kursunuzda neyi değiştirir.</p>
+        <span class="more">Yazıyı oku →</span>
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <a href="/" class="brand"><img src="/assets/amblem.png" class="logo-img" alt="Artademi"><span>artademi</span></a>
+      <div class="foot-links">
+        <a href="/#features">Özellikler</a>
+        <a href="/#pricing">Fiyatlandırma</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#faq">SSS</a>
+        <a href="/#legal">KVKK</a>
+        <a href="https://app.artademi.com">Giriş yap</a>
+        <a href="mailto:info@artademi.com">İletişim</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="yr"></span> Artademi · Sanat akademileri için yönetim platformu</span>
+      <span>info@artademi.com</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  const navlinks = document.getElementById('navlinks');
+  document.getElementById('menuBtn').addEventListener('click', () => navlinks.classList.toggle('open'));
+</script>
+</body>
+</html>

@@ -24,7 +24,16 @@ public record SaleResponse(
         LocalDate satisTarihi,
         String aciklama,
         Instant olusturulmaTarihi,
-        Instant guncellenmeTarihi) {
+        Instant guncellenmeTarihi,
+
+        /** Satisin islendigi kasa; yoksa null. */
+        KasaRef kasa,
+
+        /**
+         * Bu satir bir IADE ise iade edilen orijinal satisin id'si; normal satista null.
+         * Arayuz bununla "Iade" rozetini basar (adet ve tutar da negatiftir).
+         */
+        Long iadeEdilenSatisId) {
 
     /** Urun ozeti (id + ad). */
     public record UrunRef(Long id, String ad) {
@@ -32,6 +41,10 @@ public record SaleResponse(
 
     /** Ogrenci ozeti (id + ad + soyad). */
     public record OgrenciRef(Long id, String ad, String soyad) {
+    }
+
+    /** Kasa ozeti (id + ad). */
+    public record KasaRef(Long id, String ad) {
     }
 
     public static SaleResponse from(Sale s) {
@@ -51,6 +64,8 @@ public record SaleResponse(
                 s.getSatisTarihi(),
                 s.getAciklama(),
                 s.getOlusturulmaTarihi(),
-                s.getGuncellenmeTarihi());
+                s.getGuncellenmeTarihi(),
+                s.getKasa() == null ? null : new KasaRef(s.getKasa().getId(), s.getKasa().getAd()),
+                s.getIadeEdilenSatis() == null ? null : s.getIadeEdilenSatis().getId());
     }
 }

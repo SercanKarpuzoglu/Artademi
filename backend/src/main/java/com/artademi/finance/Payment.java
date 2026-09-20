@@ -78,6 +78,16 @@ public class Payment extends TenantAware implements SoftDeletable {
     @JoinColumn(name = "kasa_id")
     private com.artademi.kasa.Kasa kasa;
 
+    /**
+     * Bu satir bir IADE ise, iade edilen ORIJINAL tahsilat (V37). Iade satirinin {@link #tutar}i
+     * NEGATIFTIR; bakiye/kasa/Gelirler zaten SUM() ile calistigi icin dogru sonucu kendiliginden verir.
+     *
+     * <p>{@code null} = normal tahsilat. Iade satirinin kendisi tekrar iade EDILEMEZ (serviste 400).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "iade_edilen_odeme_id")
+    private Payment iadeEdilenOdeme;
+
     @CreationTimestamp
     @Column(name = "olusturulma_tarihi", nullable = false, updatable = false)
     private Instant olusturulmaTarihi;
@@ -195,5 +205,18 @@ public class Payment extends TenantAware implements SoftDeletable {
     @Override
     public void setSilen(String silen) {
         this.silen = silen;
+    }
+
+    public Payment getIadeEdilenOdeme() {
+        return iadeEdilenOdeme;
+    }
+
+    public void setIadeEdilenOdeme(Payment iadeEdilenOdeme) {
+        this.iadeEdilenOdeme = iadeEdilenOdeme;
+    }
+
+    /** Bu satir bir iade mi? (iade satirinin tutari negatiftir) */
+    public boolean isIade() {
+        return iadeEdilenOdeme != null;
     }
 }

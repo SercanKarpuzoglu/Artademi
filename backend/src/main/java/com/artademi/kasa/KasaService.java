@@ -34,13 +34,16 @@ public class KasaService {
     private final KasaHareketiRepository hareketler;
     private final PaymentRepository payments;
     private final ExpenseRepository expenses;
+    private final com.artademi.inventory.SaleRepository sales;
 
     public KasaService(KasaRepository repository, KasaHareketiRepository hareketler,
-            PaymentRepository payments, ExpenseRepository expenses) {
+            PaymentRepository payments, ExpenseRepository expenses,
+            com.artademi.inventory.SaleRepository sales) {
         this.repository = repository;
         this.hareketler = hareketler;
         this.payments = payments;
         this.expenses = expenses;
+        this.sales = sales;
     }
 
     @Transactional(readOnly = true)
@@ -60,14 +63,21 @@ public class KasaService {
     /**
      * Kasanin guncel bakiyesi.
      *
-     * <p>Dort bilesenin toplami; hicbiri saklanmaz. Bos toplamlar {@code null} doner,
+     * <p>Bes bilesenin toplami; hicbiri saklanmaz. Bos toplamlar {@code null} doner,
      * burada sifira cevrilir.
+     *
+     * <p>⚠️ Tahsilat ve urun satisi toplamlari ISARETLI: iade satirlari negatiftir (V37), bu
+     * yuzden ayni SUM iadeyi de kasadan dusurur — ayri bir "iade" bileseni YOKTUR.
+     *
+     * <p>Satis bileseni V37'de eklendi: o ana kadar urun satisi Gelirler'de gorunup hicbir
+     * kasaya islenmiyordu. Kasasi olmayan (eski) satislar bu toplama girmez.
      */
     @Transactional(readOnly = true)
     public BigDecimal bakiye(Long kasaId) {
         Kasa k = bul(kasaId);
         return k.getAcilisBakiyesi()
                 .add(sifirSaOlmaz(payments.kasayaGirenToplam(kasaId)))
+                .add(sifirSaOlmaz(sales.kasayaGirenToplam(kasaId)))
                 .subtract(sifirSaOlmaz(expenses.kasadanCikanToplam(kasaId)))
                 .add(sifirSaOlmaz(hareketler.netHareket(kasaId)));
     }

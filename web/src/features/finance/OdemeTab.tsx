@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import SilButonu from '../../components/SilButonu';
+import IadeButonu from './IadeButonu';
 import { useState } from 'react';
 import { ApiException } from '../../api/client';
 import { getKasalar } from '../../api/kasa';
@@ -133,7 +134,7 @@ export default function OdemeTab() {
                   <th>Yöntem</th>
                   <th className="t-right">Tutar</th>
                   <th>Açıklama</th>
-                  <th className="t-right">Makbuz</th>
+                  <th className="t-right">İşlem</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,7 +152,10 @@ export default function OdemeTab() {
                       </span>
                     </td>
                     <td className="t-right">
-                      <span className="amount">{formatMoney(p.tutar)} ₺</span>
+                      <span className={`amount${p.iadeEdilenOdemeId ? ' text-red' : ''}`}>
+                        {formatMoney(p.tutar)} ₺
+                      </span>
+                      {p.iadeEdilenOdemeId && <span className="ml-2 badge b-gray">İade</span>}
                     </td>
                     <td className="text-ink-soft">{p.aciklama ?? '—'}</td>
                     <td className="t-right">
@@ -163,10 +167,11 @@ export default function OdemeTab() {
                       >
                         {makbuzId === p.id ? 'Hazırlanıyor…' : 'Makbuz (PDF)'}
                       </button>
+                      <IadeButonu odemeId={p.id} iadeEdilenOdemeId={p.iadeEdilenOdemeId} />
                       <SilButonu
                         tur="odeme"
                         id={p.id}
-                        ad={`Ödeme ${formatDate(p.odemeTarihi)} · ${p.ogrenci.ad} ${p.ogrenci.soyad}`}
+                        ad={`${p.iadeEdilenOdemeId ? 'İade' : 'Ödeme'} ${formatDate(p.odemeTarihi)} · ${p.ogrenci.ad} ${p.ogrenci.soyad}`}
                       />
                     </td>
                   </tr>

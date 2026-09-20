@@ -255,8 +255,17 @@ public class SilmeService {
             }
             case ODEME -> {
                 Payment p = bul(tur, payments.findScopedById(id));
-                ad = "Ödeme " + p.getOdemeTarihi() + " · " + p.getTutar() + " ₺";
+                ad = (p.isIade() ? "İade " : "Ödeme ") + p.getOdemeTarihi() + " · " + p.getTutar() + " ₺";
                 etkiler.add("Öğrenci bakiyesi ve kasa bakiyesi yeniden hesaplanır");
+                // Iadesi olan tahsilat silinirse iade satiri sahipsiz kalir: defterde "geri verilen
+                // para" durur ama neyin iadesi oldugu kaybolur. Once iade geri alinmali.
+                long iade = payments.countIadeByOdeme(id);
+                if (iade > 0) {
+                    engel = "Bu tahsilatın " + iade + " iadesi var; önce iadeyi silin";
+                }
+                if (p.isIade()) {
+                    etkiler.add("İade geri alınmış olur: verilen para tekrar tahsilat sayılır");
+                }
             }
             case GIDER -> {
                 Expense x = bul(tur, expenses.findScopedById(id));
@@ -265,8 +274,16 @@ public class SilmeService {
             }
             case SATIS -> {
                 Sale s = bul(tur, sales.findScopedById(id));
-                ad = "Satış " + s.getSatisTarihi() + " · " + s.getToplamTutar() + " ₺";
-                etkiler.add(s.getAdet() + " adet stoğa geri eklenir");
+                ad = (s.isIade() ? "Ürün iadesi " : "Satış ") + s.getSatisTarihi()
+                        + " · " + s.getToplamTutar() + " ₺";
+                // Iade satirinin adedi NEGATIFTIR: silinince stok geri DUSER (iade geri alinmis olur).
+                etkiler.add(s.isIade()
+                        ? Math.abs(s.getAdet()) + " adet stoktan tekrar düşülür (iade geri alınır)"
+                        : s.getAdet() + " adet stoğa geri eklenir");
+                long iade = sales.countIadeBySatis(id);
+                if (iade > 0) {
+                    engel = "Bu satışın " + iade + " iadesi var; önce iadeyi silin";
+                }
             }
             case PAKET -> {
                 DersPaketi d = bul(tur, paketler.findScopedById(id));

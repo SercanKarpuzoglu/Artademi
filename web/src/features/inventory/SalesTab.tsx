@@ -1,5 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { getKasalar } from '../../api/kasa';
 import SilButonu from '../../components/SilButonu';
+import SatisIadeButonu from './SatisIadeButonu';
 import { ApiException } from '../../api/client';
 import type { ProductResponse, SaleInput, StudentResponse } from '../../api/types';
 import { formatDate, formatMoney } from '../../lib/format';
@@ -98,14 +101,24 @@ export default function SalesTab() {
                     <td className="text-ink-soft">
                       {s.ogrenci ? `${s.ogrenci.ad} ${s.ogrenci.soyad}` : '—'}
                     </td>
-                    <td className="t-right">{s.adet}</td>
+                    <td className="t-right">
+                      {s.adet}
+                      {s.iadeEdilenSatisId && <span className="ml-2 badge b-gray">İade</span>}
+                    </td>
                     <td className="t-right">
                       <span className="amount">{formatMoney(s.birimFiyat)} ₺</span>
                     </td>
                     <td className="t-right">
                       <div className="flex items-center justify-end gap-2">
-                        <span className="amount">{formatMoney(s.toplamTutar)} ₺</span>
-                        <SilButonu tur="satis" id={s.id} ad={`Satış ${formatDate(s.satisTarihi)} · ${s.urun.ad}`} />
+                        <span className={`amount${s.iadeEdilenSatisId ? ' text-red' : ''}`}>
+                          {formatMoney(s.toplamTutar)} ₺
+                        </span>
+                        <SatisIadeButonu satisId={s.id} iadeEdilenSatisId={s.iadeEdilenSatisId} />
+                        <SilButonu
+                          tur="satis"
+                          id={s.id}
+                          ad={`${s.iadeEdilenSatisId ? 'Ürün iadesi' : 'Satış'} ${formatDate(s.satisTarihi)} · ${s.urun.ad}`}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -155,6 +168,9 @@ function SaleForm({ onDone }: { onDone: () => void }) {
   const [adet, setAdet] = useState('1');
   const [satisTarihi, setSatisTarihi] = useState(today());
   const [aciklama, setAciklama] = useState('');
+  const [kasaId, setKasaId] = useState('');
+  // Kasa tanimliysa secici gosterilir; hic kasa yoksa alan HIC gorunmez (kasa opsiyoneldir).
+  const kasalarQ = useQuery({ queryKey: ['kasalar', 'aktif'], queryFn: () => getKasalar(true) });
 
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -191,6 +207,7 @@ function SaleForm({ onDone }: { onDone: () => void }) {
       adet: adetNum,
       satisTarihi: satisTarihi || undefined,
       aciklama: aciklama.trim() || undefined,
+      kasaId: kasaId ? Number(kasaId) : undefined,
     };
 
     try {
@@ -255,6 +272,22 @@ function SaleForm({ onDone }: { onDone: () => void }) {
             onChange={(e) => setSatisTarihi(e.target.value)}
           />
         </Field>
+        {(kasalarQ.data?.length ?? 0) > 0 && (
+          <Field label="Kasa" error={fieldErrors.kasaId}>
+            <select
+              className={inputClass}
+              value={kasaId}
+              onChange={(e) => setKasaId(e.target.value)}
+            >
+              <option value="">Kasa seçilmedi</option>
+              {kasalarQ.data?.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.ad}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Açıklama" error={fieldErrors.aciklama}>
           <input
             className={inputClass}

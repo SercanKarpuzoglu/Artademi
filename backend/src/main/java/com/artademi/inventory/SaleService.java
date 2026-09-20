@@ -2,7 +2,10 @@ package com.artademi.inventory;
 
 import com.artademi.common.exception.ConflictException;
 import com.artademi.common.exception.NotFoundException;
+import com.artademi.common.exception.ValidationException;
 import com.artademi.inventory.dto.CreateSaleRequest;
+import com.artademi.inventory.dto.SatisIadeOnizleme;
+import com.artademi.inventory.dto.SatisIadeRequest;
 import com.artademi.inventory.dto.SaleMapper;
 import com.artademi.inventory.dto.SaleResponse;
 import com.artademi.student.Student;
@@ -41,12 +44,15 @@ public class SaleService {
     private final SaleRepository repository;
     private final ProductRepository productRepository;
     private final StudentRepository studentRepository;
+    private final com.artademi.kasa.KasaRepository kasaRepository;
 
     public SaleService(SaleRepository repository, ProductRepository productRepository,
-            StudentRepository studentRepository) {
+            StudentRepository studentRepository,
+            com.artademi.kasa.KasaRepository kasaRepository) {
         this.repository = repository;
         this.productRepository = productRepository;
         this.studentRepository = studentRepository;
+        this.kasaRepository = kasaRepository;
     }
 
     /** Yeni satis olusturur; stok yeterliyse stogu dusurur (atomik), 201. */
@@ -70,9 +76,106 @@ public class SaleService {
         // Stok dusumu (ayni transaction, atomik).
         urun.setStokAdedi(urun.getStokAdedi() - adet);
 
-        Sale saved = repository.save(SaleMapper.toNewEntity(
-                urun, ogrenci, adet, birimFiyat, toplamTutar, satisTarihi, req.aciklama()));
-        return SaleResponse.from(saved);
+        Sale yeni = SaleMapper.toNewEntity(
+                urun, ogrenci, adet, birimFiyat, toplamTutar, satisTarihi, req.aciklama());
+        yeni.setKasa(resolveKasa(req.kasaId()));
+        return SaleResponse.from(repository.save(yeni));
+    }
+
+    // =====================================================================
+    // Iade (V37)
+    // =====================================================================
+
+    /**
+     * Urun iadesi: orijinal satira DOKUNULMAZ, NEGATIF adet/tutarli yeni bir satir yazilir ve
+     * stok geri eklenir.
+     *
+     * <p><b>Neden silme degil:</b> satisi silmek de stogu geri ekler (bkz. SilmeService) ama
+     * "bu satis hic olmadi" demektir; Gelirler'den ve kasadan parayi iz birakmadan siler. Oysa
+     * urun satildi VE parasi geri verildi. Ayrica 3 adetten 1'ini iade etmek silmeyle yapilamaz.
+     *
+     * <p>Birim fiyat ORIJINAL satistan kopyalanir: urunun fiyati sonradan degistiyse veliye
+     * satin aldigi fiyat geri verilir, gunun fiyati degil.
+     *
+     * <p>Ayni islemde: iade satiri + stok iadesi. Biri patlarsa ikisi de geri alinir.
+     */
+    @Transactional
+    public SaleResponse iade(Long satisId, SatisIadeRequest req) {
+        Sale orijinal = findOrThrow(satisId);
+        String engel = iadeEngeli(orijinal, req.adet());
+        if (engel != null) {
+            throw ValidationException.alan("adet", engel);
+        }
+
+        int adet = req.adet();
+        BigDecimal birimFiyat = orijinal.getBirimFiyat();
+        BigDecimal toplamTutar = birimFiyat.multiply(BigDecimal.valueOf(-adet))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // Stok geri eklenir (ayni transaction, atomik).
+        Product urun = orijinal.getUrun();
+        urun.setStokAdedi(urun.getStokAdedi() + adet);
+
+        Sale iade = SaleMapper.toNewEntity(
+                urun,
+                orijinal.getOgrenci(),
+                -adet,
+                birimFiyat,
+                toplamTutar,
+                req.iadeTarihi() != null ? req.iadeTarihi() : LocalDate.now(),
+                req.aciklama());
+        // Kasa verilmezse parayi aldigimiz kasadan geri veririz.
+        iade.setKasa(req.kasaId() != null ? resolveKasa(req.kasaId()) : orijinal.getKasa());
+        iade.setIadeEdilenSatis(orijinal);
+        return SaleResponse.from(repository.save(iade));
+    }
+
+    /** Iade onay ekraninin ozeti: kac adet iade edilebilir, hangi fiyattan, engel var mi. */
+    @Transactional(readOnly = true)
+    public SatisIadeOnizleme iadeOnizleme(Long satisId) {
+        Sale orijinal = findOrThrow(satisId);
+        int iadeEdilen = repository.iadeEdilenAdet(satisId);
+        return new SatisIadeOnizleme(
+                satisId,
+                orijinal.getAdet(),
+                iadeEdilen,
+                Math.max(0, orijinal.getAdet() - iadeEdilen),
+                orijinal.getBirimFiyat(),
+                iadeEngeli(orijinal, null));
+    }
+
+    /**
+     * Iadeyi engelleyen sebep; engel yoksa {@code null}.
+     *
+     * @param adet iade edilmek istenen adet; {@code null} ise yalnizca kaydin iadeye uygunlugu
+     *             kontrol edilir (onizleme, adet girilmeden once cagirir)
+     */
+    private String iadeEngeli(Sale orijinal, Integer adet) {
+        if (orijinal.isIade()) {
+            return "Bu kayıt zaten bir iade; iadenin iadesi yapılamaz.";
+        }
+        int kalan = orijinal.getAdet() - repository.iadeEdilenAdet(orijinal.getId());
+        if (kalan <= 0) {
+            return "Bu satışın tamamı zaten iade edilmiş.";
+        }
+        if (adet != null && adet > kalan) {
+            return "İade adedi kalan iade edilebilir adedi (" + kalan + ") aşamaz.";
+        }
+        return null;
+    }
+
+    /**
+     * Kasa secildiyse AYNI tenant'a ait oldugunu dogrular.
+     *
+     * <p>⚠️ findScopedById: FK tek basina yabanci kasa referansini engellemez; istemci baska
+     * kurumun kasa id'sini gondererek capraz-tenant bag kuramamalidir.
+     */
+    private com.artademi.kasa.Kasa resolveKasa(Long kasaId) {
+        if (kasaId == null) {
+            return null;
+        }
+        return kasaRepository.findScopedById(kasaId)
+                .orElseThrow(() -> new NotFoundException("Kasa bulunamadı: " + kasaId));
     }
 
     @Transactional(readOnly = true)

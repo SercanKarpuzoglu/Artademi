@@ -3,12 +3,15 @@ package com.artademi.finance;
 import com.artademi.common.exception.NotFoundException;
 import com.artademi.common.exception.ValidationException;
 import com.artademi.finance.dto.CreatePaymentRequest;
+import com.artademi.finance.dto.IadeOnizleme;
+import com.artademi.finance.dto.IadeRequest;
 import com.artademi.finance.dto.PaymentMapper;
 import com.artademi.finance.dto.PaymentResponse;
 import com.artademi.group.Group;
 import com.artademi.group.GroupRepository;
 import com.artademi.student.Student;
 import com.artademi.student.StudentRepository;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -40,15 +43,18 @@ public class PaymentService {
     private final StudentRepository studentRepository;
     private final GroupRepository groupRepository;
     private final com.artademi.kasa.KasaRepository kasaRepository;
+    private final com.artademi.paket.PaketService paketService;
 
     public PaymentService(PaymentRepository repository, AccrualRepository accrualRepository,
             StudentRepository studentRepository, GroupRepository groupRepository,
-            com.artademi.kasa.KasaRepository kasaRepository) {
+            com.artademi.kasa.KasaRepository kasaRepository,
+            com.artademi.paket.PaketService paketService) {
         this.repository = repository;
         this.accrualRepository = accrualRepository;
         this.studentRepository = studentRepository;
         this.groupRepository = groupRepository;
         this.kasaRepository = kasaRepository;
+        this.paketService = paketService;
     }
 
     /** Yeni tahsilat olusturur, 201. */
@@ -87,6 +93,96 @@ public class PaymentService {
         }
         return kasaRepository.findScopedById(kasaId)
                 .orElseThrow(() -> new NotFoundException("Kasa bulunamadı: " + kasaId));
+    }
+
+    // =====================================================================
+    // Iade (V37)
+    // =====================================================================
+
+    /**
+     * Tahsilat iadesi: orijinal satira DOKUNULMAZ, NEGATIF tutarli yeni bir satir yazilir.
+     *
+     * <p><b>Neden silme degil:</b> silmek "bu para hic alinmadi" demektir; oysa para alindi VE geri
+     * verildi — velinin makbuzu, kasadaki giris ve cikis gercektir. Silseydik kasa da yanlis olurdu
+     * (para fiilen cikti ama biz giris satirini yok ettik). Ayrica kismi iade silmeyle yapilamaz.
+     *
+     * <p>Negatif satir sayesinde ogrenci bakiyesi, kasa bakiyesi ve Gelirler ozeti — ucu de SUM()
+     * ile calistigindan — kendiliginden duzelir; hicbir toplam sorgusu degismedi.
+     *
+     * <p><b>Kredi:</b> iade, ogrencinin kalan kredisini IPTAL eder (urun karari 2026-09-20; bkz.
+     * {@code PaketService.iadeSonrasiKrediIptali}). Parayi geri verip kontorleri birakmak bedava
+     * ders vermektir. Ne kadar kredinin gidecegi iade-onizleme ucunda ONCEDEN gosterilir.
+     *
+     * <p>Ayni islemde: iade satiri + kredi iptali. Biri patlarsa ikisi de geri alinir.
+     */
+    @Transactional
+    public PaymentResponse iade(Long odemeId, IadeRequest req) {
+        Payment orijinal = findOrThrow(odemeId);
+        String engel = iadeEngeli(orijinal, req.tutar());
+        if (engel != null) {
+            throw com.artademi.common.exception.ValidationException.alan("tutar", engel);
+        }
+
+        Payment iade = PaymentMapper.toNewEntity(
+                orijinal.getOgrenci(),
+                orijinal.getAccrual(),
+                orijinal.getGrup(),
+                req.tutar().negate(),
+                req.iadeTarihi() != null ? req.iadeTarihi() : LocalDate.now(),
+                req.odemeYontemi() != null ? req.odemeYontemi() : orijinal.getOdemeYontemi(),
+                req.aciklama());
+        // Kasa verilmezse parayi aldigimiz kasadan geri veririz; nakit alinip havaleyle iade
+        // edilebildigi icin degistirilebilir.
+        iade.setKasa(req.kasaId() != null ? resolveKasa(req.kasaId()) : orijinal.getKasa());
+        iade.setIadeEdilenOdeme(orijinal);
+        Payment saved = repository.save(iade);
+
+        paketService.iadeSonrasiKrediIptali(
+                orijinal.getOgrenci().getId(),
+                orijinal.getGrup() == null ? null : orijinal.getGrup().getId());
+        return PaymentResponse.from(saved);
+    }
+
+    /** Iade ekraninin onay oncesi gosterdigi ozet: ne kadar iade edilebilir, ne kadar kredi gider. */
+    @Transactional(readOnly = true)
+    public IadeOnizleme iadeOnizleme(Long odemeId) {
+        Payment orijinal = findOrThrow(odemeId);
+        BigDecimal iadeEdilen = repository.iadeToplami(odemeId);
+        BigDecimal kalan = orijinal.getTutar().subtract(iadeEdilen);
+        var kredi = paketService.iadeKrediOzeti(
+                orijinal.getOgrenci().getId(),
+                orijinal.getGrup() == null ? null : orijinal.getGrup().getId());
+        return new IadeOnizleme(
+                odemeId,
+                orijinal.getTutar(),
+                iadeEdilen,
+                kalan.max(BigDecimal.ZERO),
+                kredi.paketSayisi(),
+                kredi.kalanKontor(),
+                iadeEngeli(orijinal, null));
+    }
+
+    /**
+     * Iadeyi engelleyen sebep; engel yoksa {@code null}.
+     *
+     * @param tutar iade edilmek istenen tutar; {@code null} ise yalnizca kaydin iadeye uygunlugu
+     *              kontrol edilir (onizleme, tutar girilmeden once cagirir)
+     */
+    private String iadeEngeli(Payment orijinal, BigDecimal tutar) {
+        // Iadenin iadesi: ust uste ters kayit zinciri kurulursa hangi paranin geri verildigi
+        // takip edilemez hale gelir. Fazla iade edildiyse yeni bir TAHSILAT girilir.
+        if (orijinal.isIade()) {
+            return "Bu kayıt zaten bir iade; iadenin iadesi yapılamaz.";
+        }
+        BigDecimal iadeEdilen = repository.iadeToplami(orijinal.getId());
+        BigDecimal kalan = orijinal.getTutar().subtract(iadeEdilen);
+        if (kalan.signum() <= 0) {
+            return "Bu tahsilatın tamamı zaten iade edilmiş.";
+        }
+        if (tutar != null && tutar.compareTo(kalan) > 0) {
+            return "İade tutarı kalan iade edilebilir tutarı (" + kalan + " ₺) aşamaz.";
+        }
+        return null;
     }
 
     @Transactional(readOnly = true)

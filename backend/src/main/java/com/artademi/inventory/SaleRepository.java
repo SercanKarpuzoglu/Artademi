@@ -35,6 +35,26 @@ public interface SaleRepository
     @Query("SELECT COALESCE(SUM(s.toplamTutar), 0) FROM Sale s WHERE s.satisTarihi BETWEEN :from AND :to")
     BigDecimal sumToplamTutarByTarihAraligi(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    /**
+     * Kasaya islenmis satis toplami (V37). Kasa bakiyesi bu deger uzerinden hesaplanir; iade
+     * satirlari negatif oldugu icin ayni toplam iadeyi de dusurur.
+     *
+     * <p>Kayit yoksa {@code null} doner — cagiran taraf sifira cevirir.
+     */
+    @Query("SELECT SUM(s.toplamTutar) FROM Sale s WHERE s.kasa.id = :kasaId")
+    BigDecimal kasayaGirenToplam(@Param("kasaId") Long kasaId);
+
+    /**
+     * Bir satistan bugune kadar iade edilmis ADET toplami — POZITIF doner (iade satirlarinin
+     * adedi negatiftir). Kismi iade siniri bu deger uzerinden kontrol edilir.
+     */
+    @Query("SELECT COALESCE(-SUM(s.adet), 0) FROM Sale s WHERE s.iadeEdilenSatis.id = :satisId")
+    int iadeEdilenAdet(@Param("satisId") Long satisId);
+
+    /** Bu satisin (silinmemis) iadesi var mi? Iadesi olan satis SILINEMEZ. */
+    @Query("SELECT COUNT(s) FROM Sale s WHERE s.iadeEdilenSatis.id = :satisId")
+    long countIadeBySatis(@Param("satisId") Long satisId);
+
     // --- Yumusak silme on-kontrolleri (SilmeService): silinmemis bagli kayit sayilari ---
     @Query("SELECT COUNT(s) FROM Sale s WHERE s.ogrenci.id = :id")
     long countByOgrenci(@Param("id") Long id);

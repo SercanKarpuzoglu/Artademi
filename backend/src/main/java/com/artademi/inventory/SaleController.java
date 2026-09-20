@@ -3,6 +3,8 @@ package com.artademi.inventory;
 import com.artademi.common.ApiResponse;
 import com.artademi.common.PageMeta;
 import com.artademi.inventory.dto.CreateSaleRequest;
+import com.artademi.inventory.dto.SatisIadeOnizleme;
+import com.artademi.inventory.dto.SatisIadeRequest;
 import com.artademi.inventory.dto.SaleResponse;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -48,6 +50,23 @@ public class SaleController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<SaleResponse> create(@Valid @RequestBody CreateSaleRequest request) {
         return ApiResponse.ok(service.create(request));
+    }
+
+    /**
+     * Urun iadesi (V37): orijinal satira dokunmadan NEGATIF adet/tutarli yeni satir yazar ve
+     * stogu geri ekler. Sinif duzeyindeki yetki gecerli — ADMIN ve muhasebe iade yapabilir.
+     */
+    @PostMapping("/api/sales/{id}/iade")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<SaleResponse> iade(@PathVariable Long id,
+            @Valid @RequestBody SatisIadeRequest request) {
+        return ApiResponse.ok(service.iade(id, request));
+    }
+
+    /** Iade onay ekraninin ozeti: kac adet iade edilebilir, hangi fiyattan, engel var mi. */
+    @GetMapping("/api/sales/{id}/iade-onizleme")
+    public ApiResponse<SatisIadeOnizleme> iadeOnizleme(@PathVariable Long id) {
+        return ApiResponse.ok(service.iadeOnizleme(id));
     }
 
     /** Tek satis (yoksa 404). */

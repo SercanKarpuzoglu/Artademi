@@ -119,6 +119,75 @@ public class PaketService {
         return PaketResponse.from(p, kullanimlar.countByPaketId(id), LocalDate.now());
     }
 
+    // ---------- iade (finanstan cagrilir) ----------
+
+    /**
+     * Iade sonrasi iptal edilecek/edilen krediyi anlatan ozet.
+     *
+     * @param paketSayisi iptal kapsamina giren AKTIF paket sayisi
+     * @param kalanKontor bu paketlerde kullanilmamis toplam ders
+     */
+    public record KrediOzeti(int paketSayisi, int kalanKontor) {
+    }
+
+    /**
+     * Iadede iptal edilecek krediyi ONCEDEN hesaplar (yalnizca okur).
+     *
+     * <p>Onizleme sart: iade ekrani "N kontor iptal edilecek" diye soylemeden onaylatirsa, ofis
+     * neyi kaybettigini ancak is islendikten sonra ogrenir.
+     */
+    @Transactional(readOnly = true)
+    public KrediOzeti iadeKrediOzeti(Long ogrenciId, Long grupId) {
+        return ozetle(kapsamdakiPaketler(ogrenciId, grupId));
+    }
+
+    /**
+     * Iade sonrasi krediyi iptal eder ve iptal edileni ozet olarak doner (urun karari 2026-09-20:
+     * <b>kalan kredinin TAMAMI</b> iptal edilir, kismi iadede bile).
+     *
+     * <p>Gerekcesi: parayi geri verip kontorleri birakmak bedava ders vermektir. Kismi iadede
+     * ogrenci magdur olabilir; kurum dilerse ardindan elle paket satar (Ders Paketi ekrani durur).
+     *
+     * <p><b>Kapsam:</b> iade edilen tahsilat bir GRUBA bagliysa yalnizca o grubun paketleri iptal
+     * edilir — ogrenci baska bransa da gidiyor olabilir ve onun kredisi bu iadeyle ilgisizdir.
+     * Tahsilatin grubu yoksa ogrencinin TUM aktif paketleri iptal edilir.
+     *
+     * <p>Zaten IPTAL olan paket atlanir (tekrar iade/iptal patlamaz).
+     */
+    @Transactional
+    public KrediOzeti iadeSonrasiKrediIptali(Long ogrenciId, Long grupId) {
+        List<DersPaketi> kapsam = kapsamdakiPaketler(ogrenciId, grupId);
+        KrediOzeti ozet = ozetle(kapsam);
+        for (DersPaketi paket : kapsam) {
+            paket.iptalEt();
+        }
+        if (ozet.paketSayisi() > 0) {
+            log.info("Iade sonrasi kredi iptali: ogrenci={} grup={} paket={} kontor={}",
+                    ogrenciId, grupId, ozet.paketSayisi(), ozet.kalanKontor());
+        }
+        return ozet;
+    }
+
+    /** Iade kapsamina giren AKTIF paketler; grup verilirse yalnizca o gruba bagli olanlar. */
+    private List<DersPaketi> kapsamdakiPaketler(Long ogrenciId, Long grupId) {
+        List<DersPaketi> aktifler = repository.aktifPaketler(ogrenciId);
+        if (grupId == null) {
+            return aktifler;
+        }
+        return aktifler.stream()
+                .filter(p -> p.getGrup() != null && grupId.equals(p.getGrup().getId()))
+                .toList();
+    }
+
+    /** Kalan = toplam - kullanim satiri; negatife dusmez (fazla dusum olsa bile 0 gorunur). */
+    private KrediOzeti ozetle(List<DersPaketi> paketler) {
+        int kalan = 0;
+        for (DersPaketi paket : paketler) {
+            kalan += Math.max(0, paket.getToplamDers() - (int) kullanimlar.countByPaketId(paket.getId()));
+        }
+        return new KrediOzeti(paketler.size(), kalan);
+    }
+
     // ---------- kontor dusumu (yoklamadan cagrilir) ----------
 
     /**

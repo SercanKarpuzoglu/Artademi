@@ -67,6 +67,25 @@ public class Sale extends TenantAware implements SoftDeletable {
     @Column(name = "aciklama")
     private String aciklama;
 
+    /**
+     * Satisin islendigi kasa (V37). NULLABLE: eski satislarda yoktur ve kasa kullanmak zorunlu
+     * degildir. ⚠️ Bu alan eklenene kadar urun satisi Gelirler'de gorunup HICBIR kasanin
+     * bakiyesine girmiyordu; iade parayi kasadan cikaracagi icin artik baglanabiliyor.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "kasa_id")
+    private com.artademi.kasa.Kasa kasa;
+
+    /**
+     * Bu satir bir IADE ise, iade edilen ORIJINAL satis (V37). Iade satirinda {@link #adet} ve
+     * {@link #toplamTutar} NEGATIFTIR; stok iade aninda geri eklenir.
+     *
+     * <p>{@code null} = normal satis. Iade satirinin kendisi tekrar iade EDILEMEZ (serviste 400).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "iade_edilen_satis_id")
+    private Sale iadeEdilenSatis;
+
     @CreationTimestamp
     @Column(name = "olusturulma_tarihi", nullable = false, updatable = false)
     private Instant olusturulmaTarihi;
@@ -176,5 +195,26 @@ public class Sale extends TenantAware implements SoftDeletable {
     @Override
     public void setSilen(String silen) {
         this.silen = silen;
+    }
+
+    public com.artademi.kasa.Kasa getKasa() {
+        return kasa;
+    }
+
+    public void setKasa(com.artademi.kasa.Kasa kasa) {
+        this.kasa = kasa;
+    }
+
+    public Sale getIadeEdilenSatis() {
+        return iadeEdilenSatis;
+    }
+
+    public void setIadeEdilenSatis(Sale iadeEdilenSatis) {
+        this.iadeEdilenSatis = iadeEdilenSatis;
+    }
+
+    /** Bu satir bir iade mi? (iade satirinin adedi ve tutari negatiftir) */
+    public boolean isIade() {
+        return iadeEdilenSatis != null;
     }
 }

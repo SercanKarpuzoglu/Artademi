@@ -3,6 +3,8 @@ package com.artademi.finance;
 import com.artademi.common.ApiResponse;
 import com.artademi.common.PageMeta;
 import com.artademi.finance.dto.CreatePaymentRequest;
+import com.artademi.finance.dto.IadeOnizleme;
+import com.artademi.finance.dto.IadeRequest;
 import com.artademi.finance.dto.PaymentResponse;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -54,6 +56,24 @@ public class PaymentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PaymentResponse> create(@Valid @RequestBody CreatePaymentRequest request) {
         return ApiResponse.ok(service.create(request));
+    }
+
+    /**
+     * Tahsilat iadesi (V37): orijinal satira dokunmadan NEGATIF tutarli yeni satir yazar ve
+     * ogrencinin kalan kredisini iptal eder. Sinif duzeyindeki yetki gecerli — ADMIN ve muhasebe
+     * (FRONTDESK_ACCOUNTING) iade yapabilir, on buro yapamaz.
+     */
+    @PostMapping("/api/payments/{id}/iade")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<PaymentResponse> iade(@PathVariable Long id,
+            @Valid @RequestBody IadeRequest request) {
+        return ApiResponse.ok(service.iade(id, request));
+    }
+
+    /** Iade onay ekraninin ozeti: ne kadar iade edilebilir, kac kontor iptal olur, engel var mi. */
+    @GetMapping("/api/payments/{id}/iade-onizleme")
+    public ApiResponse<IadeOnizleme> iadeOnizleme(@PathVariable Long id) {
+        return ApiResponse.ok(service.iadeOnizleme(id));
     }
 
     /** Tek tahsilat (yoksa 404). */

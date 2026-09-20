@@ -19,7 +19,13 @@ public record PaymentResponse(
         String aciklama,
         OgrenciRef ogrenci,
         GrupRef grup,
-        AccrualRef accrual) {
+        AccrualRef accrual,
+
+        /**
+         * Bu satir bir IADE ise iade edilen orijinal tahsilatin id'si; normal tahsilatta null.
+         * Arayuz bununla "Iade" rozetini basar (tutar da negatiftir).
+         */
+        Long iadeEdilenOdemeId) {
 
     /** Ogrenci ozeti (id + ad + soyad). */
     public record OgrenciRef(Long id, String ad, String soyad) {
@@ -51,6 +57,7 @@ public record PaymentResponse(
                 p.getAciklama(),
                 ogrenci,
                 grup,
-                accrual);
+                accrual,
+                p.getIadeEdilenOdeme() == null ? null : p.getIadeEdilenOdeme().getId());
     }
 }

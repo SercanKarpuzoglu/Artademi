@@ -731,6 +731,67 @@ stok geri eklenir, geri alınınca düşülür — `SilmeService`). Eksik olan *
 bunu ayrı bir muhasebe kaydı olarak tutmak (kısmi iade, kasa çıkışı, gelir özetinden düşme). Ürün kararı gerekir,
 §13.4'te öyle yazıldı.
 
+### 7.38 İade — para geri verme (✅ 2026-09-20, V37)
+
+**Ürün kararı (2026-09-20).** §13.4'teki "satış/ödeme iptal-iade yok" maddesi ikiye ayrıldı: **iptal
+zaten vardı** (yumuşak silme §7.29), eksik olan **iade**ydi.
+
+**⚠️ İptal ile iade aynı şey değildir.** Ödemeyi silmek "bu para hiç alınmadı" demektir; oysa para
+alındı **ve** geri verildi — velinin makbuzu, kasadaki giriş ve çıkış üçü de gerçektir. Silmek
+defterden izi kaldırır ve **kasayı da yanlışlar** (para fiilen çıktı ama biz giriş satırını yok
+ettik). Ayrıca kısmi iade silmeyle yapılamaz. Bu yüzden **iade yeni bir satırdır, tutarı negatiftir.**
+
+**Neden negatif satır, neden ayrı `iade` tablosu değil:** bakiye (`SUM(accrual) − SUM(payment)`),
+kasa bakiyesi ve Gelirler özeti **üçü de SUM ile** çalışıyor. Negatif satır üçünü birden
+kendiliğinden düzeltir — **tek bir toplam sorgusu değişmedi**. Ayrı tablo olsaydı bakiye, kasa,
+gelir özeti, raporlar ve PDF belgelerin hepsine "− iade" eklemek gerekirdi; biri unutulursa para
+sessizce yanlış görünürdü (§7.29'daki native SQL tuzağının aynısı). İadeyi *gider* yazmak da
+yanlıştı: gelir şişik kalır, öğrenci bakiyesi düzelmezdi.
+
+- **V37**: `payment.iade_edilen_odeme_id`, `sale.iade_edilen_satis_id`, **`sale.kasa_id`** (aşağıda),
+  kısmi indeksler. DB'de CHECK yok; pozitiflik yalnız yeni tahsilat/satış DTO'sunda (`@Positive`)
+  zorlanır, iade yolu oradan geçmez. ⚠️ **`payment.tutar` ve `sale.adet`/`toplam_tutar` artık
+  işaretli** — yeni sorgu/rapor yazarken bunu varsayın.
+- **Uçlar** (ADMIN + FRONTDESK_ACCOUNTING; ön büro **yapamaz**): `POST /api/payments/{id}/iade`
+  `{tutar, iadeTarihi?, odemeYontemi?, kasaId?, aciklama?}` ve `POST /api/sales/{id}/iade`
+  `{adet, iadeTarihi?, kasaId?, aciklama?}`. **Tutar/adet POZİTİF gönderilir**, satıra negatif yazılır
+  (istemci eksi işaretiyle uğraşmasın).
+- **Önizleme uçları** (`.../iade-onizleme`): ne kadar iade edilebilir, kaç kontör iptal olur, engel
+  var mı. `SilmeOnizleme` ile aynı gerekçe — iş işlendikten sonra haber vermek geç kalır.
+- **Kredi (ürün kararı):** iade, öğrencinin **kalan kredisinin TAMAMINI** iptal eder, kısmi iadede
+  bile. Gerekçe: parayı geri verip kontörleri bırakmak bedava ders vermektir. **Kapsam:** iade edilen
+  tahsilat bir **gruba bağlıysa yalnız o grubun** paketleri iptal edilir (öğrenci başka branşa da
+  gidiyor olabilir); grup yoksa tüm aktif paketler. Modal iptal edilecek kontörü **önceden** gösterir;
+  kurum isterse ardından Ders Paketi ekranından elle satar.
+- **Kurallar:** kısmi iade toplamı orijinali aşamaz (400, `error.fields.tutar`/`adet`); **iadenin
+  iadesi yok** (400 — üst üste ters kayıt zinciri kurulursa hangi paranın geri verildiği takip
+  edilemez; fazla iade edildiyse yeni bir TAHSİLAT girilir); **iadesi olan kayıt silinemez** (409 —
+  yoksa iade satırı sahipsiz kalır). İade satırının kendisi silinebilir = iade geri alınmış olur.
+- **Ürün iadesinde** stok geri eklenir ve **birim fiyat orijinal satıştan kopyalanır** — ürün fiyatı
+  sonradan değiştiyse veliye *satın aldığı* fiyat döner, günün fiyatı değil.
+- **🆕 `sale.kasa_id`:** bu alan eklenene kadar **ürün satışı Gelirler'de görünüp hiçbir kasanın
+  bakiyesine girmiyordu** (tahsilat ve giderin `kasa_id`'si vardı, satışın yoktu). İade parayı
+  kasadan çıkaracağı için kapatıldı: `KasaService.bakiye` artık satış toplamını da sayıyor ve satış
+  formunda kasa seçilebiliyor. **Eski satışların kasası NULL** → eski bakiyeler değişmez.
+- Web: Gelirler → Ödemeler ve Stok → Satışlar satırlarında **İade** düğmesi + onaylı modal
+  (`finance/IadeButonu`, `inventory/SatisIadeButonu`); iade satırları listede kırmızı tutar +
+  "İade" rozeti; satış formunda kasa seçici.
+- Testler: `dalga/IadeTest` (9) — negatif satır + bakiye/kasa/Gelirler'in kendiliğinden düzelmesi,
+  kredi iptali, kısmi iade sınırı ve alan bazlı hata, iadenin iadesi, silme kalkanı, ön büro 403 /
+  muhasebe 201, çapraz tenant 404, stok iadesi, satın alınan fiyattan iade.
+
+**⚠️ CIRO_ORANI hakedişine etkisi (bilinçli, ama bilinmeli).** `PayoutService` ciro payını
+`SUM(payment.tutar)` ile grup+tarih aralığından hesaplar; iade satırının **grubu orijinalden
+kopyalanır**, tarihi ise **iade günüdür**. Sonuç: iade, yapıldığı **ayın** cirosundan düşer. Ödeme
+Eylül'de alınıp iade Ekim'de yapılırsa Eylül hakedişi ödenmiş kalır, düzeltme Ekim'e yazılır — ve o
+grupta Ekim'de başka tahsilat yoksa **hakediş eksiye düşebilir**. Sıfıra kırpılmadı: kırpmak,
+kuruma fazla ödenmiş komisyonu sessizce kaybettirirdi. Eğitmene eksi hakediş göstermek istenmiyorsa
+bu ayrı bir ürün kararıdır (ör. iadeyi orijinal ödemenin ayına yazmak).
+
+**Diğer bilinçli sınırlar:** iade için ayrı makbuz PDF'i yok (tahsilat makbuzu duruyor; iade
+satırının makbuzu eksi tutar gösterir); Eğitmen Kalitesi raporu iadeden etkilenmez (ders sayıları
+değişmez); iade sonrası öğrenci statüsü **elle** değiştirilir.
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
@@ -963,9 +1024,8 @@ yapılandırma → (3) SMS gönderimi.
 2. **SMS** — §13.2b planı aynen geçerli; ön koşul (şifreli ayar) TAMAM. Sağlayıcı teklifi + İYS hukuk sorusu **Sercan'da**.
 3. **Dönem/kredi bilinçli sınırları (§7.32):** tatil takvimi yok (düz takvim); dönem ortası kayıtta dönemlik ücret orantılanmıyor; elle tahakkuk / elle paket satışı / grup transferi farkı **indirim ve plan bilmiyor**.
 4. **Veli portalı** (rakipte de yok) · mobil uygulama (React Native, planlı).
-5. Küçükler: §13.3; **iade (para geri verme) yok** — iptal zaten yumuşak silmeyle var (§7.37 sonundaki not);
-   iade için ürün kararı gerekir: kısmi iade olacak mı, kasa çıkışı nasıl yazılacak, gelir özeti/raporlardan nasıl
-   düşülecek. (`user` modülünde `error.fields` ve kullanıcı listesinde sayfalama ✅ kapandı — §7.37.)
+5. Küçükler: §13.3. (`user` modülünde `error.fields` + kullanıcı listesinde sayfalama ✅ §7.37;
+   **iade** ✅ §7.38 — tahsilat ve ürün iadesi, kısmi, kredi iptaliyle.)
 
 **Sercan'ın tarafında:**
 - `ARTADEMI_SIFRELEME_ANAHTARI`'nı parola yöneticisine yedekle (yalnız sunucu + repo dışı `credentials/`).
@@ -1053,7 +1113,7 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 - ~~`user` modülü: servis-katmanı validasyonları `error.fields` doldurmaz; kullanıcı listesinde PageMeta yok~~ →
   ✅ kapandı (§7.37). Alan bazlı hata artık tüm modüllerde `ValidationException.alan(...)` ile yazılabilir.
 - Finans inline formları RHF+Zod yerine `useState` (kabul edilmiş istisna). Demo modülü (V2 `demo_note`) hâlâ duruyor.
-- "Herkes sadece kendi girdiğini düzeltir" ince yetkisi yok. Satış/ödeme **iadesi** yok (iptal = yumuşak silme, var).
+- "Herkes sadece kendi girdiğini düzeltir" ince yetkisi yok. ~~Satış/ödeme iadesi yok~~ → ✅ §7.38 (V37).
 - ⚠️ **Keycloak prod kurulumu kısmen elle:** service-account realm-management rolleri + user-profile attribute'ları realm export'a (`infra/artademi-realm.json`) işlendi (yeniden import getirir); ama temiz bir yeni ortam kurulumunda doğrulanmalı.
 - ⚠️ **Junk tenant kalıcı silme** prod'da elle (psql + kcadm) yapılır — konsol "Sil" yalnız soft-delete (SILINDI).
 
@@ -1063,6 +1123,9 @@ doğar; o zaman kullanıcıya `locale=tr` özniteliği yazılmalı ya da realm'd
 
 - Kod değişince backend'i yenile (`./mvnw compile` → devtools restart). "No static resource" = eski kod.
 - Uygulanmış migration düzenlenmez. Para = BigDecimal, asla double.
+- ⚠️ **`payment.tutar` ve `sale.adet`/`toplam_tutar` İŞARETLİDİR** (V37): iade satırları negatiftir.
+  Yeni bir toplam/rapor sorgusu yazarken "hepsi pozitif" varsaymayın — SUM zaten doğru sonucu verir,
+  ama `COUNT` ya da "en yüksek tutar" gibi hesaplarda iade satırını bilerek ele alın (§7.38).
 - Servis katmanı doğrulaması bir **form alanına** bağlanabiliyorsa `ValidationException.alan("alanAdi", mesaj)`
   kullan (alan adı = istek DTO'sundaki ad) — web formu mesajı o inputun altına basar. Bağlanamıyorsa düz
   `new ValidationException(mesaj)`; uydurma alan adı formda YANLIŞ inputu işaretler (§7.37).

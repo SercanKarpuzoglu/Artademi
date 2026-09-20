@@ -26,5 +26,11 @@ public record CreateSaleRequest(
 
         LocalDate satisTarihi,
 
-        String aciklama) {
+        String aciklama,
+
+        /**
+         * Satisin islenecegi kasa (V37). OPSIYONEL: kasa kullanmak zorunlu degildir. Bu alan
+         * eklenene kadar urun satisi Gelirler'de gorunup HICBIR kasanin bakiyesine girmiyordu.
+         */
+        Long kasaId) {
 }

@@ -689,6 +689,32 @@ export interface PaymentResponse {
   ogrenci: FinanceStudentRef;
   grup: FinanceGroupRef | null;
   accrual: PaymentAccrualRef | null;
+  /**
+   * Bu satir bir IADE ise iade edilen orijinal tahsilatin id'si; normal tahsilatta null.
+   * Iade satirinin `tutar`i NEGATIFTIR (V37).
+   */
+  iadeEdilenOdemeId?: number | null;
+}
+
+/** Tahsilat iadesi govdesi. `tutar` POZITIF gonderilir; backend satira negatif yazar. */
+export interface IadeInput {
+  tutar: string;
+  iadeTarihi?: string;
+  odemeYontemi?: OdemeYontemi;
+  kasaId?: number;
+  aciklama?: string;
+}
+
+/** Iade onay ekraninin ozeti — backend IadeOnizleme. */
+export interface IadeOnizleme {
+  odemeId: number;
+  odenenTutar: string | number;
+  iadeEdilenTutar: string | number;
+  iadeEdilebilir: string | number;
+  iptalEdilecekPaket: number;
+  iptalEdilecekKontor: number;
+  /** Iade yapilamiyorsa sebebi; yapilabiliyorsa null. */
+  engel: string | null;
 }
 
 /**
@@ -889,6 +915,31 @@ export interface SaleResponse {
   aciklama: string | null;
   olusturulmaTarihi?: string;
   guncellenmeTarihi?: string;
+  /** Satisin islendigi kasa; yoksa null. */
+  kasa?: { id: number; ad: string } | null;
+  /**
+   * Bu satir bir IADE ise iade edilen orijinal satisin id'si; normal satista null.
+   * Iade satirinin `adet` ve `toplamTutar` degerleri NEGATIFTIR (V37).
+   */
+  iadeEdilenSatisId?: number | null;
+}
+
+/** Urun iadesi govdesi. `adet` POZITIF gonderilir; backend satira negatif yazar. */
+export interface SatisIadeInput {
+  adet: number;
+  iadeTarihi?: string;
+  kasaId?: number;
+  aciklama?: string;
+}
+
+/** Urun iadesi onay ozeti — backend SatisIadeOnizleme. */
+export interface SatisIadeOnizleme {
+  satisId: number;
+  satilanAdet: number;
+  iadeEdilenAdet: number;
+  iadeEdilebilir: number;
+  birimFiyat: string | number;
+  engel: string | null;
 }
 
 /**
@@ -902,6 +953,8 @@ export interface SaleInput {
   adet: number;
   satisTarihi?: string;
   aciklama?: string;
+  /** Satisin islenecegi kasa (opsiyonel). V37'den once satis hicbir kasaya girmiyordu. */
+  kasaId?: number;
 }
 
 // --- Raporlar (Reports) modülü — backend ReportController DTO'lari ile birebir. Salt okunur. ---

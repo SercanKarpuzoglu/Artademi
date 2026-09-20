@@ -40,6 +40,20 @@ public interface PaymentRepository
     java.math.BigDecimal kasayaGirenToplam(@Param("kasaId") Long kasaId);
 
     /**
+     * Bir tahsilata bugune kadar yapilmis iadelerin toplami — POZITIF doner (iade satirlari
+     * negatiftir, {@code -SUM} ile cevrilir). Kismi iade siniri bu deger uzerinden kontrol edilir.
+     *
+     * <p>JPQL oldugu icin yumusak silme filtresine de tabidir: silinen iade satiri sayiya girmez,
+     * yani iade "geri alinmis" olur ve tutar yeniden iade edilebilir.
+     */
+    @Query("SELECT COALESCE(-SUM(p.tutar), 0) FROM Payment p WHERE p.iadeEdilenOdeme.id = :odemeId")
+    BigDecimal iadeToplami(@Param("odemeId") Long odemeId);
+
+    /** Bu tahsilatin (silinmemis) iadesi var mi? Iadesi olan tahsilat SILINEMEZ. */
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.iadeEdilenOdeme.id = :odemeId")
+    long countIadeByOdeme(@Param("odemeId") Long odemeId);
+
+    /**
      * Bir ogrencinin TOPLAM tahsilati. COALESCE ile bos sonuc 0 doner. JPQL oldugu icin tenant
      * filtresine tabidir (yalnizca aktif tenant). Bakiye hesabinda kullanilir.
      */

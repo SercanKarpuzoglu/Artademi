@@ -53,14 +53,17 @@ public class PaketService {
     private final StudentRepository students;
     private final GroupRepository groups;
     private final AccrualRepository accruals;
+    private final com.artademi.indirim.IndirimService indirimler;
 
     public PaketService(DersPaketiRepository repository, PaketKullanimRepository kullanimlar,
-            StudentRepository students, GroupRepository groups, AccrualRepository accruals) {
+            StudentRepository students, GroupRepository groups, AccrualRepository accruals,
+            com.artademi.indirim.IndirimService indirimler) {
         this.repository = repository;
         this.kullanimlar = kullanimlar;
         this.students = students;
         this.groups = groups;
         this.accruals = accruals;
+        this.indirimler = indirimler;
     }
 
     // ---------- satis / listeleme ----------
@@ -92,13 +95,26 @@ public class PaketService {
         Group grup = req.grupId() == null ? null : groups.findScopedById(req.grupId())
                 .orElseThrow(() -> new NotFoundException("Grup bulunamadı: " + req.grupId()));
 
+        // ELLE paket satisinda da ogrenci indirimi uygulanir (2026-09-20). Oncesinde yalniz
+        // Otomatik Tahakkuk ve donemlik kayit indirimi biliyordu; elle satista ayni ogrenciye
+        // indirim uygulanmiyordu. ⚠️ Girilen tutar BRUTTUR; indirimi elle dusup yazmayin.
+        LocalDate satisTarihi = req.satisTarihiOrBugun();
+        var indirim = indirimler.hesapla(ogrenci.getId(), grup == null ? null : grup.getId(),
+                satisTarihi, req.tutar());
+
         DersPaketi paket = repository.save(DersPaketi.of(ogrenci, req.ad().trim(), grup,
-                req.toplamDers(), req.tutar(), req.satisTarihiOrBugun(),
+                req.toplamDers(), indirim.net(), satisTarihi,
                 req.sonKullanmaTarihi(), req.aciklama()));
 
-        Accrual tahakkuk = accruals.save(AccrualMapper.toNewEntity(ogrenci, grup, null,
-                req.tutar(), "Ders paketi: " + paket.getAd()));
-        paket.accrualBagla(tahakkuk);
+        Accrual tahakkuk = AccrualMapper.toNewEntity(ogrenci, grup, null, indirim.net(),
+                "Ders paketi: " + paket.getAd()
+                        + (indirim.var() ? " (indirim: " + indirim.aciklama() + ")" : ""));
+        if (indirim.var()) {
+            tahakkuk.setBrutTutar(indirim.brut());
+            tahakkuk.setIndirimTutar(indirim.indirim());
+            tahakkuk.setIndirimAciklama(indirim.aciklama());
+        }
+        paket.accrualBagla(accruals.save(tahakkuk));
 
         return PaketResponse.from(paket, 0, LocalDate.now());
     }
@@ -119,7 +135,7 @@ public class PaketService {
         return PaketResponse.from(p, kullanimlar.countByPaketId(id), LocalDate.now());
     }
 
-    // ---------- iade (finanstan cagrilir) ----------
+    // ---------- kredi iptali (iade ve grup transferinden cagrilir) ----------
 
     /**
      * Iade sonrasi iptal edilecek/edilen krediyi anlatan ozet.
@@ -137,38 +153,40 @@ public class PaketService {
      * neyi kaybettigini ancak is islendikten sonra ogrenir.
      */
     @Transactional(readOnly = true)
-    public KrediOzeti iadeKrediOzeti(Long ogrenciId, Long grupId) {
+    public KrediOzeti krediOzeti(Long ogrenciId, Long grupId) {
         return ozetle(kapsamdakiPaketler(ogrenciId, grupId));
     }
 
     /**
-     * Iade sonrasi krediyi iptal eder ve iptal edileni ozet olarak doner (urun karari 2026-09-20:
-     * <b>kalan kredinin TAMAMI</b> iptal edilir, kismi iadede bile).
+     * Ogrencinin kalan kredisini iptal eder ve iptal edileni ozet olarak doner. IKI cagiran var:
+     * <ul>
+     *   <li><b>Iade</b> (urun karari 2026-09-20): kalan kredinin TAMAMI iptal edilir, kismi iadede
+     *       bile — parayi geri verip kontorleri birakmak bedava ders vermektir.</li>
+     *   <li><b>Grup transferi</b>: ogrenci o gruptan ayrildi; eski grubun kontorleri kullanilamaz
+     *       durumda kalir ve "kalan kredi" kartinda hayalet gorunurdu.</li>
+     * </ul>
      *
-     * <p>Gerekcesi: parayi geri verip kontorleri birakmak bedava ders vermektir. Kismi iadede
-     * ogrenci magdur olabilir; kurum dilerse ardindan elle paket satar (Ders Paketi ekrani durur).
-     *
-     * <p><b>Kapsam:</b> iade edilen tahsilat bir GRUBA bagliysa yalnizca o grubun paketleri iptal
-     * edilir — ogrenci baska bransa da gidiyor olabilir ve onun kredisi bu iadeyle ilgisizdir.
-     * Tahsilatin grubu yoksa ogrencinin TUM aktif paketleri iptal edilir.
+     * <p><b>Kapsam:</b> grup verilirse yalnizca o grubun paketleri iptal edilir — ogrenci baska
+     * bransa da gidiyor olabilir ve onun kredisi bu islemle ilgisizdir. Grup yoksa ogrencinin TUM
+     * aktif paketleri iptal edilir.
      *
      * <p>Zaten IPTAL olan paket atlanir (tekrar iade/iptal patlamaz).
      */
     @Transactional
-    public KrediOzeti iadeSonrasiKrediIptali(Long ogrenciId, Long grupId) {
+    public KrediOzeti krediIptalEt(Long ogrenciId, Long grupId) {
         List<DersPaketi> kapsam = kapsamdakiPaketler(ogrenciId, grupId);
         KrediOzeti ozet = ozetle(kapsam);
         for (DersPaketi paket : kapsam) {
             paket.iptalEt();
         }
         if (ozet.paketSayisi() > 0) {
-            log.info("Iade sonrasi kredi iptali: ogrenci={} grup={} paket={} kontor={}",
+            log.info("Kredi iptali: ogrenci={} grup={} paket={} kontor={}",
                     ogrenciId, grupId, ozet.paketSayisi(), ozet.kalanKontor());
         }
         return ozet;
     }
 
-    /** Iade kapsamina giren AKTIF paketler; grup verilirse yalnizca o gruba bagli olanlar. */
+    /** Iptal kapsamina giren AKTIF paketler; grup verilirse yalnizca o gruba bagli olanlar. */
     private List<DersPaketi> kapsamdakiPaketler(Long ogrenciId, Long grupId) {
         List<DersPaketi> aktifler = repository.aktifPaketler(ogrenciId);
         if (grupId == null) {

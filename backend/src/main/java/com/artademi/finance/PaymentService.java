@@ -110,7 +110,7 @@ public class PaymentService {
      * ile calistigindan — kendiliginden duzelir; hicbir toplam sorgusu degismedi.
      *
      * <p><b>Kredi:</b> iade, ogrencinin kalan kredisini IPTAL eder (urun karari 2026-09-20; bkz.
-     * {@code PaketService.iadeSonrasiKrediIptali}). Parayi geri verip kontorleri birakmak bedava
+     * {@code PaketService.krediIptalEt}). Parayi geri verip kontorleri birakmak bedava
      * ders vermektir. Ne kadar kredinin gidecegi iade-onizleme ucunda ONCEDEN gosterilir.
      *
      * <p>Ayni islemde: iade satiri + kredi iptali. Biri patlarsa ikisi de geri alinir.
@@ -137,7 +137,7 @@ public class PaymentService {
         iade.setIadeEdilenOdeme(orijinal);
         Payment saved = repository.save(iade);
 
-        paketService.iadeSonrasiKrediIptali(
+        paketService.krediIptalEt(
                 orijinal.getOgrenci().getId(),
                 orijinal.getGrup() == null ? null : orijinal.getGrup().getId());
         return PaymentResponse.from(saved);
@@ -149,7 +149,7 @@ public class PaymentService {
         Payment orijinal = findOrThrow(odemeId);
         BigDecimal iadeEdilen = repository.iadeToplami(odemeId);
         BigDecimal kalan = orijinal.getTutar().subtract(iadeEdilen);
-        var kredi = paketService.iadeKrediOzeti(
+        var kredi = paketService.krediOzeti(
                 orijinal.getOgrenci().getId(),
                 orijinal.getGrup() == null ? null : orijinal.getGrup().getId());
         return new IadeOnizleme(

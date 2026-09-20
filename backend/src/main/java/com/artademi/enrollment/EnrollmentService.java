@@ -15,6 +15,7 @@ import com.artademi.group.GrupTipi;
 import com.artademi.student.Student;
 import com.artademi.student.StudentRepository;
 import com.artademi.student.StudentStatus;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Set;
@@ -51,21 +52,29 @@ public class EnrollmentService {
     private static final Set<StudentStatus> YAZILABILIR_STATULER =
             Set.of(StudentStatus.AKTIF, StudentStatus.DENEME);
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(EnrollmentService.class);
+
     private final EnrollmentRepository repository;
     private final StudentRepository studentRepository;
     private final GroupRepository groupRepository;
     private final AccrualRepository accrualRepository;
 
     private final KrediService krediService;
+    private final com.artademi.paket.PaketService paketService;
+    private final com.artademi.indirim.IndirimService indirimler;
 
     public EnrollmentService(EnrollmentRepository repository, StudentRepository studentRepository,
             GroupRepository groupRepository, AccrualRepository accrualRepository,
-            KrediService krediService) {
+            KrediService krediService, com.artademi.paket.PaketService paketService,
+            com.artademi.indirim.IndirimService indirimler) {
         this.repository = repository;
         this.groupRepository = groupRepository;
         this.studentRepository = studentRepository;
         this.accrualRepository = accrualRepository;
         this.krediService = krediService;
+        this.paketService = paketService;
+        this.indirimler = indirimler;
     }
 
     /** Yeni kayit olusturur; durum AKTIF ile baslar. */
@@ -169,11 +178,29 @@ public class EnrollmentService {
      * <p><b>Kapsam:</b> yalniz GRUP↔GRUP. Eski veya yeni grup OZEL ise -> 400 (ozel derste aylik aidat
      * yoktur; transfer kavrami gecersiz).
      *
-     * <p><b>Aidat farki (donem = req.donem veya bugunun ayi):</b> eski grubun o donem aidat tahakkuku
-     * ZATEN urediyse: eski grup icin NEGATIF tahakkuk (iade = −eskiAidat) + yeni grup icin POZITIF
-     * tahakkuk (+yeniAidat) acilir; net = aidat farki, bakiye dogru hesaplanir. Eski grubun o donem
-     * tahakkuku YOKSA hicbir tahakkuk uretilmez (olusmamis borcun iadesi olmaz; bir sonraki otomatik
-     * tahakkuk yeni grubu zaten keser).
+     * <p><b>Para, PLANA gore hesaplanir</b> (2026-09-20'de duzeltildi; oncesinde her plan icin
+     * {@code aylikAidat} kullaniliyordu):
+     * <ul>
+     *   <li><b>AYLIK:</b> eski grubun o donem aidat tahakkuku ZATEN urediyse eski grup icin NEGATIF
+     *       (−eskiAidat) + yeni grup icin POZITIF (+yeniAidat) tahakkuk; net = aidat farki. Eski
+     *       grubun o donem tahakkuku YOKSA hicbir sey uretilmez (olusmamis borcun iadesi olmaz;
+     *       sonraki otomatik tahakkuk yeni grubu zaten keser).</li>
+     *   <li><b>DONEMLIK:</b> eski grubun KULLANILMAYAN donem payi iade edilir (negatif tahakkuk,
+     *       kalan derse gore orantili, ogrenci indirimi uygulanmis); yeni grubun ucreti ve kredisi
+     *       {@link KrediService#kayitSonrasiKredi} tarafindan (yine orantili) acilir.</li>
+     * </ul>
+     *
+     * <p>⚠️ <b>Duzeltilen iki hata (2026-09-20):</b>
+     * <ol>
+     *   <li>{@code aylikAidat} NULLABLE'dir (yalniz donemlik calisan grupta bos olur) ve kod
+     *       {@code .negate()} cagiriyordu → yalniz donemlik ucreti olan gruptan transfer 500
+     *       veriyordu. Artik eksik ucret 0 sayilir ve o satir hic yazilmaz.</li>
+     *   <li>Transfer {@code kayitSonrasiKredi}'yi HIC cagirmiyordu → ogrenci yeni grupta
+     *       KONTORSUZ kaliyor, her derste "kredi bitti" uyarisi uretiliyordu.</li>
+     * </ol>
+     *
+     * <p>Eski grubun kalan kontorleri iptal edilir: ogrenci o gruptan ayrildi, kontorler
+     * kullanilamaz durumda kalir ve "kalan kredi" kartinda hayalet gorunurdu.
      */
     @Transactional
     public EnrollmentResponse transfer(Long id, TransferEnrollmentRequest req) {
@@ -205,20 +232,77 @@ public class EnrollmentService {
         planiUygula(yeniKayit, yeniGrup, tasinanPlan);
         Enrollment yeni = repository.save(yeniKayit);
 
-        // 3) Aidat farki — yalnizca eski grubun o donem tahakkuku zaten urediyse.
         String donem = (req.donem() != null && !req.donem().isBlank())
                 ? req.donem()
                 : YearMonth.now().toString();
-        if (accrualRepository.existsByOgrenciAndGrupAndDonem(ogrenci.getId(), eskiGrup.getId(), donem)) {
-            accrualRepository.save(AccrualMapper.toNewEntity(ogrenci, eskiGrup, donem,
-                    eskiGrup.getAylikAidat().negate(),
-                    eskiGrup.getAd() + " grubundan ayrılma iadesi (" + donem + ")"));
-            accrualRepository.save(AccrualMapper.toNewEntity(ogrenci, yeniGrup, donem,
-                    yeniGrup.getAylikAidat(),
-                    yeniGrup.getAd() + " grubuna geçiş (" + donem + ")"));
+
+        // 3) Eski grubun parasi geri verilir; kalan kontorleri iptal edilir.
+        if (tasinanPlan == OdemePlani.DONEMLIK) {
+            donemlikIade(ogrenci, eskiGrup, donem);
+        } else {
+            aylikAidatFarki(ogrenci, eskiGrup, yeniGrup, donem);
         }
+        paketService.krediIptalEt(ogrenci.getId(), eskiGrup.getId());
+
+        // 4) Yeni grubun kredisi (ve DONEMLIK'te ucreti) — eskiden HIC acilmiyordu.
+        krediService.kayitSonrasiKredi(yeni);
 
         return EnrollmentResponse.from(yeni);
+    }
+
+    /**
+     * AYLIK planda aidat farki: eski gruba iade (negatif), yeni gruba gecis (pozitif).
+     *
+     * <p>Yalnizca eski grubun o donem tahakkuku zaten urediyse calisir. Ucreti girilmemis grup
+     * (aylikAidat NULL) icin o satir HIC yazilmaz — eskiden burada {@code .negate()} NPE veriyordu.
+     */
+    private void aylikAidatFarki(Student ogrenci, Group eskiGrup, Group yeniGrup, String donem) {
+        if (!accrualRepository.existsByOgrenciAndGrupAndDonem(ogrenci.getId(), eskiGrup.getId(), donem)) {
+            return;
+        }
+        BigDecimal eski = eskiGrup.getAylikAidat();
+        BigDecimal yenisi = yeniGrup.getAylikAidat();
+        if (eski != null && eski.signum() != 0) {
+            accrualRepository.save(AccrualMapper.toNewEntity(ogrenci, eskiGrup, donem, eski.negate(),
+                    eskiGrup.getAd() + " grubundan ayrılma iadesi (" + donem + ")"));
+        }
+        if (yenisi != null && yenisi.signum() != 0) {
+            accrualRepository.save(AccrualMapper.toNewEntity(ogrenci, yeniGrup, donem, yenisi,
+                    yeniGrup.getAd() + " grubuna geçiş (" + donem + ")"));
+        }
+        if (eski == null || yenisi == null) {
+            log.warn("Transfer aidat farki eksik: aylik ucreti girilmemis grup var (eski={}, yeni={})",
+                    eskiGrup.getId(), yeniGrup.getId());
+        }
+    }
+
+    /**
+     * DONEMLIK planda eski grubun KULLANILMAYAN payi iade edilir (negatif tahakkuk).
+     *
+     * <p>Tutar bugunden donem sonuna kalan derse gore orantilanir ve ogrencinin indirimi uygulanir —
+     * ucret tahsil edilirken de ayni sekilde hesaplanmisti, iade de ayni olculerle olmali. Yeni
+     * grubun ucreti ayrica {@code kayitSonrasiKredi} ile (yine orantili) acilir.
+     */
+    private void donemlikIade(Student ogrenci, Group eskiGrup, String donem) {
+        var d = eskiGrup.getDonem();
+        if (d == null || eskiGrup.getDonemlikUcret() == null) {
+            return;
+        }
+        LocalDate bugun = LocalDate.now();
+        if (bugun.isAfter(d.getBitis())) {
+            return; // donem bitmis: iade edilecek kullanilmamis pay yok
+        }
+        LocalDate from = bugun.isBefore(d.getBaslangic()) ? d.getBaslangic() : bugun;
+        BigDecimal iade = KrediService.orantiliUcret(
+                eskiGrup.getDonemlikUcret(),
+                krediService.dersSayisi(eskiGrup.getId(), from, d.getBitis()),
+                krediService.dersSayisi(eskiGrup.getId(), d.getBaslangic(), d.getBitis()));
+        if (iade == null || iade.signum() == 0) {
+            return;
+        }
+        BigDecimal net = indirimler.hesapla(ogrenci.getId(), eskiGrup.getId(), from, iade).net();
+        accrualRepository.save(AccrualMapper.toNewEntity(ogrenci, eskiGrup, donem, net.negate(),
+                eskiGrup.getAd() + " grubundan ayrılma iadesi · kullanılmayan dönem payı"));
     }
 
     /** Filtreli/sayfali liste; tum filtreler opsiyonel (null gecilebilir). */

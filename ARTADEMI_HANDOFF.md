@@ -792,6 +792,56 @@ bu ayrı bir ürün kararıdır (ör. iadeyi orijinal ödemenin ayına yazmak).
 satırının makbuzu eksi tutar gösterir); Eğitmen Kalitesi raporu iadeden etkilenmez (ders sayıları
 değişmez); iade sonrası öğrenci statüsü **elle** değiştirilir.
 
+### 7.39 Dönem/kredi sınırları: orantılama, transfer, elle işlemlerde indirim (✅ 2026-09-20)
+
+§13.4 #3'teki "bilinçli sınırlar"ın üçü kapatıldı (tatil takvimi hariç — hâlâ açık).
+
+**(a) Dönem ortasında kayıtta ücret ORANTILANIR** (ürün kararı 2026-09-20).
+`KrediService.orantiliUcret` = dönemlik ücret × (kalan ders / dönemin toplam dersi). Öncesinde
+dönem ortasında katılan da **tam ücret** ödüyordu, kredi ise kalan derse göre açılıyordu: 22 derslik
+dönemin 11. dersinde katılan veli **11 ders alıp 22 dersin parasını** ödüyordu. Orantılama ders
+başına fiyatı sabit tutar.
+- Dönem başında kayıtta kalan == toplam → sonuç tam ücret, **davranış değişmez**.
+- Payda 0 ise (grubun ders saati yok) orantılama yapılmaz, tam ücret döner — 0'a bölmek yerine.
+- Aylık planda orantılama YOK; aylık aidat zaten ay ay kesiliyor.
+- `KayitOnizleme` iki yeni alan döner: `donemToplamDers` ve `tamUcret`. Plan modalı orantılandıysa
+  "tam ücret 8.000 ₺ → 8 dersin 4'ü için orantılandı" satırını gösterir.
+
+**(b) Grup transferi PLANI biliyor ve yeni gruba kredi açıyor.**
+- ⚠️ **Gerçek hata (düzeltildi):** transfer `krediService.kayitSonrasiKredi`'yi **hiç çağırmıyordu**.
+  Dönemlik öğrenci transfer olunca yeni grupta **kontörsüz** kalıyor, her derste `KREDI_BITTI`
+  uyarısı üretiliyordu. Artık yeni grubun kredisi (dönemlikte ücreti de, orantılı) açılıyor.
+- **Para plana göre:** DONEMLIK'te eski grubun **kullanılmayan dönem payı** iade edilir (negatif
+  tahakkuk, kalan derse göre orantılı, öğrenci indirimi uygulanmış) ve yeni grubun ücreti
+  `kayitSonrasiKredi` ile açılır. AYLIK'ta eski davranış korunur (−eskiAidat / +yeniAidat, yalnız
+  eski grubun o dönem tahakkuku zaten üremişse).
+- Eski grubun **kalan kontörleri iptal** edilir (`PaketService.krediIptalEt` — iade ile ortak);
+  öğrenci o gruptan ayrıldı, kontörler kullanılamaz durumda kalıp "kalan kredi" kartında hayalet
+  görünüyordu.
+- ⚠️ **Düzeltme notu:** kod `eskiGrup.getAylikAidat().negate()` diyordu ve `aylik_aidat` kolonu
+  nullable. Bu **API'den tetiklenemiyor** — `GrupTutarli` doğrulayıcısı GRUP tipinde `aylikAidat`'ı
+  zorunlu ve > 0 tutuyor, transfer de yalnız GRUP↔GRUP. Yine de null koruması eklendi (kolon
+  nullable, eski/elle veri olabilir) ve kuralın kalkmasını fark ettiren bir test yazıldı
+  (`grupOlustururken_aylikAidat_ZORUNLUDUR`).
+
+**(c) Elle tahakkuk ve elle paket satışı öğrenci indirimini uygular.**
+Öncesinde yalnız Otomatik Tahakkuk ve dönemlik kayıt indirimi biliyordu; ofis elle satır girince
+aynı öğrenciye indirim uygulanmıyor, brüt/indirim/net boş kalıyordu (Tahakkuklar listesi "indirim
+yok" gösteriyordu). Artık `AccrualService.create` ve `PaketService.sat` indirimi uygular ve üç alanı
+da doldurur. İndirimi olmayan öğrencide tutar **aynen** kalır.
+- ⚠️ **Girilen tutar BRÜTTÜR.** İndirimi elle düşüp yazmayın, iki kez uygulanır. Elle tahakkukta
+  indirim, tahakkukun **döneminin ilk gününe** göre değerlendirilir (atamanın tarih aralığı olabilir);
+  dönem yazılmamışsa bugüne göre.
+
+- Testler: `dalga/DonemKrediSinirlariTest` (8) — orantılama (dönem başı tam / dönem ortası kırpık,
+  paket ve bakiyeye yansıması), dönemlik transferde eski gruba iade + eski kredinin iptali + yeni
+  grupta orantılı paket, aylık transferde aidat farkının korunması + yeni grupta kredi, elle
+  tahakkuk/paket indirimi, indirimsiz öğrencide tutarın değişmemesi, grup ücret kuralı.
+
+**Hâlâ açık:** tatil takvimi yok (düz takvim) — 29 Ekim Pazartesi'ye denk gelirse ders sayılır ve
+öğrenciye olmayacak ders için kontör kesilir. Yeni bir `tatil` tablosu gerektirir ve önizleme, aylık
+kredi ile Eğitmen Kalitesi "planlanan ders" hesabını birlikte etkiler.
+
 ---
 
 ## 8. Yetki Matrisi Özeti (frontend'de menü/buton gizleme için kritik)
@@ -1022,7 +1072,8 @@ yapılandırma → (3) SMS gönderimi.
 **Kod (öncelik sırası önerisi):**
 1. **WhatsApp bildirimi** — `bildirim/kanal/BildirimKanali` arayüzü hazır (e-posta uyguluyor); Meta Cloud API + işletme doğrulaması + mesaj başı ücret. Kurum bazlı kimlik bilgisi için §7.22 şifreli ayar kullanılır.
 2. **SMS** — §13.2b planı aynen geçerli; ön koşul (şifreli ayar) TAMAM. Sağlayıcı teklifi + İYS hukuk sorusu **Sercan'da**.
-3. **Dönem/kredi bilinçli sınırları (§7.32):** tatil takvimi yok (düz takvim); dönem ortası kayıtta dönemlik ücret orantılanmıyor; elle tahakkuk / elle paket satışı / grup transferi farkı **indirim ve plan bilmiyor**.
+3. **Dönem/kredi:** yalnız **tatil takvimi** kaldı (düz takvim; §7.39 sonuna bak). Orantılama,
+   transferin plan/kredi farkındalığı ve elle tahakkuk/paket indirimi ✅ kapandı (§7.39).
 4. **Veli portalı** (rakipte de yok) · mobil uygulama (React Native, planlı).
 5. Küçükler: §13.3. (`user` modülünde `error.fields` + kullanıcı listesinde sayfalama ✅ §7.37;
    **iade** ✅ §7.38 — tahsilat ve ürün iadesi, kısmi, kredi iptaliyle.)

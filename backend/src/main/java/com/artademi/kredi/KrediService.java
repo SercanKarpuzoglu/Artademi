@@ -38,6 +38,10 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  * Ders sayisi = grubun AKTIF ders saatlerinin [from,to] icindeki gun sayisi (duz takvim; tatil dusumu yok —
  * urun karari 2026-09-10). Kontor dusumu yoklamadan (PaketService.yoklamaDegisti) — degismedi.
+ *
+ * <p><b>Donem ortasinda kayit ORANTILANIR</b> (urun karari 2026-09-20, bkz. {@link #orantiliUcret}):
+ * donemlik ucret kalan ders sayisina gore kirpilir. Aylik planda orantilama YOKTUR — aylik aidat
+ * zaten ay ay kesilir.
  */
 @Service
 public class KrediService {
@@ -79,6 +83,27 @@ public class KrediService {
         return n;
     }
 
+    /**
+     * Donem ortasinda kayitta odenecek ucret: <b>donemlik ucret × (kalan ders / donemin toplam dersi)</b>
+     * (urun karari 2026-09-20).
+     *
+     * <p>Onceden donem ortasinda katilan da TAM ucret oduyordu; kredi ise kalan derse gore aciliyordu.
+     * Yani 22 derslik donemin 11. dersinde katilan veli 11 ders alip 22 dersin parasini oduyordu.
+     * Orantilama ders basina fiyati sabit tutar — savunulabilir olan bu.
+     *
+     * <p>Basinda kayit olan icin kalan == toplam, yani sonuc tam ucrettir (davranis degismez).
+     * Payda 0 ise (grubun ders saati yok) orantilama yapilmaz, tam ucret doner — 0'a bolmek yerine
+     * "bilmiyoruz, tam yaz" demek daha guvenli.
+     */
+    public static BigDecimal orantiliUcret(BigDecimal tamUcret, int kalanDers, int toplamDers) {
+        if (tamUcret == null || toplamDers <= 0 || kalanDers >= toplamDers) {
+            return tamUcret == null ? null : tamUcret.setScale(2, java.math.RoundingMode.HALF_UP);
+        }
+        return tamUcret
+                .multiply(BigDecimal.valueOf(kalanDers))
+                .divide(BigDecimal.valueOf(toplamDers), 2, java.math.RoundingMode.HALF_UP);
+    }
+
     /** Plan secim ekrani icin hesap; uygun degilse neden doner (400 degil). */
     @Transactional(readOnly = true)
     public KayitOnizleme onizle(Long grupId, OdemePlani plan, LocalDate tarih) {
@@ -90,7 +115,7 @@ public class KrediService {
         int haftalik = (int) schedules.findByGrupId(grupId).stream().filter(Schedule::isAktif).count();
         if (plan == OdemePlani.DENEME) {
             // Deneme dersi: para yok, kredi yok; yalnizca "uygun" doner (modalda ucretsiz kart).
-            return new KayitOnizleme(plan, true, null, null, null, t, null, haftalik, 0, null);
+            return new KayitOnizleme(plan, true, null, null, null, t, null, haftalik, 0, 0, null, null);
         }
         if (plan == OdemePlani.DONEMLIK) {
             Donem d = g.getDonem();
@@ -104,15 +129,18 @@ public class KrediService {
             if (from.isAfter(d.getBitis())) {
                 return KayitOnizleme.uygunDegil(plan, "Dönem bitmiş (" + d.getAd() + " · " + d.getBitis() + ")");
             }
+            int kalan = dersSayisi(grupId, from, d.getBitis());
+            int toplam = dersSayisi(grupId, d.getBaslangic(), d.getBitis());
             return new KayitOnizleme(plan, true, null, d.getId(), d.getAd(), from, d.getBitis(), haftalik,
-                    dersSayisi(grupId, from, d.getBitis()), g.getDonemlikUcret());
+                    kalan, toplam, g.getDonemlikUcret(),
+                    orantiliUcret(g.getDonemlikUcret(), kalan, toplam));
         }
         if (g.getAylikAidat() == null) {
             return KayitOnizleme.uygunDegil(plan, "Grubun aylık ücreti girilmemiş");
         }
         LocalDate aySonu = YearMonth.from(t).atEndOfMonth();
         return new KayitOnizleme(plan, true, null, null, null, t, aySonu, haftalik,
-                dersSayisi(grupId, t, aySonu), g.getAylikAidat());
+                dersSayisi(grupId, t, aySonu), 0, null, g.getAylikAidat());
     }
 
     /**

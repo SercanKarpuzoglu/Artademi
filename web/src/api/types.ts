@@ -433,7 +433,13 @@ export interface KayitOnizleme {
   baslangic: string | null;
   bitis: string | null;
   haftalikDers: number;
+  /** Kayıt tarihinden dönem/ay sonuna KALAN ders — açılacak kontör sayısı. */
   dersSayisi: number;
+  /** Dönemin TAMAMINDAKİ ders (yalnız DONEMLIK'te dolu); orantılamanın paydası. */
+  donemToplamDers: number;
+  /** Grubun ilan edilen dönemlik ücreti (orantılanmamış); yalnız DONEMLIK'te dolu. */
+  tamUcret: string | number | null;
+  /** ÖDENECEK tutar — dönem ortasında kayıtta orantılanmış haldedir. */
   ucret: string | number | null;
 }
 

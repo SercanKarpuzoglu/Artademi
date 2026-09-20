@@ -6,8 +6,12 @@ import com.artademi.finance.dto.AccrualResponse;
 import com.artademi.finance.dto.CreateAccrualRequest;
 import com.artademi.group.Group;
 import com.artademi.group.GroupRepository;
+import com.artademi.indirim.IndirimService;
+import com.artademi.indirim.IndirimSonucu;
 import com.artademi.student.Student;
 import com.artademi.student.StudentRepository;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -25,6 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>PARA KURALI: tutar pozitifligi DTO @Positive ile (-> 400) zorlanir.
  *
+ * <p><b>ELLE tahakkukta da ogrenci indirimi uygulanir</b> (2026-09-20). Oncesinde yalniz Otomatik
+ * Tahakkuk ve donemlik kayit indirimi biliyordu; ofis elle satir girince ayni ogrenciye indirim
+ * uygulanmiyordu ve brut/indirim/net alanlari bos kaliyordu (Tahakkuklar listesi "indirim yok"
+ * gosteriyordu). ⚠️ Girilen tutar BRUTTUR; indirimi elle dusup yazmayin, iki kez uygulanir.
+ *
  * <p>Silme YOK.
  */
 @Service
@@ -33,12 +42,14 @@ public class AccrualService {
     private final AccrualRepository repository;
     private final StudentRepository studentRepository;
     private final GroupRepository groupRepository;
+    private final IndirimService indirimler;
 
     public AccrualService(AccrualRepository repository, StudentRepository studentRepository,
-            GroupRepository groupRepository) {
+            GroupRepository groupRepository, IndirimService indirimler) {
         this.repository = repository;
         this.studentRepository = studentRepository;
         this.groupRepository = groupRepository;
+        this.indirimler = indirimler;
     }
 
     /** Yeni tahakkuk olusturur, 201. */
@@ -47,9 +58,22 @@ public class AccrualService {
         Student ogrenci = resolveStudent(req.ogrenciId());
         Group grup = req.grupId() == null ? null : resolveGroup(req.grupId());
 
-        Accrual saved = repository.save(
-                AccrualMapper.toNewEntity(ogrenci, grup, req.donem(), req.tutar(), req.aciklama()));
-        return AccrualResponse.from(saved);
+        // Indirim, tahakkukun DONEMININ ilk gunune gore degerlendirilir (atama tarih araligi olabilir);
+        // donem yazilmamissa bugun. Otomatik tahakkuk da ayni olcutu kullaniyor.
+        IndirimSonucu indirim = indirimler.hesapla(
+                ogrenci.getId(),
+                grup == null ? null : grup.getId(),
+                donemBasi(req.donem()),
+                req.tutar());
+
+        Accrual yeni = AccrualMapper.toNewEntity(ogrenci, grup, req.donem(), indirim.net(),
+                req.aciklama());
+        if (indirim.var()) {
+            yeni.setBrutTutar(indirim.brut());
+            yeni.setIndirimTutar(indirim.indirim());
+            yeni.setIndirimAciklama(indirim.aciklama());
+        }
+        return AccrualResponse.from(repository.save(yeni));
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +90,18 @@ public class AccrualService {
                 .and(AccrualSpecifications.hasGrup(grupId));
         return repository.findAll(spec, pageable)
                 .map(AccrualResponse::from);
+    }
+
+    /** "YYYY-MM" doneminin ilk gunu; donem yoksa/bozuksa bugun (indirim gecerlilik kontrolu icin). */
+    private static LocalDate donemBasi(String donem) {
+        if (donem == null || donem.isBlank()) {
+            return LocalDate.now();
+        }
+        try {
+            return YearMonth.parse(donem).atDay(1);
+        } catch (RuntimeException e) {
+            return LocalDate.now();
+        }
     }
 
     private Student resolveStudent(Long ogrenciId) {

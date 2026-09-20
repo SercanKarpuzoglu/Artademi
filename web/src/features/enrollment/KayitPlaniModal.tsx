@@ -10,6 +10,12 @@ import { formatDate, formatMoney } from '../../lib/format';
  * (sonra "Plana geçir"). Her seçenek o anki hesabı gösterir. Ücret gösterir; çağıran gating yapmaz —
  * kayıt yapan ön büro da ücreti bilmeli. {@code denemeSecenegi=false} plana geçirme modudur.
  */
+/** Dönem ortasında kayıt yüzünden ücret orantılandı mı? (tam ücret ile ödenecek tutar farklı) */
+function orantilandi(veri: KayitOnizleme): boolean {
+  if (veri.tamUcret == null || veri.ucret == null) return false;
+  return Number(veri.tamUcret) !== Number(veri.ucret);
+}
+
 export default function KayitPlaniModal({
   grupId,
   grupAd,
@@ -136,6 +142,17 @@ function PlanKarti({
         </p>
       ) : (
         <p className="mt-2 text-[12.5px] text-red">{veri?.neden ?? 'Hesaplanamadı'}</p>
+      )}
+      {/* Dönem ortasında kayıtta ücret kalan derse göre orantılanır; veli neden tam ücret
+          ödemediğini ekranda görmeli. */}
+      {!yukleniyor && veri?.uygun && orantilandi(veri) && (
+        <p className="mt-1.5 text-[12.5px] text-ink-soft">
+          Dönem ortası: tam ücret <s>{formatMoney(veri.tamUcret ?? 0)} ₺</s> →{' '}
+          <b>
+            {veri.donemToplamDers} dersin {veri.dersSayisi}'i
+          </b>{' '}
+          için orantılandı.
+        </p>
       )}
     </button>
   );

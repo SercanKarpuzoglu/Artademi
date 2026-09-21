@@ -1,7 +1,7 @@
 # Artademi — Proje Devir Dökümanı (Handoff)
 
 > **Bu dosyanın amacı:** yeni bir oturuma (Claude masaüstü / CLI) **tek dosyayla** devir. "Bunu oku, kaldığımız yerden devam et" yeter. Sohbet dökümleri devredilmez; karar ve durumun tamamı burada ve hafıza notlarında.
-> **Son güncelleme:** **2026-09-20** — prod `656c897`, Flyway **V37**, **825 test yeşil**. 9 Eylül toplantı taleplerinin hepsi (Dalga A–F, §7.27–7.36) + kapanış eksikleri canlıda. En son ürün kararları: **iade = negatif satır, kalan kredi iptal** (§7.38), **DENEME→AKTİF plan seçimiyle** (§7.35), **dönem/kredi modeli aylık aidatın yerine** (§7.32), **yumuşak silme** (§7.29). Açık işler §13.4.
+> **Son güncelleme:** **2026-09-21** — prod `0e60ff3`, Flyway **V37**, **833 test yeşil**. 9 Eylül toplantı taleplerinin hepsi (Dalga A–F, §7.27–7.36) + kapanış eksikleri canlıda. En son ürün kararları: **dönem ortası ücret orantılanır** (§7.39), **iade = negatif satır, kalan kredi iptal** (§7.38), **DENEME→AKTİF plan seçimiyle** (§7.35), **dönem/kredi modeli aylık aidatın yerine** (§7.32), **yumuşak silme** (§7.29). Açık işler §13.4.
 > **Okuma sırası (yeni oturum):** §15 hızlı hatırlatmalar → §13.4 açık işler → ilgili §7.x modül notu. Tarihsel bölümler (§13.0–13.2, §14 eski maddeler) yalnız arka plan içindir.
 > **İletişim dili:** Türkçe. **Geliştirici:** Sercan (solo). **Çalışma stili:** "tane tane" — her modül gerçek test + curl ile doğrulanmadan bir sonrakine geçilmez.
 
@@ -838,9 +838,11 @@ da doldurur. İndirimi olmayan öğrencide tutar **aynen** kalır.
   grupta orantılı paket, aylık transferde aidat farkının korunması + yeni grupta kredi, elle
   tahakkuk/paket indirimi, indirimsiz öğrencide tutarın değişmemesi, grup ücret kuralı.
 
-**Hâlâ açık:** tatil takvimi yok (düz takvim) — 29 Ekim Pazartesi'ye denk gelirse ders sayılır ve
-öğrenciye olmayacak ders için kontör kesilir. Yeni bir `tatil` tablosu gerektirir ve önizleme, aylık
-kredi ile Eğitmen Kalitesi "planlanan ders" hesabını birlikte etkiler.
+**Hâlâ açık — ERTELENDİ (21 Eylül 2026):** tatil takvimi yok (düz takvim) — 29 Ekim Pazartesi'ye
+denk gelirse ders sayılır ve öğrenciye olmayacak ders için kontör kesilir. Yeni bir `tatil` tablosu
+gerektirir ve önizleme, aylık kredi ile Eğitmen Kalitesi "planlanan ders" hesabını birlikte etkiler.
+Sorun gerçek ve duruyor; ama kurum kararıyla sıraya alınmadı — yeni oturum bunu kendiliğinden
+başlatmasın.
 
 ---
 
@@ -1072,8 +1074,10 @@ yapılandırma → (3) SMS gönderimi.
 **Kod (öncelik sırası önerisi):**
 1. **WhatsApp bildirimi** — `bildirim/kanal/BildirimKanali` arayüzü hazır (e-posta uyguluyor); Meta Cloud API + işletme doğrulaması + mesaj başı ücret. Kurum bazlı kimlik bilgisi için §7.22 şifreli ayar kullanılır.
 2. **SMS** — §13.2b planı aynen geçerli; ön koşul (şifreli ayar) TAMAM. Sağlayıcı teklifi + İYS hukuk sorusu **Sercan'da**.
-3. **Dönem/kredi:** yalnız **tatil takvimi** kaldı (düz takvim; §7.39 sonuna bak). Orantılama,
-   transferin plan/kredi farkındalığı ve elle tahakkuk/paket indirimi ✅ kapandı (§7.39).
+3. **Dönem/kredi:** orantılama, transferin plan/kredi farkındalığı ve elle tahakkuk/paket indirimi
+   ✅ kapandı (§7.39). Geriye **tatil takvimi** kalmıştı, **21 Eylül 2026'da ERTELENDİ** (Sercan'ın
+   kararı) — iş hâlâ geçerli ama sıraya alınmadı; kendiliğinden başlanmaz, istenince yapılır.
+   Kapsamı §7.39 sonunda duruyor.
 4. **Veli portalı** (rakipte de yok) · mobil uygulama (React Native, planlı).
 5. Küçükler: §13.3. (`user` modülünde `error.fields` + kullanıcı listesinde sayfalama ✅ §7.37;
    **iade** ✅ §7.38 — tahsilat ve ürün iadesi, kısmi, kredi iptaliyle.)

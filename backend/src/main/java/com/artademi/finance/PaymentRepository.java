@@ -69,22 +69,41 @@ public interface PaymentRepository
 
     /**
      * Bir ogretmenin gruplarina ait [from,to] araligindaki tahsilatlarin TOPLAMI. COALESCE ile bos
-     * sonuc 0 doner. JPQL oldugu icin tenant filtresine tabidir (yalnizca aktif tenant). CIRO_ORANI
-     * hakediş hesabinda kullanilir. {@code p.grup.ogretmen.id} yolu grup non-null gerektirir, yani
-     * grubu olmayan (grup_id NULL) tahsilatlar bu toplama OTOMATIK dahil edilmez.
+     * sonuc 0 doner. JPQL oldugu icin tenant filtresine tabidir (yalnizca aktif tenant).
+     * {@code p.grup.ogretmen.id} yolu grup non-null gerektirir, yani grubu olmayan (grup_id NULL)
+     * tahsilatlar bu toplama OTOMATIK dahil edilmez.
+     *
+     * <p>⚠️ <b>SU AN CAGRILMIYOR.</b> Model C'de hakedis GRUP bazinda hesaplanir
+     * ({@link #sumTutarByGrupAndTarihAraligi}); bu ogretmen-bazli esdegeri duruyor ama kullanilmiyor.
+     * Yine de ayni iade kurali (iade = orijinal odemenin ayi) uygulandi: iki ciro sorgusunun
+     * birbirinden sapmasi, ileride bunu kullanan kisi icin sessiz bir tuzak olurdu.
      */
-    @Query("SELECT COALESCE(SUM(p.tutar), 0) FROM Payment p "
-            + "WHERE p.grup.ogretmen.id = :ogretmenId AND p.odemeTarihi BETWEEN :from AND :to")
+    @Query("SELECT COALESCE(SUM(p.tutar), 0) FROM Payment p LEFT JOIN p.iadeEdilenOdeme o "
+            + "WHERE p.grup.ogretmen.id = :ogretmenId "
+            + "AND COALESCE(o.odemeTarihi, p.odemeTarihi) BETWEEN :from AND :to")
     BigDecimal sumTutarByOgretmenAndTarihAraligi(@Param("ogretmenId") Long ogretmenId,
             @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /**
-     * BELIRLI bir gruba ait [from,to] araligindaki tahsilatlarin TOPLAMI. COALESCE ile bos sonuc 0.
-     * Model C: CIRO_ORANI hakedis hesabi grup bazinda yapilir (her grup kendi hakedis tipiyle).
+     * BELIRLI bir gruba ait [from,to] araligindaki tahsilatlarin TOPLAMI — <b>CIRO_ORANI hakedisi
+     * icin</b>. COALESCE ile bos sonuc 0. Model C: hakedis hesabi grup bazinda yapilir.
      * JPQL oldugu icin tenant filtresine tabidir (yalnizca aktif tenant).
+     *
+     * <p><b>⚠️ IADE, ORIJINAL ODEMENIN AYINA yazilir</b> (urun karari 2026-10-07): bir satirin ciro
+     * ayi, iade satirlari icin iade edilen ODEMENIN tarihidir, kendi tarihi degil. Boylece Eylul'de
+     * alinan paranin Ekim'de iadesi <b>Eylul</b> cirosunu duzeltir; eskiden Ekim'e yaziliyordu ve o
+     * grupta Ekim'de baska tahsilat yoksa hakedis <b>eksiye</b> dusuyordu.
+     *
+     * <p>⚠️ Bu, Gelirler ozeti ve kasa bakiyesinden BILINCLI olarak farklidir: orada iade, parayi
+     * fiilen verdigimiz ayda gorunur (nakit esasi). Burada ise komisyonun hesaplandigi cironun
+     * duzeltilmesi gerekir, o yuzden tahakkuk esasi.
+     *
+     * <p>⚠️ {@code LEFT JOIN} sart: {@code p.iadeEdilenOdeme.odemeTarihi} seklinde ortuk yol
+     * yazilirsa Hibernate INNER JOIN uretir ve <b>iade OLMAYAN tum satirlar toplamdan duser</b>.
      */
-    @Query("SELECT COALESCE(SUM(p.tutar), 0) FROM Payment p "
-            + "WHERE p.grup.id = :grupId AND p.odemeTarihi BETWEEN :from AND :to")
+    @Query("SELECT COALESCE(SUM(p.tutar), 0) FROM Payment p LEFT JOIN p.iadeEdilenOdeme o "
+            + "WHERE p.grup.id = :grupId "
+            + "AND COALESCE(o.odemeTarihi, p.odemeTarihi) BETWEEN :from AND :to")
     BigDecimal sumTutarByGrupAndTarihAraligi(@Param("grupId") Long grupId,
             @Param("from") LocalDate from, @Param("to") LocalDate to);
 

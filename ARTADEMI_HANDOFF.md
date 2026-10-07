@@ -214,7 +214,7 @@ Migration sırası **V1→V36** (dönüm noktaları: V13 tenant, V14 subscriptio
 - ⭐ **Model C — hakediş tipi GRUBA bağlı, çifte sayım imkânsız.** `hesapla`/`onizle` artık **`List<PayoutResponse>`** döner. Motor öğretmenin gruplarını dolaşır; her grup KENDİ `hakedisTipi`'yle ve öğretmenin o tipe ait `TeacherHakedis` oranıyla hesaplanır, **tip başına TEK satıra** toplanır:
   - `SAATLIK` grup → grubun dönem oturum sayısı × `saatlikUcret`.
   - `OZEL_DERS` grup → grubun dönem oturum sayısı × `dersBasiUcret`.
-  - `CIRO_ORANI` grup → o grubun dönem ödemeleri toplamı; net = toplam/(1+kdv/100) [varsayılan %20]; × `ciroOrani`/100.
+  - `CIRO_ORANI` grup → o grubun dönem ödemeleri toplamı; net = toplam/(1+kdv/100) [varsayılan %20]; × `ciroOrani`/100. ⚠️ İade satırı **orijinal ödemenin ayına** sayılır (§7.40).
   - Öğretmende grubun tipine ait oran satırı YOKSA → o grup ATLANIR (hata değil).
 - **Karma öğretmen örnek:** SAATLIK 350 + CIRO %10, Grup-A(SAATLIK) 8 oturum=2.800 + Grup-B(CIRO) ödeme 11.800 KDV18→net 10.000×%10=1.000 → **iki satır, çakışma yok**.
 - Mükerrer engeli artık **(ogretmen+donem+tip)** → 409 (V16: payout unique `(tenant,ogretmen,donem,hakedis_tipi)`). Boş sonuç (katkı sağlayan grup yok) → 400. PARA: BigDecimal scale-2 HALF_UP korunur.
@@ -780,13 +780,8 @@ yanlıştı: gelir şişik kalır, öğrenci bakiyesi düzelmezdi.
   kredi iptali, kısmi iade sınırı ve alan bazlı hata, iadenin iadesi, silme kalkanı, ön büro 403 /
   muhasebe 201, çapraz tenant 404, stok iadesi, satın alınan fiyattan iade.
 
-**⚠️ CIRO_ORANI hakedişine etkisi (bilinçli, ama bilinmeli).** `PayoutService` ciro payını
-`SUM(payment.tutar)` ile grup+tarih aralığından hesaplar; iade satırının **grubu orijinalden
-kopyalanır**, tarihi ise **iade günüdür**. Sonuç: iade, yapıldığı **ayın** cirosundan düşer. Ödeme
-Eylül'de alınıp iade Ekim'de yapılırsa Eylül hakedişi ödenmiş kalır, düzeltme Ekim'e yazılır — ve o
-grupta Ekim'de başka tahsilat yoksa **hakediş eksiye düşebilir**. Sıfıra kırpılmadı: kırpmak,
-kuruma fazla ödenmiş komisyonu sessizce kaybettirirdi. Eğitmene eksi hakediş göstermek istenmiyorsa
-bu ayrı bir ürün kararıdır (ör. iadeyi orijinal ödemenin ayına yazmak).
+**CIRO_ORANI hakedişi: iade ORİJİNAL ÖDEMENİN AYINA yazılır** (ürün kararı 2026-10-07; önceki
+davranış ve gerekçesi §7.40'ta).
 
 **Diğer bilinçli sınırlar:** iade için ayrı makbuz PDF'i yok (tahsilat makbuzu duruyor; iade
 satırının makbuzu eksi tutar gösterir); Eğitmen Kalitesi raporu iadeden etkilenmez (ders sayıları
@@ -843,6 +838,47 @@ denk gelirse ders sayılır ve öğrenciye olmayacak ders için kontör kesilir.
 gerektirir ve önizleme, aylık kredi ile Eğitmen Kalitesi "planlanan ders" hesabını birlikte etkiler.
 Sorun gerçek ve duruyor; ama kurum kararıyla sıraya alınmadı — yeni oturum bunu kendiliğinden
 başlatmasın.
+
+### 7.40 CIRO_ORANI hakedişinde iade, orijinal ödemenin ayına yazılır (✅ 2026-10-07)
+
+**Sorun.** `PayoutService` ciro payını `SUM(payment.tutar)` ile grup + tarih aralığından hesaplıyor.
+İade satırının grubu orijinalden kopyalanıyor ama **tarihi iade günü**. Eylül'de alınan paranın
+Ekim'de iadesi Ekim cirosundan düşüyordu; o grupta Ekim'de başka tahsilat yoksa ciro negatif olup
+**eğitmene eksi hakediş** çıkıyordu.
+
+**Karar:** bir satırın *ciro ayı*, iade satırları için **iade edilen ödemenin tarihi**dir. Böylece
+düzeltme, komisyonun hesaplandığı ayın cirosuna gider.
+
+- `PaymentRepository.sumTutarByGrupAndTarihAraligi` artık
+  `COALESCE(o.odemeTarihi, p.odemeTarihi) BETWEEN :from AND :to` ile filtreliyor.
+- ⚠️ **`LEFT JOIN p.iadeEdilenOdeme o` şart.** `p.iadeEdilenOdeme.odemeTarihi` diye örtük yol
+  yazılırsa Hibernate INNER JOIN üretir ve **iade olmayan tüm satırlar toplamdan düşer** — ciro
+  sıfırlanır, hata da sessiz olur.
+- Kullanılmayan öğretmen-bazlı eşdeğeri (`sumTutarByOgretmenAndTarihAraligi`) aynı kurala hizalandı:
+  iki ciro sorgusunun sapması, ileride onu kullanan için sessiz bir tuzak olurdu.
+
+**⚠️ Bilinçli asimetri:** Gelirler özeti ve kasa bakiyesi iadeyi **parayı fiilen verdiğimiz ayda**
+göstermeye devam eder (nakit esası — kasadan para o gün çıktı). Yalnız hakediş cirosu tahakkuk
+esasına geçti, çünkü komisyon hesaplandığı cironun düzeltilmesi gerekir.
+
+**⚠️ Bunun bedeli — bilinmesi gereken:** hakediş satırları **kalıcıdır** (`payout` tablosu) ve
+(öğretmen, dönem, tip) için bir kez hesaplanır, ikincisi 409 döner. Dolayısıyla Eylül hakedişi
+hesaplanıp ödendikten sonra gelen bir Eylül iadesi: Eylül'ün kayıtlı satırını değiştirmez (geçmiş
+korunur) ve artık Ekim'e de yazılmaz. Yani **fazla ödenmiş komisyonu sistem geri almaz** — eski
+davranışta bu düzeltme bir sonraki dönemden tahsil ediliyordu. İade, hakediş hesaplanmadan önce
+yapılırsa yeni davranış her bakımdan daha doğrudur. Fazla ödemenin takibi gerekirse ayrı bir iş
+(ör. hakediş ekranında "geçmiş döneme iade geldi" uyarısı).
+
+- Testler: `PayoutControllerTest` (+2) — Nisan ödemesinin Mayıs'ta iadesi Nisan cirosunu düşürür ve
+  Mayıs'a hiçbir şey yazmaz; aynı ay içindeki kısmi iade ciroyu ve hakedişi doğru düşürür.
+
+**⚠️ Bu turda yakalanan test tuzağı — tekrarlamayın.** `DonemKrediSinirlariTest`'teki transfer testi
+beklenen tutarı (`4500`) SABİT yazıyordu; o değer yalnız 20 Eylül'de doğruydu, çünkü `transfer`
+tarihi `LocalDate.now()`'dur ve orantı bugünün döneme düştüğü yere göre değişir. 7 Ekim'de kalan
+1/8 olunca test kırmızıya döndü. **Kural:** `LocalDate.now()` kullanan bir akışı test ederken
+beklenen parayı sabit yazmayın — ya tarihi parametre olarak verin (kayıt uçları veriyor) ya da
+beklentiyi `kayit-onizleme` gibi aynı kuralı uygulayan bir uçtan türetin. Şu an test, "transfer
+yeni gruba BUGÜN taze kayıt açılmış gibi kredi/ücret açar" değişmezini doğruluyor.
 
 ---
 

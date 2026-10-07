@@ -233,9 +233,27 @@ class DonemKrediSinirlariTest {
         org.junit.jupiter.api.Assertions.assertTrue(eskiIptal, "eski grubun kredisi iptal edilmeli");
         org.junit.jupiter.api.Assertions.assertTrue(yeniAktif, "yeni grupta kredi paketi açılmalı");
 
-        // Yeni grubun ücreti de ORANTILI: 6000 × (kalan 6 / toplam 8) = 4500.
+        // Yeni grubun paketi, BUGÜN o gruba taze kayıt açılmış gibi olmalı: ders sayısı ve
+        // orantılı ücret, önizlemenin verdiğiyle birebir. Asıl düzeltilen hata buydu (transfer
+        // kredi/ücret açmıyordu).
+        //
+        // ⚠️ Beklenen değer SABİT YAZILMAZ: transfer tarihi LocalDate.now()'dur, orantı bugünün
+        // döneme düştüğü yere göre değişir. Önceki hali 4500'ü gömüyordu ve yalnız 20 Eylül'de
+        // geçiyordu (7 Ekim'de kalan 1/8 olunca kırmızıya döndü).
+        String onizlemeBody = mockMvc.perform(get("/api/groups/{id}/kayit-onizleme", yeni)
+                        .param("plan", "DONEMLIK").with(admin(t)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        var onizleme = objectMapper.readTree(onizlemeBody).path("data");
+        int beklenenDers = onizleme.path("dersSayisi").asInt();
+        double beklenenUcret = onizleme.path("ucret").asDouble();
+        org.junit.jupiter.api.Assertions.assertTrue(beklenenDers > 0,
+                "dönem bitmemiş olmalı, yoksa test anlamsızlaşır");
+
         mockMvc.perform(get("/api/paketler").param("ogrenciId", String.valueOf(ogrenci)).with(admin(t)))
-                .andExpect(jsonPath("$.data[?(@.grupId == " + yeni + ")].tutar", org.hamcrest.Matchers.contains(4500.00)));
+                .andExpect(jsonPath("$.data[?(@.grupId == " + yeni + ")].toplamDers",
+                        org.hamcrest.Matchers.contains(beklenenDers)))
+                .andExpect(jsonPath("$.data[?(@.grupId == " + yeni + ")].tutar",
+                        org.hamcrest.Matchers.contains(beklenenUcret)));
 
         // Para: eski gruptan orantılı iade (negatif), yeni gruba orantılı ücret (pozitif).
         mockMvc.perform(get("/api/accruals").param("ogrenciId", String.valueOf(ogrenci))

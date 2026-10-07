@@ -189,6 +189,21 @@ class PayoutControllerTest {
                 .andExpect(status().isCreated());
     }
 
+    /** Tahsilat olusturur ve id'sini doner (iade testleri icin). */
+    private long createPaymentId(String tenantId, long ogrenciId, Long grupId, String tutar,
+            String odemeTarihi) throws Exception {
+        String grupJson = grupId == null ? "" : ",\"grupId\":" + grupId;
+        String json = "{\"ogrenciId\":" + ogrenciId + ",\"tutar\":" + tutar
+                + ",\"odemeYontemi\":\"NAKIT\",\"odemeTarihi\":\"" + odemeTarihi + "\"" + grupJson + "}";
+        String body = mockMvc.perform(post("/api/payments")
+                        .with(admin(tenantId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body).path("data").path("id").asLong();
+    }
+
     // --- 1. Tenant izolasyonu + 404 PK-find ---
 
     @Test
@@ -578,5 +593,63 @@ class PayoutControllerTest {
                         .content("{\"ogretmenId\":" + ogretmen + ",\"donem\":\"2026/04\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    // --- 4c. IADE, ORIJINAL ODEMENIN AYINA yazilir (urun karari 2026-10-07) ---
+
+    @Test
+    void ciroHesaplama_iade_ORIJINAL_odemenin_ayinaYazilir() throws Exception {
+        String tenant = "00000000-0000-0000-0000-000000000043";
+        long ogretmen = createCiroTeacher(tenant, "Cirolu", "40.00");
+        long grup = createGroup(tenant, "ciro-iade", ogretmen, "CIRO_ORANI");
+        long ogrenci = createStudent(tenant, "Ogr", "43000000001");
+
+        // NISAN'da 1180 tahsilat; iade MAYIS'ta yapiliyor.
+        long odeme = createPaymentId(tenant, ogrenci, grup, "1180.00", "2026-04-05");
+        mockMvc.perform(post("/api/payments/{id}/iade", odeme)
+                        .with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tutar\":1180.00,\"iadeTarihi\":\"2026-05-10\"}"))
+                .andExpect(status().isCreated());
+
+        // NISAN cirosu iadeyle duzelir: 1180 - 1180 = 0 -> CIRO_ORANI satiri 0 TL.
+        mockMvc.perform(get("/api/payouts/onizle").with(admin(tenant))
+                        .param("ogretmenId", String.valueOf(ogretmen))
+                        .param("donem", "2026-04").param("kdvOrani", "18"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].dokum.toplamTahsilat").value(0.00))
+                .andExpect(jsonPath("$.data[0].hesaplananTutar").value(0.00));
+
+        // MAYIS'a HICBIR SEY yazilmaz: eskiden iade buraya dusuyor ve o grupta Mayis'ta baska
+        // tahsilat olmadigi icin ciro -1180 olup hakedis EKSIYE gidiyordu. Artik Mayis cirosu 0.
+        mockMvc.perform(get("/api/payouts/onizle").with(admin(tenant))
+                        .param("ogretmenId", String.valueOf(ogretmen))
+                        .param("donem", "2026-05").param("kdvOrani", "18"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].dokum.toplamTahsilat").value(0.00));
+    }
+
+    @Test
+    void ciroHesaplama_kismiIade_ayniAyda_ciroyuDUSURUR() throws Exception {
+        String tenant = "00000000-0000-0000-0000-000000000044";
+        long ogretmen = createCiroTeacher(tenant, "Cirolu", "40.00");
+        long grup = createGroup(tenant, "ciro-kismi", ogretmen, "CIRO_ORANI");
+        long ogrenci = createStudent(tenant, "Ogr", "44000000001");
+
+        long odeme = createPaymentId(tenant, ogrenci, grup, "1180.00", "2026-04-05");
+        mockMvc.perform(post("/api/payments/{id}/iade", odeme)
+                        .with(admin(tenant))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tutar\":590.00,\"iadeTarihi\":\"2026-04-20\"}"))
+                .andExpect(status().isCreated());
+
+        // 1180 - 590 = 590; net = 590/1.18 = 500; hakedis = 500 x %40 = 200.
+        mockMvc.perform(get("/api/payouts/onizle").with(admin(tenant))
+                        .param("ogretmenId", String.valueOf(ogretmen))
+                        .param("donem", "2026-04").param("kdvOrani", "18"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].dokum.toplamTahsilat").value(590.00))
+                .andExpect(jsonPath("$.data[0].dokum.netCiro").value(500.00))
+                .andExpect(jsonPath("$.data[0].hesaplananTutar").value(200.00));
     }
 }

@@ -1,7 +1,7 @@
 # Artademi — Proje Devir Dökümanı (Handoff)
 
 > **Bu dosyanın amacı:** yeni bir oturuma (Claude masaüstü / CLI) **tek dosyayla** devir. "Bunu oku, kaldığımız yerden devam et" yeter. Sohbet dökümleri devredilmez; karar ve durumun tamamı burada ve hafıza notlarında.
-> **Son güncelleme:** **2026-09-21** — prod `0e60ff3`, Flyway **V37**, **833 test yeşil**. 9 Eylül toplantı taleplerinin hepsi (Dalga A–F, §7.27–7.36) + kapanış eksikleri canlıda. En son ürün kararları: **dönem ortası ücret orantılanır** (§7.39), **iade = negatif satır, kalan kredi iptal** (§7.38), **DENEME→AKTİF plan seçimiyle** (§7.35), **dönem/kredi modeli aylık aidatın yerine** (§7.32), **yumuşak silme** (§7.29). Açık işler §13.4.
+> **Son güncelleme:** **2026-10-08** — prod `7a97dd9`, Flyway **V37**, **835 test yeşil**. 9 Eylül toplantı taleplerinin hepsi (Dalga A–F, §7.27–7.36) + kapanış eksikleri canlıda. En son ürün kararları: **ciro hakedişinde iade orijinal ödemenin ayına** (§7.40), **dönem ortası ücret orantılanır** (§7.39), **iade = negatif satır, kalan kredi iptal** (§7.38), **DENEME→AKTİF plan seçimiyle** (§7.35), **dönem/kredi modeli aylık aidatın yerine** (§7.32), **yumuşak silme** (§7.29). Açık işler §13.4.
 > **Okuma sırası (yeni oturum):** §15 hızlı hatırlatmalar → §13.4 açık işler → ilgili §7.x modül notu. Tarihsel bölümler (§13.0–13.2, §14 eski maddeler) yalnız arka plan içindir.
 > **İletişim dili:** Türkçe. **Geliştirici:** Sercan (solo). **Çalışma stili:** "tane tane" — her modül gerçek test + curl ile doğrulanmadan bir sonrakine geçilmez.
 
